@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f4f5f1" />
+  <meta name="description" content="Quanta — a collaborative whiteboard and notebook for handwriting, math, physics, and code that runs." />
+  <title>Quanta — Whiteboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f2328'/%3E%3Cpath d='M9 21c3-9 6-11 8-8s3 5 6-4' stroke='%23ffe14d' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Boards">
+      <div class="side-head">
+        <span class="brand">Quanta</span>
+        <button class="ghost-btn" id="newBoardBtn" title="New board (Ctrl+Shift+N)">＋ New</button>
+      </div>
+      <div class="side-search">
+        <input id="searchInput" type="search" placeholder="Search boards and cards…" aria-label="Search" autocomplete="off" />
+      </div>
+      <div class="side-list" id="boardList"></div>
+      <div class="side-foot">
+        <button class="ghost-btn small" id="newFolderBtn">＋ Folder</button>
+        <span class="server-state" id="serverState"></span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-btn" id="sidebarToggle" title="Toggle sidebar" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <input class="board-name" id="boardName" aria-label="Board name" spellcheck="false" />
+        <span class="save-status" id="saveStatus"></span>
+        <div class="top-spacer"></div>
+        <div class="peer-stack" id="peerStack" aria-label="People on this board"></div>
+        <button class="pill-btn" id="pagesBtn" title="Pages and frames (Shift+G)">
+          <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M4 6v15h12"/></svg>
+          <span class="pill-label">Pages</span>
+        </button>
+        <button class="pill-btn" id="commentsBtn" title="Comments (Shift+C)">
+          <svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z"/></svg>
+          <b id="commentCount">0</b>
+        </button>
+        <button class="pill-btn" id="presentBtn" title="Present frames (Shift+P)">▶<span class="pill-label"> Present</span></button>
+        <button class="pill-btn" id="aiBtn" title="Assistant (Shift+A)">✦<span class="pill-label"> Assistant</span></button>
+        <button class="pill-btn accent" id="shareBtn" title="Invite people to this board">Share</button>
+        <div class="menu-wrap">
+          <button class="icon-btn" id="moreBtn" title="Board menu" aria-label="Board menu">
+            <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+          </button>
+          <div class="menu" id="moreMenu" hidden>
+            <div class="menu-label">Background</div>
+            <div class="menu-row" id="bgChoices"></div>
+            <hr />
+            <button data-command="add-page">Add a notebook page</button>
+            <button data-command="import-pdf">Import PDF to annotate…</button>
+            <button data-command="insert-image">Insert image…</button>
+            <button data-command="print">Print / save pages as PDF</button>
+            <hr />
+            <button data-command="export-json">Export board as JSON</button>
+            <button data-command="copy-markdown">Copy board as Markdown</button>
+            <button data-command="import-json">Import a board file…</button>
+            <button data-command="duplicate-board">Duplicate this board</button>
+            <button data-command="recover-board">Recently deleted boards</button>
+            <hr />
+            <button data-command="clear-ink">Erase all ink</button>
+            <button data-command="delete-board" class="danger">Delete this board…</button>
+          </div>
+        </div>
+        <button class="me-chip" id="meBtn" title="Your display name"></button>
+      </header>
+
+      <section class="canvas-shell" id="canvasShell" tabindex="0" aria-label="Whiteboard canvas">
+        <div class="canvas-grid" id="canvasGrid"></div>
+        <div class="world" id="world"></div>
+        <canvas class="ink-canvas ink-highlight" id="inkHighlight" aria-hidden="true"></canvas>
+        <canvas class="ink-canvas" id="inkCanvas" aria-hidden="true"></canvas>
+        <canvas class="ink-canvas ink-live" id="inkLive" aria-hidden="true"></canvas>
+
+        <div class="marquee" id="marquee" hidden></div>
+        <div class="selection-frame" id="selectionFrame" hidden>
+          <i data-handle="nw"></i><i data-handle="n"></i><i data-handle="ne"></i><i data-handle="e"></i>
+          <i data-handle="se"></i><i data-handle="s"></i><i data-handle="sw"></i><i data-handle="w"></i>
+        </div>
+        <div class="obj-toolbar" id="objectToolbar" hidden></div>
+        <div class="obj-toolbar lasso-bar" id="lassoBar" hidden></div>
+        <div class="peer-cursors" id="peerCursors" aria-hidden="true"></div>
+        <div class="draw-cursor" id="drawCursor" hidden aria-hidden="true"></div>
+        <div class="follow-banner" id="followBanner" hidden></div>
+
+        <div class="toolbar" id="toolbar" role="toolbar" aria-label="Tools">
+          <button class="tool" data-tool="select" title="Select (V)"><svg viewBox="0 0 24 24"><path d="m5 3 14 9-6.2 1.1L9 19z"/></svg><span>Select</span></button>
+          <button class="tool" data-tool="hand" title="Pan (H or Space)"><svg viewBox="0 0 24 24"><path d="M7 12V7a2 2 0 0 1 4 0v4-6a2 2 0 0 1 4 0v6-4a2 2 0 0 1 4 0v8c0 4-3 7-7 7h-1a7 7 0 0 1-6-3L2 15a2 2 0 0 1 3-3l2 2"/></svg><span>Pan</span></button>
+          <i class="tool-sep"></i>
+          <button class="tool" data-tool="pen" title="Pen (P) — draw and hold to snap a shape"><svg viewBox="0 0 24 24"><path d="m4 20 4.2-1 10.6-10.6-3.2-3.2L5 15.8zM14.5 6.3l3.2 3.2"/></svg><span>Pen</span></button>
+          <button class="tool" data-tool="highlighter" title="Highlighter (M)"><svg viewBox="0 0 24 24"><path d="m5 15 9-9 4 4-9 9H5zM13 7l4 4M3 21h10"/></svg><span>Marker</span></button>
+          <button class="tool" data-tool="eraser" title="Eraser (E)"><svg viewBox="0 0 24 24"><path d="m4 15 9-10 7 7-7 8H8zM13 20h8"/></svg><span>Eraser</span></button>
+          <button class="tool" data-tool="lasso" title="Lasso (L) — select ink and cards"><svg viewBox="0 0 24 24" stroke-dasharray="3 2"><path d="M20 10c0 4-4 7-9 7s-8-2-8-6 4-7 9-7 8 2 8 6z"/><path d="M11 17c0 3 1 4 3 4 1.5 0 2.5-.7 2.5-1.8S15.5 17.5 14 18"/></svg><span>Lasso</span></button>
+          <i class="tool-sep"></i>
+          <button class="tool" data-tool="note" title="Sticky note (N)"><svg viewBox="0 0 24 24"><path d="M4 3h16v13l-5 5H4z"/><path d="M15 21v-5h5"/></svg><span>Note</span></button>
+          <button class="tool" data-tool="text" title="Text (T)"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg><span>Text</span></button>
+          <button class="tool" data-tool="shape" title="Shape (R)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Shape</span></button>
+          <button class="tool" data-tool="arrow" title="Connector (A) — drag between cards"><svg viewBox="0 0 24 24"><path d="M4 20 20 4M11 4h9v9"/></svg><span>Arrow</span></button>
+          <button class="tool" data-tool="frame" title="Frame / slide (G)"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16M8 4v16M16 4v16"/></svg><span>Frame</span></button>
+          <i class="tool-sep"></i>
+          <button class="tool" data-tool="math" title="Math card (F) — typeset and evaluate"><svg viewBox="0 0 24 24"><path d="M19 4H6l7 8-7 8h13"/></svg><span>Math</span></button>
+          <button class="tool" data-tool="plot" title="Plot (Y) — graph functions"><svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M6 16c3-9 5-9 7-3s4 3 6-6"/></svg><span>Plot</span></button>
+          <button class="tool" data-tool="code" title="Code card (C) — JavaScript or Python"><svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-2-13-4 16"/></svg><span>Code</span></button>
+          <button class="tool" data-tool="comment" title="Comment (K)"><svg viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z"/></svg><span>Comment</span></button>
+          <i class="tool-sep"></i>
+          <button class="tool pin-tool" id="stickyToolBtn" title="Keep the current tool after each use"><svg viewBox="0 0 24 24"><path d="M12 3v10m0 8v-3m-7-7h3m8 0h3"/><circle cx="12" cy="15" r="3"/></svg><span>Lock</span></button>
+        </div>
+
+        <div class="ink-bar" id="inkBar" hidden aria-label="Ink options"></div>
+
+        <div class="zoom-bar">
+          <button id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
+          <button id="redoBtn" title="Redo (Ctrl+Shift+Z)">↷</button>
+          <i class="tool-sep"></i>
+          <button id="zoomOut" title="Zoom out">−</button>
+          <button id="zoomLabel" title="Reset to 100%">100%</button>
+          <button id="zoomIn" title="Zoom in">＋</button>
+          <button id="fitBtn" title="Fit board (Shift+1)">Fit</button>
+        </div>
+
+        <button class="help-hint" id="helpBtn"><kbd>?</kbd> <span>Shortcuts</span></button>
+        <div class="drop-hint" id="dropHint" hidden>Drop images or PDFs to add them to the board</div>
+      </section>
+    </main>
+  </div>
+
+  <aside class="panel" id="pagesPanel" hidden aria-label="Pages">
+    <header>
+      <h2>Pages &amp; frames</h2>
+      <button class="panel-close" data-close="pagesPanel" aria-label="Close">×</button>
+    </header>
+    <div class="panel-body" id="pageList"></div>
+    <footer class="panel-foot">
+      <div class="paper-picker" id="paperPicker"></div>
+      <div class="panel-actions">
+        <button class="solid-btn" id="addPageBtn">＋ Add page</button>
+        <button class="ghost-btn" id="importPdfBtn">Import PDF…</button>
+      </div>
+    </footer>
+  </aside>
+
+  <aside class="panel" id="commentsPanel" hidden aria-label="Comments">
+    <header>
+      <h2>Comments</h2>
+      <button class="panel-close" data-close="commentsPanel" aria-label="Close">×</button>
+    </header>
+    <div class="panel-body" id="commentList"></div>
+    <footer class="panel-foot">
+      <p class="hint">Pick the comment tool (K) and click the board to start a new thread.</p>
+    </footer>
+  </aside>
+
+  <aside class="panel" id="aiPanel" hidden aria-label="Assistant">
+    <header>
+      <h2>Assistant</h2>
+      <button class="panel-close" data-close="aiPanel" aria-label="Close">×</button>
+    </header>
+    <div class="ai-settings">
+      <div class="ai-settings-head"><span>Connection</span><button id="aiRefresh" class="ghost-btn small" type="button">Refresh</button></div>
+      <label for="aiProvider">Provider</label>
+      <select id="aiProvider" aria-label="Assistant provider"></select>
+      <label for="aiModel">Model</label>
+      <input id="aiModel" list="aiModels" placeholder="Use the terminal's default model" autocomplete="off">
+      <datalist id="aiModels"></datalist>
+      <div class="ai-model-hint" id="aiModelHint"></div>
+    </div>
+    <div class="ai-state" id="aiState" role="status"></div>
+    <div class="ai-agent-status" id="webMcpState"></div>
+    <div class="panel-body" id="aiChat"></div>
+    <footer class="panel-foot">
+      <div class="ai-suggest" id="aiSuggest">
+        <button data-prompt="Summarise this board in a note">Summarise the board</button>
+        <button data-prompt="Check the math cards for mistakes and explain any you find">Check my math</button>
+        <button data-prompt="Plot the functions discussed on this board in a plot card">Plot it</button>
+      </div>
+      <div class="ai-composer">
+        <textarea id="aiInput" rows="2" placeholder="Ask about this board, or tell the assistant what to add…"></textarea>
+        <button id="aiSend" title="Send (Enter)" aria-label="Send message">↑</button>
+      </div>
+    </footer>
+  </aside>
+
+  <div class="overlay present" id="presentOverlay" hidden>
+    <header>
+      <span id="presentTitle"></span>
+      <span class="present-count" id="presentCount"></span>
+      <button class="panel-close" data-close="presentOverlay" aria-label="Exit presentation">×</button>
+    </header>
+    <footer>
+      <button id="presentPrev" title="Previous (←)">←</button>
+      <span id="presentLabel"></span>
+      <button id="presentNext" title="Next (→)">→</button>
+    </footer>
+  </div>
+
+  <div class="overlay sheet" id="helpOverlay" hidden>
+    <section class="sheet-box">
+      <header><h2>Shortcuts</h2><button class="panel-close" data-close="helpOverlay" aria-label="Close">×</button></header>
+      <div class="shortcut-grid" id="shortcutGrid"></div>
+      <p class="sheet-note" id="helpNote"></p>
+    </section>
+  </div>
+
+  <div class="overlay sheet" id="shareOverlay" hidden>
+    <section class="sheet-box">
+      <header><h2>Work on this board together</h2><button class="panel-close" data-close="shareOverlay" aria-label="Close">×</button></header>
+      <div id="shareBody"></div>
+    </section>
+  </div>
+
+  <div class="overlay sheet" id="templateOverlay" hidden>
+    <section class="sheet-box wide">
+      <header><h2>New board</h2><button class="panel-close" data-close="templateOverlay" aria-label="Close">×</button></header>
+      <div class="template-grid" id="templateGrid"></div>
+    </section>
+  </div>
+
+  <div class="overlay sheet" id="nameOverlay" hidden>
+    <section class="sheet-box narrow">
+      <h2>What should collaborators call you?</h2>
+      <p>Your name shows next to your cursor, your selections, and your comments.</p>
+      <input class="text-input" id="nameInput" maxlength="32" placeholder="Your name" autocomplete="nickname" />
+      <div class="color-row" id="colorRow"></div>
+      <div class="sheet-actions">
+        <button class="solid-btn" id="nameSave">Continue</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay sheet" id="confirmOverlay" hidden>
+    <section class="sheet-box narrow">
+      <h2 id="confirmTitle">Are you sure?</h2>
+      <p id="confirmBody"></p>
+      <div class="sheet-actions">
+        <button class="ghost-btn" id="confirmCancel">Cancel</button>
+        <button class="solid-btn danger" id="confirmOk">Delete</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="palette" id="palette" hidden>
+    <div class="palette-box">
+      <input id="paletteInput" placeholder="Run a command, or jump to a board…" autocomplete="off" />
+      <div class="palette-list" id="paletteList"></div>
+    </div>
+  </div>
+
+  <div id="printRoot" class="print-root" aria-hidden="true"></div>
+  <div class="toast" id="toast" role="status"></div>
+  <input type="file" id="importInput" accept="application/json,.json" hidden />
+  <input type="file" id="pdfInput" accept="application/pdf,.pdf" hidden />
+  <input type="file" id="imageInput" accept="image/*" multiple hidden />
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

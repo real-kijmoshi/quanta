@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Pen smoothing comparison</title>
+<style>body{font:16px system-ui;margin:32px;background:#f5f5f5;color:#202124}h1{font-size:24px}main{display:flex;gap:24px}section{flex:1;min-width:0}canvas{width:100%;background:white;border:1px solid #ddd;border-radius:12px}p{color:#555}</style>
+<h1>Pen smoothing: identical input, identical width</h1><p>Dense slow strokes and sparse fast strokes. Both panels use a 4 px pen with round ends.</p>
+<main><section><h2>Previous</h2><canvas id="before" width="860" height="520"></canvas></section><section><h2>Updated</h2><canvas id="after" width="860" height="520"></canvas></section></main>
+<p id="status" role="status">Rendering…</p>
+<script type="module">
+import { paintStroke } from '../src/stroke.js';
+const before=document.querySelector('#before').getContext('2d');
+const after=document.querySelector('#after').getContext('2d');
+function previous(points) {
+  let out=points.map(p=>[...p]);
+  for(let pass=0;pass<2;pass++) out=out.map((p,i)=>i===0||i===out.length-1?p:[(out[i-1][0]+2*p[0]+out[i+1][0])/4,(out[i-1][1]+2*p[1]+out[i+1][1])/4]);
+  const path=new Path2D();path.moveTo(...out[0]);
+  for(let i=1;i<out.length-1;i++)path.quadraticCurveTo(...out[i],(out[i][0]+out[i+1][0])/2,(out[i][1]+out[i+1][1])/2);
+  path.lineTo(...out.at(-1));before.stroke(path);
+}
+before.strokeStyle='#202124';before.lineWidth=4;before.lineCap=before.lineJoin='round';
+const samples=[];
+for(const [row,count] of [[0,1800],[1,160],[2,60]]){
+ const points=Array.from({length:count},(_,i)=>{const t=i/(count-1);return[45+t*760,90+row*145+Math.sin(t*Math.PI*4)*34+Math.sin(i*2.4)*.9,.5]});
+ samples.push(points);
+}
+for(const points of samples){previous(points);paintStroke(after,{points,size:4,tool:'pen',style:'ballpoint',sim:true,color:'#202124'})}
+document.querySelector('#status').textContent='Rendered successfully. No saved board data is used or changed.';
+</script></html>

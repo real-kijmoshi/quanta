@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Quanta canvas performance check</title>
+<style>
+  body { margin: 0; font: 15px system-ui; color: #25282d; background: #f8f9fa; }
+  header { padding: 18px 28px; background: white; border-bottom: 1px solid #ddd; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  #canvasShell { position: relative; overflow: hidden; height: 650px; background: white; }
+  #world, #canvasGrid, canvas { position: absolute; inset: 0; pointer-events: none; }
+  #world { transform-origin: 0 0; }
+  #inkHighlight { mix-blend-mode: multiply; }
+  pre { white-space: pre-wrap; }
+</style>
+<header>
+  <h1>Quanta canvas performance check</h1>
+  <p>In-memory synthetic board; no user boards are changed. CPU submission times exclude deferred GPU work.</p>
+  <button id="run">Run profile</button>
+  <button id="liveRun">Run live ink at 5% zoom</button>
+  <pre id="results" role="status">Ready</pre>
+</header>
+<div id="canvasShell">
+  <div id="canvasGrid"></div><div id="world"></div>
+  <canvas id="inkHighlight"></canvas><canvas id="inkCanvas"></canvas><canvas id="inkLive"></canvas>
+  <div id="lassoBar" hidden></div>
+</div>
+<script type="module" src="./canvas-profile.js"></script>
+</html>

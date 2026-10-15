@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="pl"><meta charset="utf-8"><title>Quanta — pomiar płynności</title>
+<style>
+body{margin:0;font:14px system-ui;color:#222;background:#f3f3f3}header{height:230px;box-sizing:border-box;padding:18px 28px;background:white;border-bottom:1px solid #ddd}h1{font-size:21px;margin:0 0 8px}p{max-width:1100px;margin:8px 0}button{padding:8px 14px;margin-right:8px}#progress{font-weight:600}#canvasShell{position:relative;overflow:hidden;height:calc(100vh - 230px);min-height:300px}#world,#canvasGrid,canvas{position:absolute;inset:0;pointer-events:none}#world{transform-origin:0 0}#inkHighlight{mix-blend-mode:multiply}#results{position:absolute;top:250px;right:16px;width:min(600px,48vw);max-height:calc(100vh - 285px);overflow:auto;background:#fffffff2;padding:12px;white-space:pre-wrap;font-size:12px;z-index:5;border-radius:12px}#results:empty{display:none}
+</style>
+<header><h1>Quanta — pomiar płynności renderowania</h1>
+<p>Powtarzalne odtwarzanie ruchu w rzeczywistym silniku ink/camera. 2000 syntetycznych pociągnięć, zoom 100%, 13% i 5%. Dane użytkownika pozostają bez zmian.</p>
+<p>„Wejście → Canvas” kończy się na wysłaniu poleceń Canvas. Nie obejmuje myszy, opóźnienia kolejki prawdziwych zdarzeń ani wyświetlenia piksela przez monitor. Odstępy klatek obejmują planowanie przeglądarki.</p>
+<button id="run">Uruchom pomiar</button><button id="download" disabled>Pobierz JSON</button>
+<p id="progress" role="status">Gotowy. Pozostaw tę kartę widoczną do końca testu.</p>
+</header>
+<div id="canvasShell"><div id="canvasGrid"></div><div id="world"></div><canvas id="inkHighlight"></canvas><canvas id="inkCanvas"></canvas><canvas id="inkLive"></canvas><div id="lassoBar" hidden></div></div>
+<pre id="results"></pre><script type="module" src="./latency-profile.js"></script></html>
