@@ -59,7 +59,7 @@ button { font-family: inherit; cursor: pointer; }
 #ink-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; touch-action: pan-y; }
 .hero { display: grid; grid-template-columns: 1fr 1.08fr; gap: 24px; align-items: center; padding: 148px 0 96px; min-height: 780px; pointer-events: none; }
 .hero > * { min-width: 0; }
-.hero a, .hero button, .hero input, .hero textarea, .hero .card, .hero .install-line { pointer-events: auto; }
+.hero a, .hero button, .hero input, .hero textarea, .hero .card { pointer-events: auto; }
 h1 { font-size: clamp(56px, 7.4vw, 104px); line-height: .96; letter-spacing: -.07em; font-weight: 800; margin: 0 0 28px; }
 h1 em { font-style: normal; color: var(--citron); position: relative; white-space: nowrap; }
 h1 em svg { position: absolute; left: -2%; bottom: -.14em; width: 104%; height: .3em; overflow: visible; }
@@ -72,11 +72,6 @@ h1 em path { stroke: var(--citron); stroke-width: 5; fill: none; stroke-linecap:
 .btn.primary:hover { background: var(--citron-2); transform: translateY(-2px); }
 .btn.ghost { color: #f0f2e9; border: 1px solid #4f5547; }
 .btn.ghost:hover { background: var(--ink-2); border-color: #6a7160; }
-.install-line { display: flex; align-items: center; gap: 12px; max-width: 520px; margin-top: 28px; padding: 10px 10px 10px 16px; background: rgba(0,0,0,.28); border: 1px solid #3a4034; border-radius: 12px; font: 13px var(--mono); color: #d6d9ce; }
-.install-line b { color: var(--citron); font-weight: 500; }
-.install-line span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.copy { font: 600 12px var(--sans); padding: 6px 12px; border-radius: 8px; border: 1px solid #4f5547; background: #2a2e27; color: #d6d9ce; transition: background-color .15s; }
-.copy:hover { background: #3a3f35; }
 .facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 24px 0 0; padding: 0; list-style: none; font: 12px var(--mono); color: #8d9484; }
 .facts li::before { content: "◆"; color: var(--citron); margin-right: 8px; font-size: 8px; vertical-align: 2px; }
 
@@ -272,7 +267,6 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .cmd { grid-template-columns: 1fr; gap: 2px; }
   .closing { padding: 56px 20px; border-radius: 24px; margin-top: 76px; }
   .footer-brand { flex-basis: 100%; }
-  .install-line span { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -309,7 +303,6 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
           <a class="btn primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>Install Quanta</a>
           <a class="btn ghost" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
         </div>
-        <div class="install-line" data-copy-text="curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh"><span><b>$</b> curl -fsSL github.com/real-kijmoshi/quanta/…/install.sh | sh</span><button class="copy" type="button">Copy</button></div>
         <ul class="facts"><li>Open source · MIT</li><li>Runs on your machine</li><li>Boards are plain JSON</li></ul>
       </div>
 
@@ -442,7 +435,7 @@ np.trapz(x**<span class="n">2</span>, x)</pre>
 cd quanta
 npm ci --ignore-scripts
 npm start</div></div></div>
-      <p class="note">Then run <code>quanta start --open</code>. Updating is re-running the installer; your boards are never touched.</p>
+      <p class="note">Then just run <code>quanta</code>: it starts in the background and opens your browser. Updating is re-running the installer; your boards are never touched.</p>
     </div>
   </section>
 
@@ -453,9 +446,11 @@ npm start</div></div></div>
     <div class="split">
       <div>
         <div class="cmds reveal">
-          <div class="cmd"><code>quanta start --open</code><span>Run locally and open your browser</span></div>
-          <div class="cmd"><code>quanta share</code><span>Let other devices on your network join (needs a folder invitation)</span></div>
-          <div class="cmd"><code>quanta tunnel</code><span>Share over the internet with a Cloudflare quick tunnel</span></div>
+          <div class="cmd"><code>quanta</code><span>Start in the background and open your browser</span></div>
+          <div class="cmd"><code>quanta --tunnel</code><span>Share over the internet; cloudflared is fetched automatically</span></div>
+          <div class="cmd"><code>quanta --share</code><span>Let other devices on your network join (needs a folder invitation)</span></div>
+          <div class="cmd"><code>quanta config mode tunnel</code><span>Make the tunnel the default for plain <code>quanta</code></span></div>
+          <div class="cmd"><code>quanta status · stop · logs</code><span>See the links, stop it, or read its log</span></div>
           <div class="cmd"><code>quanta backup</code><span>Save a verified copy of your boards</span></div>
           <div class="cmd"><code>quanta doctor</code><span>Check Node.js, data folder and optional tools</span></div>
           <div class="cmd"><code>quanta --port 8080 --data ~/boards</code><span>Choose the port and where boards are stored</span></div>
@@ -545,23 +540,49 @@ tabs.forEach((tab, i) => {
   });
 });
 
-/* copy buttons */
-async function copy(text, button) {
+/* open the install tab that matches this device */
+const platform = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent).toLowerCase();
+if (platform.includes('win')) select($('#t-win'));
+else if (/iphone|ipad|android/.test(navigator.userAgent.toLowerCase())) select($('#t-docker'));
+
+/* copy buttons: the async clipboard API is missing on http:// and file:// pages
+   and can be denied, so fall back to a hidden textarea + execCommand */
+function legacyCopy(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(area);
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  area.remove();
+  return ok;
+}
+async function copy(text, button, box) {
   const label = button.textContent;
-  try { await navigator.clipboard.writeText(text); button.textContent = 'Copied'; }
-  catch { button.textContent = 'Press Ctrl+C'; }
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch { ok = legacyCopy(text); }
+  if (!ok && box) {
+    // Last resort: select the command so one keypress copies it.
+    const range = document.createRange();
+    range.selectNodeContents(box.firstChild);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  }
+  button.textContent = ok ? 'Copied' : 'Selected';
   setTimeout(() => { button.textContent = label; }, 1600);
 }
 document.querySelectorAll('[data-copy]').forEach((box) => {
+  const text = box.textContent.trim();
+  box.replaceChildren(Object.assign(document.createElement('span'), { textContent: text }));
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = 'Copy';
-  const text = box.textContent.trim();
-  button.addEventListener('click', () => copy(text, button));
+  button.addEventListener('click', () => copy(text, button, box));
   box.appendChild(button);
 });
-const line = $('.install-line');
-line.querySelector('button').addEventListener('click', (e) => copy(line.dataset.copyText, e.currentTarget));
 
 /* ---- live math card: a tiny parser, no eval ---- */
 function evaluateMath(source) {

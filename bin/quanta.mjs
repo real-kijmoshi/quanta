@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Quanta command line: `quanta --help`.
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,11 +13,24 @@ const HELP = `Quanta ${pkg.version} - whiteboard and notebook for maths, physics
 
 Usage: quanta [command] [options]
 
-Commands:
-  start                   Run the workspace on this computer (default)
-  share                   Run on your network so other devices can join
-  tunnel                  Share over the internet with a Cloudflare quick tunnel
-  setup                   Interactive server setup with accounts and HTTPS
+Running:
+  quanta                  Start in the background and open your browser
+  quanta --tunnel         ...and share it over the internet (Cloudflare quick tunnel)
+  quanta --share          ...and share it on your local network
+  stop                    Stop the background workspace
+  restart                 Stop, then start again with the same options
+  status                  Is it running? Prints its links
+  open                    Open the running workspace in your browser
+  logs [-f]               Show the background log (-f keeps following)
+
+Defaults:
+  config                  Show saved defaults
+  config mode <m>         local | share | tunnel  (what plain \`quanta\` starts)
+  config open <on|off>    Open the browser on start
+  config port <n>         Default port
+
+More:
+  setup                   Interactive server setup on Linux, with accounts and HTTPS
   backup [dir]            Save a verified copy of your boards
   backup --verify <dir>   Check a backup directory
   reset-password <email>  Hosted mode only: set a new password (stop the server first)
@@ -25,12 +38,17 @@ Commands:
   version                 Print the version
 
 Options:
+  -t, --tunnel            Share over the internet (cloudflared is downloaded if missing)
+  -s, --share             Share on your local network
+  -l, --local             Only this computer (overrides a saved default)
+  -f, --foreground        Run in this terminal instead of the background (Ctrl+C stops)
+  -o, --open / --no-open  Open (or don't open) the browser
   -p, --port <n>          Port (default 4173)
   -d, --data <dir>        Data folder (default ~/.quanta/data, or ./data in a source checkout)
-  -o, --open              Open the browser once the server is up
   -h, --help              Show this help
 
-Environment variables such as ANTHROPIC_API_KEY or QUANTA_AI_PROVIDER are listed in the README.`;
+"start", "share" and "tunnel" still work as commands. Environment variables
+such as ANTHROPIC_API_KEY or QUANTA_AI_PROVIDER are listed in the README.`;
 
 const args = process.argv.slice(2);
 // The standalone wizard owns its options, prompts, and help.
@@ -49,7 +67,7 @@ Run this command on your Linux server with a domain pointing at it.`);
     process.exit(0);
   }
   if (process.platform !== "linux") {
-    console.error("quanta: Run quanta setup on your Linux server. Use quanta start for a local workspace.");
+    console.error("quanta: Run quanta setup on your Linux server. Use quanta for a local workspace.");
     process.exit(1);
   }
   const code = await new Promise(done => {
@@ -60,13 +78,19 @@ Run this command on your Linux server with a domain pointing at it.`);
   });
   process.exit(code);
 }
-const opts = { open: false };
+const opts = {};
 const rest = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === "-h" || a === "--help") opts.help = true;
   else if (a === "-v" || a === "--version") opts.version = true;
   else if (a === "-o" || a === "--open") opts.open = true;
+  else if (a === "--no-open") opts.open = false;
+  else if (a === "-t" || a === "--tunnel") opts.mode = "tunnel";
+  else if (a === "-s" || a === "--share") opts.mode = "share";
+  else if (a === "-l" || a === "--local") opts.mode = "local";
+  else if (a === "--foreground" || a === "--fg") opts.foreground = true;
+  else if (a === "-f") opts.follow = opts.foreground = true; // `logs -f` follows; otherwise foreground
   else if (a === "-p" || a === "--port") opts.port = args[++i];
   else if (a === "-d" || a === "--data") opts.data = args[++i];
   else if (a.startsWith("--port=")) opts.port = a.slice(7);
@@ -81,15 +105,24 @@ if (+process.versions.node.split(".")[0] < 22) fail(`Node.js 22 or newer is requ
 
 const inCheckout = existsSync(join(root, ".git"));
 const home = process.env.QUANTA_HOME ?? join(homedir(), ".quanta");
-const env = { ...process.env };
+const configFile = join(home, "config.json");
+const runFile = join(home, "run.json");
+const logFile = join(home, "quanta.log");
+
+const readJson = file => { try { return JSON.parse(readFileSync(file, "utf8")); } catch { return null; } };
+const config = { mode: "local", open: true, ...readJson(configFile) };
+
+const env = { ...process.env, QUANTA_HOME: home };
 if (opts.data) env.QUANTA_DATA = resolve(opts.data);
 else if (!env.QUANTA_DATA && !inCheckout) env.QUANTA_DATA = join(home, "data");
-if (opts.port !== undefined) {
-  if (!/^\d+$/.test(opts.port) || +opts.port < 1 || +opts.port > 65535) fail(`invalid port "${opts.port}"`);
-  env.PORT = opts.port;
-}
+const port = String(opts.port ?? config.port ?? env.PORT ?? 4173);
+if (!/^\d+$/.test(port) || +port < 1 || +port > 65535) fail(`invalid port "${port}"`);
+env.PORT = port;
 
-const [command = "start", ...extra] = rest;
+let [command = "start", ...extra] = rest;
+if (command === "share" || command === "tunnel") { opts.mode ??= command; command = "start"; }
+const mode = opts.mode ?? config.mode;
+if (!["local", "share", "tunnel"].includes(mode)) fail(`unknown mode "${mode}" (use local, share or tunnel)`);
 
 function run(script, scriptArgs = [], extraEnv = {}) {
   const child = spawn(process.execPath, [join(root, script), ...scriptArgs], {
@@ -103,27 +136,154 @@ function run(script, scriptArgs = [], extraEnv = {}) {
 function openBrowser(url) {
   const [cmd, cmdArgs] = process.platform === "win32" ? ["cmd", ["/c", "start", "", url]]
     : process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
-  spawn(cmd, cmdArgs, { stdio: "ignore", detached: true }).on("error", () => {}).unref();
+  spawn(cmd, cmdArgs, { stdio: "ignore", detached: true, windowsHide: true }).on("error", () => {}).unref();
 }
 
-async function waitAndOpen(port) {
-  const url = `http://localhost:${port}`;
-  for (let i = 0; i < 60; i++) {
-    try { if ((await fetch(`${url}/health`)).ok) return openBrowser(url); } catch { /* not up yet */ }
-    await new Promise(done => setTimeout(done, 500));
+const sleep = ms => new Promise(done => setTimeout(done, ms));
+const healthy = async p => { try { return (await fetch(`http://127.0.0.1:${p}/health`)).ok; } catch { return false; } };
+const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === "EPERM"; } };
+
+function running() {
+  const info = readJson(runFile);
+  if (info?.pid && alive(info.pid)) return info;
+  if (info) rmSync(runFile, { force: true });
+  return null;
+}
+
+function killTree(pid) {
+  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+  else {
+    try { process.kill(-pid, "SIGTERM"); } catch { try { process.kill(pid, "SIGTERM"); } catch { /* already gone */ } }
   }
 }
+
+function printLinks(info) {
+  console.log(`Quanta is running (${info.mode}, pid ${info.pid})`);
+  console.log(`  Local    http://localhost:${info.port}`);
+  if (info.publicUrl) console.log(`  Public   ${info.publicUrl}   (share this)`);
+  if (info.ownerUrl) console.log(`  Owner    ${info.ownerUrl}   (keep private)`);
+  console.log(`  Logs     ${logFile}`);
+  console.log("Stop it with: quanta stop");
+}
+
+// The foreground runner: what the background process actually executes.
+function startForeground() {
+  const other = running();
+  if (other && other.pid !== process.pid) fail(`Quanta is already running in the background (pid ${other.pid}). Run "quanta stop" first.`);
+  writeFileSync(runFile, JSON.stringify({ pid: process.pid, port: +port, mode, startedAt: Date.now() }, null, 2));
+  const cleanup = () => { if (readJson(runFile)?.pid === process.pid) rmSync(runFile, { force: true }); };
+  process.on("exit", cleanup);
+  if (mode === "tunnel") run("scripts/tunnel.mjs", [], { QUANTA_RUN_FILE: runFile });
+  else run("server/index.mjs", mode === "share" ? ["--share"] : []);
+}
+
+async function startBackground() {
+  const open = opts.open ?? config.open;
+  const existing = running();
+  if (existing) {
+    if (opts.mode && opts.mode !== existing.mode) fail(`already running in ${existing.mode} mode. Run "quanta restart --${opts.mode}" to switch.`);
+    printLinks(existing);
+    if (open) openBrowser(`http://localhost:${existing.port}`);
+    return;
+  }
+  if (await healthy(port)) fail(`something is already serving port ${port}. Stop it, or pick another port with --port.`);
+  const log = openSync(logFile, "a");
+  const childArgs = [fileURLToPath(import.meta.url), "start", "--foreground", `--${mode}`, "--port", port];
+  if (opts.data) childArgs.push("--data", resolve(opts.data));
+  const child = spawn(process.execPath, childArgs, { cwd: root, env, detached: true, stdio: ["ignore", log, log], windowsHide: true });
+  child.unref();
+  process.stdout.write(mode === "tunnel" ? "Starting Quanta and opening a tunnel" : "Starting Quanta");
+  // A tunnel needs cloudflared (maybe a download) and a hostname before the server starts.
+  const deadline = Date.now() + (mode === "tunnel" ? 120000 : 30000);
+  let info = null;
+  while (Date.now() < deadline) {
+    await sleep(400);
+    process.stdout.write(".");
+    if (!alive(child.pid)) break;
+    info = readJson(runFile);
+    if (info && await healthy(port) && (mode !== "tunnel" || info.publicUrl)) break;
+    info = null;
+  }
+  process.stdout.write("\n");
+  if (!info) {
+    killTree(child.pid);
+    const tail = existsSync(logFile) ? readFileSync(logFile, "utf8").split("\n").slice(-15).join("\n") : "";
+    fail(`Quanta did not start. Last log lines:\n${tail}`);
+  }
+  printLinks(info);
+  if (open) openBrowser(`http://localhost:${port}`);
+}
+
+function stop() {
+  const info = running();
+  if (!info) { console.log("Quanta is not running."); return false; }
+  killTree(info.pid);
+  rmSync(runFile, { force: true });
+  console.log(`Stopped Quanta (pid ${info.pid}).`);
+  return info;
+}
+
+mkdirSync(home, { recursive: true });
 
 switch (command) {
   case "start":
-  case "share": {
-    run("server/index.mjs", command === "share" ? ["--share"] : []);
-    if (opts.open) waitAndOpen(env.PORT ?? "4173");
+    if (opts.foreground) {
+      startForeground();
+      if (opts.open ?? false) (async () => { for (let i = 0; i < 60 && !(await healthy(port)); i++) await sleep(500); openBrowser(`http://localhost:${port}`); })();
+    } else await startBackground();
+    break;
+  case "stop":
+    stop();
+    break;
+  case "restart": {
+    const previous = stop();
+    if (previous && !opts.mode) opts.mode = previous.mode;
+    if (previous) await sleep(800);
+    opts.open ??= false;
+    await startBackground();
     break;
   }
-  case "tunnel":
-    run("scripts/tunnel.mjs");
+  case "status": {
+    const info = running();
+    if (info) printLinks(info);
+    else { console.log("Quanta is not running. Start it with: quanta"); process.exitCode = 3; }
     break;
+  }
+  case "open": {
+    const info = running();
+    if (!info) fail("Quanta is not running. Start it with: quanta");
+    openBrowser(`http://localhost:${info.port}`);
+    break;
+  }
+  case "logs": {
+    if (!existsSync(logFile)) { console.log("No log yet."); break; }
+    let printed = statSync(logFile).size;
+    process.stdout.write(readFileSync(logFile, "utf8").split("\n").slice(-60).join("\n"));
+    if (opts.follow) watchFile(logFile, { interval: 500 }, () => {
+      const text = readFileSync(logFile);
+      if (text.length > printed) process.stdout.write(text.subarray(printed));
+      printed = text.length;
+    });
+    break;
+  }
+  case "config": {
+    const [key, value] = extra;
+    if (!key) { console.log(JSON.stringify(config, null, 2)); console.log(`(${configFile})`); break; }
+    const next = { ...readJson(configFile) };
+    if (key === "mode") {
+      if (!["local", "share", "tunnel"].includes(value)) fail("usage: quanta config mode local|share|tunnel");
+      next.mode = value;
+    } else if (key === "open") {
+      if (!["on", "off", "true", "false"].includes(value)) fail("usage: quanta config open on|off");
+      next.open = value === "on" || value === "true";
+    } else if (key === "port") {
+      if (!/^\d+$/.test(value ?? "") || +value < 1 || +value > 65535) fail("usage: quanta config port <1-65535>");
+      next.port = +value;
+    } else fail(`unknown setting "${key}" (mode, open, port)`);
+    writeFileSync(configFile, JSON.stringify(next, null, 2));
+    console.log(`Saved: ${key} = ${next[key]}`);
+    break;
+  }
   case "backup": {
     if (extra[0] === "--verify") {
       if (!extra[1]) fail("usage: quanta backup --verify <directory>");
@@ -145,11 +305,13 @@ switch (command) {
       probe.on("error", () => done(false));
       probe.on("exit", code => done(code === 0));
     });
+    const bundled = existsSync(join(home, "bin", process.platform === "win32" ? "cloudflared.exe" : "cloudflared"));
     console.log(`Quanta      ${pkg.version}`);
     console.log(`Node.js     ${process.versions.node} ok`);
     console.log(`Install     ${root}`);
     console.log(`Data        ${data}${existsSync(data) ? "" : " (created on first start)"}`);
-    console.log(`cloudflared ${await tool("cloudflared") ? "found" : "not found (only needed for `quanta tunnel`)"}`);
+    console.log(`Running     ${running() ? "yes" : "no"}`);
+    console.log(`cloudflared ${await tool("cloudflared") || bundled ? "found" : "not found (downloaded automatically by quanta --tunnel)"}`);
     console.log(`claude CLI  ${await tool("claude") ? "found" : "not found (optional AI provider)"}`);
     console.log(`codex CLI   ${await tool("codex") ? "found" : "not found (optional AI provider)"}`);
     console.log(`ollama      ${await tool("ollama") ? "found" : "not found (optional local models)"}`);

@@ -675,5 +675,5 @@ httpServer.listen(port, host, () => {
   for (const lan of lanUrls()) console.log(`Share on LAN  ${lan}`);
   if (hosted) console.log(`Hosted        ${publicUrl} (account sign-in required)`);
   else if (lanUrls().length) console.log("Share a folder invitation to give people access. Manage the workspace through localhost.");
-  else console.log("Collaborate over your network with: npm run share");
+  else console.log("Collaborate with: quanta --share (your network) or quanta --tunnel (the internet)");
 });

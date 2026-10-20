@@ -72,4 +72,4 @@ case ":$PATH:" in
   *) say "Add $BIN_DIR to your PATH:  export PATH=\"$BIN_DIR:\$PATH\"" ;;
 esac
 say "Your boards live in $HOME_DIR/data and are kept when you update."
-say "Start it:  quanta start --open"
+say "Start it:  quanta   (add --tunnel to share over the internet)"
