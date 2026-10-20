@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Quanta command line: `quanta --help`.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -30,7 +30,8 @@ Defaults:
   config port <n>         Default port
 
 More:
-  setup                   Interactive server setup on Linux, with accounts and HTTPS
+  update [--check]        Install the latest release (keeps your boards; restarts a running workspace)
+  setup                 Interactive server setup on Linux, with accounts and HTTPS
   backup [dir]            Save a verified copy of your boards
   backup --verify <dir>   Check a backup directory
   reset-password <email>  Hosted mode only: set a new password (stop the server first)
@@ -90,6 +91,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "-s" || a === "--share") opts.mode = "share";
   else if (a === "-l" || a === "--local") opts.mode = "local";
   else if (a === "--foreground" || a === "--fg") opts.foreground = true;
+  else if (a === "--check") opts.check = true;
+  else if (a === "--force") opts.force = true;
   else if (a === "-f") opts.follow = opts.foreground = true; // `logs -f` follows; otherwise foreground
   else if (a === "-p" || a === "--port") opts.port = args[++i];
   else if (a === "-d" || a === "--data") opts.data = args[++i];
@@ -223,6 +226,81 @@ function stop() {
   return info;
 }
 
+// --------------------------------------------------------------------- update
+
+const REPO = process.env.QUANTA_REPO ?? "real-kijmoshi/quanta";
+const newer = (a, b) => {
+  const [x, y] = [a, b].map(v => v.replace(/^v/, "").split(/[.-]/).map(n => parseInt(n, 10) || 0));
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return false;
+};
+
+async function latestVersion() {
+  if (process.env.QUANTA_UPDATE_LATEST) return process.env.QUANTA_UPDATE_LATEST; // tests
+  const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: "application/vnd.github+json", "user-agent": "quanta-cli" } });
+  if (response.ok) return (await response.json()).tag_name.replace(/^v/, "");
+  // The API is rate limited; the release page redirect carries the tag too.
+  const page = await fetch(`https://github.com/${REPO}/releases/latest`, { redirect: "manual" });
+  const tag = page.headers.get("location")?.match(/\/tag\/v?([^/]+)$/)?.[1];
+  if (!tag) throw new Error(`could not find the latest release (HTTP ${response.status})`);
+  return tag;
+}
+
+function runChild(cmd, cmdArgs, options = {}) {
+  return new Promise(done => {
+    const child = spawn(cmd, cmdArgs, { stdio: "inherit", windowsHide: true, ...options });
+    child.on("error", error => { console.error(`quanta: ${error.message}`); done(1); });
+    child.on("exit", code => done(code ?? 1));
+  });
+}
+
+async function update() {
+  let latest;
+  try { latest = await latestVersion(); } catch (error) { fail(`update check failed: ${error.message}`); }
+  const available = newer(latest, pkg.version);
+  if (!available && !opts.force) { console.log(`Quanta ${pkg.version} is up to date.`); return; }
+  console.log(available ? `Quanta ${latest} is available (you have ${pkg.version}).` : `Reinstalling Quanta ${latest}.`);
+  if (opts.check) { console.log("Install it with: quanta update"); return; }
+  if (inCheckout) {
+    console.log("This is a source checkout. Update it with:  git pull && npm ci");
+    return;
+  }
+
+  // The installers put the app in <QUANTA_HOME>/app; anything else came from npm.
+  const installer = basename(root) === "app";
+  const was = running();
+  if (was) stop();
+  const work = mkdtempSync(join(tmpdir(), "quanta-update-"));
+  let code;
+  try {
+    if (installer) {
+      const script = process.platform === "win32" ? "install.ps1" : "install.sh";
+      const response = await fetch(`https://github.com/${REPO}/releases/download/v${latest}/${script}`);
+      if (!response.ok) fail(`could not download the ${latest} installer (HTTP ${response.status})`);
+      const file = join(work, script);
+      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+      // Run from the temp folder: Windows cannot replace a directory that is a process's cwd.
+      const installEnv = { ...process.env, QUANTA_VERSION: latest, QUANTA_HOME: dirname(root) };
+      code = process.platform === "win32"
+        ? await runChild("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { cwd: work, env: installEnv })
+        : await runChild("sh", [file], { cwd: work, env: installEnv });
+    } else {
+      code = await runChild("npm", ["install", "-g", `https://github.com/${REPO}/releases/download/v${latest}/quanta.tgz`], { cwd: work, shell: process.platform === "win32" });
+    }
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  if (code !== 0) {
+    if (was) console.error(`The update failed, so the old version is still installed. Start it again with: quanta --${was.mode}`);
+    fail("update failed (see the output above).");
+  }
+  console.log(`Updated to Quanta ${latest}. Your boards were not touched.`);
+  if (was) {
+    console.log(`Restarting the workspace (${was.mode})…`);
+    await runChild(process.execPath, [join(root, "bin", "quanta.mjs"), `--${was.mode}`, "--no-open", "--port", String(was.port)], { cwd: tmpdir() });
+  }
+}
+
 mkdirSync(home, { recursive: true });
 
 switch (command) {
@@ -284,6 +362,9 @@ switch (command) {
     console.log(`Saved: ${key} = ${next[key]}`);
     break;
   }
+  case "update":
+    await update();
+    break;
   case "backup": {
     if (extra[0] === "--verify") {
       if (!extra[1]) fail("usage: quanta backup --verify <directory>");
