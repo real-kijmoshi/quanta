@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4173 QUANTA_DATA=/data
 WORKDIR /app
 COPY package.json package-lock.json ./
