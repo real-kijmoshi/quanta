@@ -61,7 +61,7 @@ try {
   Write-Host ''
   Write-Host "Installed Quanta $(& node (Join-Path $app 'bin\quanta.mjs') --version) to $app"
   Write-Host "Your boards live in $home_\data and are kept when you update."
-  Write-Host 'Start it:  quanta start --open'
+  Write-Host 'Start it:  quanta   (add --tunnel to share over the internet)'
 } finally {
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -11,7 +11,10 @@ import { promisify } from "node:util";
 const cli = fileURLToPath(new URL("../bin/quanta.mjs", import.meta.url));
 const pkg = (await import("../package.json", { with: { type: "json" } })).default;
 const exec = promisify(execFile);
-const quanta = (...args) => exec(process.execPath, [cli, ...args], { windowsHide: true });
+const work = await mkdtemp(join(tmpdir(), "quanta-cli-"));
+// Keep run state, config and logs away from the developer's real ~/.quanta.
+const env = { ...process.env, QUANTA_HOME: join(work, "home") };
+const quanta = (...args) => exec(process.execPath, [cli, ...args], { windowsHide: true, env });
 
 assert.equal((await quanta("--version")).stdout.trim(), pkg.version);
 assert.match((await quanta("--help")).stdout, /Usage: quanta/);
@@ -27,8 +30,29 @@ await assert.rejects(quanta("start", "--port", "99999"), error => /invalid port/
 const port = await new Promise(resolve => {
   const probe = createServer().listen(0, "127.0.0.1", () => { const { port } = probe.address(); probe.close(() => resolve(port)); });
 });
-const work = await mkdtemp(join(tmpdir(), "quanta-cli-"));
-const server = spawn(process.execPath, [cli, "start", "--port", String(port), "--data", join(work, "data")], { stdio: "ignore", windowsHide: true });
+await assert.rejects(quanta("config", "mode", "sideways"), error => /usage/.test(error.stderr));
+await quanta("config", "mode", "share");
+assert.match((await quanta("config")).stdout, /"mode": "share"/);
+await quanta("config", "mode", "local");
+await assert.rejects(quanta("status"), error => error.code === 3 && /not running/.test(error.stdout));
+
+// Background start returns once the server is healthy; status and stop manage it.
+{
+  const bgPort = await new Promise(resolve => {
+    const probe = createServer().listen(0, "127.0.0.1", () => { const { port } = probe.address(); probe.close(() => resolve(port)); });
+  });
+  const started = await quanta("--no-open", "--port", String(bgPort), "--data", join(work, "bg-data"));
+  assert.match(started.stdout, /Quanta is running \(local/);
+  assert.ok((await fetch(`http://127.0.0.1:${bgPort}/health`)).ok, "background server answers /health");
+  assert.match((await quanta("status")).stdout, new RegExp(`localhost:${bgPort}`));
+  assert.match((await quanta("--no-open", "--port", String(bgPort))).stdout, /already|is running/, "a second start reuses the running one");
+  assert.match((await quanta("stop")).stdout, /Stopped Quanta/);
+  let down = false;
+  for (let i = 0; i < 40 && !down; i++) { try { await fetch(`http://127.0.0.1:${bgPort}/health`); await new Promise(done => setTimeout(done, 250)); } catch { down = true; } }
+  assert.ok(down, "quanta stop shuts the server down");
+}
+
+const server = spawn(process.execPath, [cli, "start", "--foreground", "--port", String(port), "--data", join(work, "data")], { stdio: "ignore", windowsHide: true, env });
 try {
   let healthy = false;
   for (let i = 0; i < 60 && !healthy; i++) {
