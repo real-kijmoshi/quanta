@@ -291,6 +291,8 @@ async function handleApi(req, res, url) {
       shared: host === "0.0.0.0" || host === "::",
       hosted,
       publicUrl: hosted ? publicUrl : null,
+      // The owner builds invitation links on localhost; they must use the tunnel address.
+      tunnelUrl: !hosted && access.owner ? process.env.QUANTA_TUNNEL_URL ?? null : null,
     });
   }
 

@@ -34,6 +34,10 @@ await assert.rejects(quanta("config", "mode", "sideways"), error => /usage/.test
 await quanta("config", "mode", "share");
 assert.match((await quanta("config")).stdout, /"mode": "share"/);
 await quanta("config", "mode", "local");
+await assert.rejects(quanta("config", "autoupdate", "maybe"), error => /usage/.test(error.stderr));
+assert.match((await quanta("config", "autoupdate", "off")).stdout, /autoupdate = off/);
+assert.match((await quanta("config")).stdout, /"autoUpdate": false/);
+await quanta("config", "autoupdate", "on");
 {
   const withLatest = latest => exec(process.execPath, [cli, "update", "--check"], { windowsHide: true, env: { ...env, QUANTA_UPDATE_LATEST: latest } });
   assert.match((await withLatest("0.0.1")).stdout, /is up to date/);

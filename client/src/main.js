@@ -86,7 +86,7 @@ boot().catch((error) => {
     document.body.append(el("section", { class: "access-screen" }, [
       el("span", { class: "brand-mark", text: "q" }),
       el("h1", { text: "A space by invitation" }),
-      el("p", { text: "Open the folder invitation sent by the workspace owner. This invitation may have been revoked or the folder moved." }),
+      el("p", { text: "This Quanta is private. Ask the person who sent you this address for an invite link: in Quanta they open the board and choose Share → Create invite link. If you used an invite link, it may have been revoked." }),
       local ? el("button", { class: "solid-btn", text: "Return to my workspace", onclick: async () => { await api("/api/access", { method: "DELETE" }); location.reload(); } }) : null,
     ]));
     return;

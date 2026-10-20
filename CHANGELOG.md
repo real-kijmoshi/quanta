@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.1
+
+- Sharing over a tunnel works in one step: Share → Create invite link builds the link on the public tunnel address (not localhost), copies it, and opens the board directly for your guest. By default only that board is shared (it moves into its own subfolder); tick off "Only this board" to share the whole folder.
+- The private "by invitation" page tells guests how to get an invite link, and the dashboard no longer copies the bare tunnel address on start.
+- Auto-update: `quanta` installs a newer release before starting (checked at most every 6 hours, skipped while a workspace is running so nobody is disconnected). Turn it off with `quanta config autoupdate off` or in the dashboard settings.
+- Website: large social preview image, clearer "open-source whiteboard" headline, canonical address, structured data, robots.txt and sitemap.
+
 ## 0.11.0
 
 - Terminal dashboard: plain `quanta` opens an interactive screen with live status, uptime and connections, local/network/public links, one-key copy, mode switching (←→ restarts in local, share or tunnel), a live log, settings, backup, doctor and one-key updates. `quanta ui` opens it without starting; scripts and pipes keep the plain output.

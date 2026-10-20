@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- Social preview card. Regenerate site/og.png by screenshotting this page at 1200×630 in a browser. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1200px; height: 630px; overflow: hidden; background: #141612; font-family: Manrope, sans-serif; color: #f4f6ec; }
+  .card {
+    position: relative; width: 1200px; height: 630px; overflow: hidden;
+    background:
+      radial-gradient(circle at 26% 46%, rgba(228, 237, 135, .30), rgba(228, 237, 135, .07) 32%, transparent 58%),
+      radial-gradient(circle, rgba(255, 255, 255, .07) 1.4px, transparent 1.6px) 0 0 / 28px 28px,
+      linear-gradient(135deg, #20231d, #121410 70%);
+  }
+  .card::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: #e4ed87; }
+
+  /* Left: the mark on a little whiteboard scene. */
+  .scene { position: absolute; left: 70px; top: 92px; width: 470px; height: 420px; }
+  .mark {
+    position: absolute; left: 118px; top: 92px; width: 236px; height: 236px; border-radius: 70px;
+    background: #252824; border: 3px solid rgba(228, 237, 135, .55);
+    box-shadow: 0 0 0 14px rgba(228, 237, 135, .06), 0 30px 80px rgba(0, 0, 0, .55), 0 0 90px rgba(228, 237, 135, .28);
+    display: grid; place-items: center;
+  }
+  .mark svg { width: 170px; height: 170px; }
+  .chip {
+    position: absolute; padding: 12px 18px; border-radius: 16px; font-family: "DM Mono", monospace; font-size: 22px; font-weight: 500;
+    background: #fbfcf6; color: #252824; box-shadow: 0 14px 34px rgba(0, 0, 0, .45);
+  }
+  .math { left: 0; top: 30px; transform: rotate(-6deg); }
+  .math sup { font-size: 14px; }
+  .code { right: -6px; top: 6px; transform: rotate(5deg); background: #252824; color: #e4ed87; border: 2px solid #3b4036; }
+  .code b { color: #f4f6ec; font-weight: 500; }
+  .note { left: 22px; bottom: 6px; width: 150px; height: 112px; border-radius: 6px 6px 22px 6px; background: #ffe79a; transform: rotate(4deg); font-family: Manrope, sans-serif; font-size: 19px; font-weight: 700; line-height: 1.3; padding: 16px; }
+  .plot { position: absolute; right: 0; bottom: 0; width: 196px; height: 132px; border-radius: 16px; background: #fbfcf6; box-shadow: 0 14px 34px rgba(0, 0, 0, .45); transform: rotate(-4deg); }
+  .plot svg { width: 100%; height: 100%; }
+
+  /* Right: the message. */
+  .copy { position: absolute; left: 600px; top: 84px; right: 60px; }
+  .eyebrow { display: inline-block; margin-bottom: 22px; padding: 8px 16px; border-radius: 999px; border: 2px solid rgba(228, 237, 135, .45); color: #e4ed87; font-size: 20px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { font-size: 92px; line-height: .98; font-weight: 800; letter-spacing: -.045em; }
+  h1 span { color: #e4ed87; }
+  p { margin-top: 30px; font-size: 27px; line-height: 1.42; font-weight: 500; color: #b9bfae; }
+  .foot { position: absolute; left: 70px; right: 64px; bottom: 34px; display: flex; justify-content: space-between; align-items: center; font-size: 22px; font-weight: 600; color: #9aa190; }
+  .foot strong { color: #f4f6ec; font-weight: 800; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 34px; height: 34px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="scene">
+    <div class="chip math">x<sup>2</sup> + y<sup>2</sup> = r<sup>2</sup></div>
+    <div class="chip code"><b>py</b> ▶ run</div>
+    <div class="mark">
+      <svg viewBox="0 0 32 32"><path d="M6 22c5 0 3-12 8-12s2 12 6 12c2 0 3-3 4-6" fill="none" stroke="#e4ed87" stroke-width="2.6" stroke-linecap="round"/><circle cx="25" cy="9" r="1.75" fill="#e4ed87"/></svg>
+    </div>
+    <div class="chip note">Sketch it.<br>Solve it.<br>Run it.</div>
+    <div class="plot">
+      <svg viewBox="0 0 196 132"><path d="M18 66h162M30 16v100" stroke="#c9cdbf" stroke-width="2"/><path d="M30 66c12-44 24-44 36 0s24 44 36 0 24-44 36 0 18 30 30 18" fill="none" stroke="#2747d6" stroke-width="4" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="copy">
+    <div class="eyebrow">Open-source whiteboard</div>
+    <h1>A space<br><span>to think.</span></h1>
+    <p>A collaborative whiteboard for maths, physics and code: handwriting, live math, plots and runnable code. On your machine.</p>
+  </div>
+  <div class="foot">
+    <span class="brand"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="10" fill="#252824"/><path d="M6 22c5 0 3-12 8-12s2 12 6 12c2 0 3-3 4-6" fill="none" stroke="#e4ed87" stroke-width="2.75" stroke-linecap="round"/><circle cx="25" cy="9" r="1.75" fill="#e4ed87"/></svg><strong>Quanta</strong>· open source · MIT</span>
+    <span>quanta.kijmoshi.xyz</span>
+  </div>
+</div>
+</body>
+</html>
