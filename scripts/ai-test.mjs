@@ -61,7 +61,7 @@ try {
   const board = await store.createBoard({ name: "Provider tests" });
   await providers.refreshProviders();
   const status = providers.providerStatus();
-  assert.equal(status.providers.length, 6);
+  assert.equal(status.providers.length, 7);
   assert.deepEqual(status.providers.find((p) => p.id === "openrouter").models.map((m) => m.id), ["test/tool-model"]);
   assert.equal(status.providers.find((p) => p.id === "ollama").model, "local-tools:latest");
   assert.equal(providers.providerStatus({ local: false }).providers.find((p) => p.id === "codex").available, false);
@@ -133,7 +133,7 @@ try {
     });
     const base = `http://127.0.0.1:${port}`;
     const info = await (await originalFetch(`${base}/api/ai/providers`)).json();
-    assert.equal(info.providers.length, 6);
+    assert.equal(info.providers.length, 7);
     assert.ok(info.providers.find((p) => p.id === "codex").available);
     // Node fetch normalizes Host; use the HTTP transport to test a hostile Host.
     const rebound = await new Promise((resolve, reject) => {

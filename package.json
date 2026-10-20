@@ -35,9 +35,10 @@
     "test:collaboration": "node scripts/collaboration-test.mjs",
     "test:folders": "node scripts/folders-test.mjs",
     "test:hosted": "node scripts/hosted-test.mjs",
+    "test:connections": "node scripts/connections-test.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:verify": "node scripts/backup.mjs --verify",
-    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:notes && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:ai && npm run test:cli",
+    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:notes && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:connections && npm run test:ai && npm run test:cli",
     "share": "node server.mjs --share",
     "tunnel": "node scripts/tunnel.mjs"
   },
