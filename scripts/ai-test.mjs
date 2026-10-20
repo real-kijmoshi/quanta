@@ -1,5 +1,5 @@
 ﻿import assert from "node:assert/strict";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -27,6 +27,7 @@ try {
     if (args[0] === 'exec') await writeFile(args[args.indexOf('--output-last-message') + 1], JSON.stringify(response));
     else console.log(JSON.stringify({structured_output:response}));
   `);
+  await chmod(fixture, 0o755); // POSIX providers require the execute bit
   process.env.QUANTA_CODEX_BIN = fixture;
   process.env.QUANTA_CLAUDE_BIN = fixture;
   let requests = [];
