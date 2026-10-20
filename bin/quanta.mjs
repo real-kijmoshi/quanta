@@ -17,6 +17,7 @@ Commands:
   start                   Run the workspace on this computer (default)
   share                   Run on your network so other devices can join
   tunnel                  Share over the internet with a Cloudflare quick tunnel
+  setup                   Interactive server setup with accounts and HTTPS
   backup [dir]            Save a verified copy of your boards
   backup --verify <dir>   Check a backup directory
   reset-password <email>  Hosted mode only: set a new password (stop the server first)
@@ -32,6 +33,33 @@ Options:
 Environment variables such as ANTHROPIC_API_KEY or QUANTA_AI_PROVIDER are listed in the README.`;
 
 const args = process.argv.slice(2);
+// The standalone wizard owns its options, prompts, and help.
+if (args[0] === "setup") {
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(`Usage: quanta setup [--directory PATH] [--domain DOMAIN --email EMAIL --yes]
+
+Interactive Linux server setup with accounts and automatic HTTPS.
+Asks for your domain and owner email, installs Docker if needed, and pulls published images.
+--directory PATH  Configuration directory (default ~/.quanta/server)
+--domain DOMAIN   Public hostname (for example board.example.com)
+--email EMAIL     Owner's sign-in email
+--yes             Accept the plan without prompting (requires domain and email on first setup)
+
+Run this command on your Linux server with a domain pointing at it.`);
+    process.exit(0);
+  }
+  if (process.platform !== "linux") {
+    console.error("quanta: Run quanta setup on your Linux server. Use quanta start for a local workspace.");
+    process.exit(1);
+  }
+  const code = await new Promise(done => {
+    const child = spawn("bash", [join(root, "deploy/install.sh"), ...args.slice(1)], { stdio: "inherit" });
+    child.on("error", error => { console.error(`quanta: Could not start the server wizard: ${error.message}`); done(1); });
+    child.on("exit", code => done(code ?? 1));
+    for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.kill(signal));
+  });
+  process.exit(code);
+}
 const opts = { open: false };
 const rest = [];
 for (let i = 0; i < args.length; i++) {

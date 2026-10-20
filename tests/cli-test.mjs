@@ -15,6 +15,11 @@ const quanta = (...args) => exec(process.execPath, [cli, ...args], { windowsHide
 
 assert.equal((await quanta("--version")).stdout.trim(), pkg.version);
 assert.match((await quanta("--help")).stdout, /Usage: quanta/);
+assert.match((await quanta("--help")).stdout, /setup\s+Interactive server setup/);
+assert.match((await quanta("setup", "--help")).stdout, /Usage: quanta setup/);
+if (process.platform !== "linux") {
+  await assert.rejects(quanta("setup"), error => /Linux server/.test(error.stderr));
+}
 assert.match((await quanta("doctor")).stdout, /Node\.js/);
 await assert.rejects(quanta("nonsense"), error => /unknown command/.test(error.stderr));
 await assert.rejects(quanta("start", "--port", "99999"), error => /invalid port/.test(error.stderr));

@@ -8,29 +8,51 @@ JSON files; the existing workspace lock prevents two processes writing them.
 
 ## Deploy
 
-**Fastest:** on a fresh Debian/Ubuntu VPS, with the domain's DNS pointing at it:
+On a Debian or Ubuntu VPS, point your domain's DNS A record at the server (and
+AAAA only if IPv6 works). Allow inbound TCP 80 and 443; UDP 443 is optional for
+HTTP/3. Then run:
 
 ```sh
-sudo ./deploy/install.sh board.example.com you@example.com
+curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/setup-server.sh | bash
 ```
 
-It installs Docker if needed, generates a random owner password, and starts
-everything. The manual steps below do the same thing.
+Already have the Quanta command installed? Run `quanta setup` on the server.
+The same wizard asks for your domain and owner email, shows a deployment plan,
+and then:
 
-Use a Linux VPS with Docker Engine and the Docker Compose plugin installed. Point
-a domain's DNS A record (and AAAA only if IPv6 works) at the server. Allow inbound
-TCP 80 and 443; UDP 443 is optional for HTTP/3. Copy the project to the VPS.
+- Installs Docker Engine and Compose if needed, requesting administrator access
+  only when required. Other Linux distributions need Docker installed first.
+- Saves configuration in `~/.quanta/server`, with a randomly generated owner
+  password in a private `.env` file.
+- Pulls published images, starts Quanta and Caddy, and waits for the app to become
+  healthy. No source checkout, local build, or host Node.js installation needed.
+- Prints your workspace URL and first login details. HTTPS certificate issuance
+  can take a moment after startup.
+
+Change the temporary password in Workspace settings after signing in. Setup keeps
+existing credentials and configuration when run again. A failed download or start
+can be retried with the same command; your saved bootstrap credentials stay in `.env`.
+
+For automation, download `setup-server.sh` from the release and run:
 
 ```sh
-cp .env.example .env
-chmod 600 .env
-# Edit .env: set QUANTA_DOMAIN, QUANTA_ADMIN_EMAIL, QUANTA_ADMIN_PASSWORD.
-docker compose up -d --build
+bash setup-server.sh --domain board.example.com --email you@example.com --yes
+```
+
+Use `--directory /absolute/path` for a different configuration directory. Pass the
+same directory on later runs; omit `--domain` and `--email` for an existing install.
+
+Run the management commands in this guide from the configuration directory:
+
+```sh
+cd ~/.quanta/server
 docker compose ps
 docker compose logs --tail=100 quanta caddy
 ```
 
-Open `https://YOUR_DOMAIN` and sign in using the owner credentials from `.env`.
+If your user cannot access Docker directly, these management commands need
+administrator access. The wizard handles that automatically during setup.
+
 Caddy obtains and renews HTTPS certificates. Only Caddy publishes a host port;
 the app stays on the internal Docker network. The service starts again after
 crashes and server reboots, provided Docker starts at boot. A health check reports
@@ -131,12 +153,30 @@ docker compose start quanta
 
 ## Update
 
-Back up the workspace, copy the updated project to the server, and run:
+Back up the workspace, then run the onboarding command again (or `quanta setup`).
+It keeps your `.env`, Compose configuration, and volumes, downloads updated images,
+and waits for the workspace to become healthy. To update without prompts:
 
 ```sh
-docker compose up -d --build
-docker compose logs --tail=100 quanta
+bash setup-server.sh --yes
 ```
+
+For an existing deployment built from a source checkout, continue using its original
+directory: update the checkout and run `docker compose up -d --build`. The wizard
+creates a deployment in its own directory; it does not migrate an existing workspace.
+
+## Build from source
+
+For development or a custom build, the repository's Compose file remains available:
+
+```sh
+cp .env.example .env
+chmod 600 .env
+# Set your domain, owner email, and a long random password in .env.
+docker compose up -d --build
+```
+
+Run all management commands from that checkout instead of `~/.quanta/server`.
 
 ## Without Docker
 

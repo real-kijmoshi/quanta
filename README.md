@@ -69,6 +69,7 @@ Updating is re-running the installer; your boards are not touched.
 | `quanta start [--open] [--port N] [--data DIR]` | Run locally |
 | `quanta share` | Allow other devices on your network (invitation required) |
 | `quanta tunnel` | Share over the internet via a Cloudflare quick tunnel |
+| `quanta setup` | Interactive Linux server setup with accounts and HTTPS |
 | `quanta backup [dir]` / `backup --verify <dir>` | Verified backups |
 | `quanta reset-password <email>` | Hosted mode account recovery |
 | `quanta doctor` | Diagnose the install |
@@ -163,14 +164,15 @@ Credentials live in server environment variables and are never sent to the brows
 
 ## Always-on hosting
 
-Run a permanent team workspace on a VPS with Docker Compose and HTTPS. Hosted mode adds personal accounts, persistent sessions, email-bound folder invitations, and membership across multiple folders. Local mode keeps working with `npm start`.
+Run this on a Debian or Ubuntu VPS with your domain pointing at it:
 
 ```sh
-cp .env.example .env     # edit for your domain
-docker compose up -d --build
+curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/setup-server.sh | bash
 ```
 
-Invitations are copied and sent manually; the app does not send email. The [self-hosting guide](docs/SELF_HOSTING.md) covers deployment, migration, backups, and password recovery.
+The wizard asks for your domain and owner email, installs Docker if needed, downloads the published images, and starts your workspace with automatic HTTPS. No checkout or Node.js installation needed. If Quanta is already installed, run `quanta setup` instead. Server administration may prompt for your system password.
+
+Hosted mode adds personal accounts, persistent sessions, email-bound folder invitations, and membership across multiple folders. Invitations are copied and sent manually. The [self-hosting guide](docs/SELF_HOSTING.md) covers setup, updates, backups, and password recovery.
 
 ## Configuration
 

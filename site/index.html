@@ -463,9 +463,9 @@ npm start</div></div></div>
       <div class="team reveal" id="team" style="--d:100ms">
         <p class="kicker">Always on</p>
         <h3>Run it for a team</h3>
-        <p>On a fresh Debian or Ubuntu server with a domain pointed at it, one command sets up Docker, HTTPS and an owner account.</p>
-        <div class="term"><div class="code plain" data-copy>git clone https://github.com/real-kijmoshi/quanta.git && cd quanta
-sudo ./deploy/install.sh board.example.com you@example.com</div></div>
+        <p>One command, a few questions, your own team workspace. On a Debian or Ubuntu server, the setup wizard handles Docker, HTTPS and your owner account.</p>
+        <div class="term"><div class="code plain" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/setup-server.sh | bash</div></div>
+        <p class="note" style="margin-top:14px">Point your domain at the server first. Already have Quanta installed? Run <code>quanta setup</code>. The wizard asks for your domain and email, then shows your login details when everything is running.</p>
         <p class="note" style="margin-top:14px">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
       </div>
     </div>
