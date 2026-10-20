@@ -45,7 +45,7 @@ quanta                  # starts in the background, opens http://localhost:4173
 quanta --tunnel         # same, plus a public link (cloudflared is fetched if missing)
 ```
 
-Updating is re-running the installer; your boards are not touched.
+Update with `quanta update`; your boards are not touched.
 
 <details>
 <summary>Other ways to install</summary>
@@ -69,6 +69,7 @@ Updating is re-running the installer; your boards are not touched.
 |---|---|
 | `quanta [--tunnel|--share] [--port N] [--data DIR]` | Start in the background and open the browser |
 | `quanta stop` / `restart` / `status` / `logs [-f]` / `open` | Manage the background workspace |
+| `quanta update [--check]` | Install the latest release; boards are kept and a running workspace restarts |
 | `quanta config mode tunnel` | Make the tunnel (or `share`, `local`) the default for plain `quanta` |
 | `quanta --foreground` | Run attached to the terminal; Ctrl+C stops it |
 | `quanta setup` | Interactive Linux server setup with accounts and HTTPS |

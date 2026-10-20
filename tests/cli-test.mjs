@@ -34,6 +34,14 @@ await assert.rejects(quanta("config", "mode", "sideways"), error => /usage/.test
 await quanta("config", "mode", "share");
 assert.match((await quanta("config")).stdout, /"mode": "share"/);
 await quanta("config", "mode", "local");
+{
+  const withLatest = latest => exec(process.execPath, [cli, "update", "--check"], { windowsHide: true, env: { ...env, QUANTA_UPDATE_LATEST: latest } });
+  assert.match((await withLatest("0.0.1")).stdout, /is up to date/);
+  assert.match((await withLatest(pkg.version)).stdout, /is up to date/);
+  assert.match((await withLatest("99.0.0")).stdout, /Quanta 99\.0\.0 is available/);
+  const checkout = await exec(process.execPath, [cli, "update"], { windowsHide: true, env: { ...env, QUANTA_UPDATE_LATEST: "99.0.0" } });
+  assert.match(checkout.stdout, /source checkout/, "a git checkout is never overwritten by the installer");
+}
 await assert.rejects(quanta("status"), error => error.code === 3 && /not running/.test(error.stdout));
 
 // Background start returns once the server is healthy; status and stop manage it.
