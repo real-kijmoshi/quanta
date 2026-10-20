@@ -23,10 +23,11 @@ assert.equal((await readCachedBoard('legacy')).id, 'legacy', 'private-mode/legac
 
 let pending = [];
 let fail = false;
+let observeEvent = null;
 const board = id => ({ id, name: id, objects: {}, strokes: {}, deleted: {}, settings: {}, rev: 1 });
 const context = vm.createContext({
   app: { me: {}, selection: new Set(), peers: new Map() },
-  emit() {}, identity: () => ({ id: 'test-client' }), prefs: () => null, setPrefs() {}, uid: prefix => `${prefix}_new`,
+  emit: (...args) => observeEvent?.(...args), identity: () => ({ id: 'test-client' }), prefs: () => null, setPrefs() {}, uid: prefix => `${prefix}_new`,
   queueChanges, acknowledgeChanges, readOutbox, cacheBoard, readCachedBoard,
   structuredClone, console, URL,
   window: { addEventListener() {} }, document: { addEventListener() {} },
@@ -62,4 +63,41 @@ assert.equal(readOutbox('b').objects.n3.text, 'offline', 'failed saves survive b
 await vm.runInContext("openBoard('b')", context);
 assert.equal(vm.runInContext('state.board.objects.n3.text', context), 'offline', 'reopening recovers offline edits over the server snapshot');
 assert.ok(vm.runInContext("dirty.objects.has('n3')", context));
-console.log('PASS: offline outbox, version-aware acknowledgements, cache fallback, save-in-flight switching, and recovery after failed saves');
+
+// UI listeners read both stacks synchronously while handling these events.
+// Check what they observe, rather than only checking state after undo returns.
+const historyEvents = [];
+observeEvent = event => {
+  if (event !== 'doc:changed' && event !== 'history') return;
+  historyEvents.push({
+    event,
+    canUndo: vm.runInContext('canUndo()', context),
+    canRedo: vm.runInContext('canRedo()', context),
+    text: vm.runInContext('object("history-note")?.text ?? null', context),
+  });
+};
+const expectHistory = (operation, canUndo, canRedo, text) => {
+  historyEvents.length = 0;
+  assert.equal(vm.runInContext(`${operation}()`, context), true);
+  assert.deepEqual(historyEvents, ['doc:changed', 'history'].map(event => ({ event, canUndo, canRedo, text })),
+    `${operation} observers must see the updated document and both completed history stacks`);
+};
+vm.runInContext(`state.board = ${JSON.stringify(board('history'))}; undoStack.length = 0; redoStack.length = 0;
+  addObject({ id: 'history-note', text: 'first' });`, context);
+expectHistory('undo', false, true, null);
+expectHistory('redo', true, false, 'first');
+
+vm.runInContext(`updateObject('history-note', { text: 'second' }); updateObject('history-note', { text: 'third' });`, context);
+expectHistory('undo', true, true, 'second');
+expectHistory('undo', true, true, 'first');
+expectHistory('undo', false, true, null);
+historyEvents.length = 0;
+assert.equal(vm.runInContext('undo()', context), false);
+assert.deepEqual(historyEvents, [], 'an empty undo stack must not emit changes');
+expectHistory('redo', true, true, 'first');
+expectHistory('redo', true, true, 'second');
+expectHistory('redo', true, false, 'third');
+historyEvents.length = 0;
+assert.equal(vm.runInContext('redo()', context), false);
+assert.deepEqual(historyEvents, [], 'an empty redo stack must not emit changes');
+console.log('PASS: offline outbox, version-aware acknowledgements, cache fallback, save-in-flight switching, recovery after failed saves, and atomic undo/redo notifications');

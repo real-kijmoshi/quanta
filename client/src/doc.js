@@ -84,7 +84,7 @@ export function transact(fn) {
   }
 }
 
-function applyEntry(entry) {
+function applyEntry(entry, inverseStack) {
   const inverse = new Map();
   const now = Date.now();
   const ids = [];
@@ -102,23 +102,24 @@ function applyEntry(entry) {
     markDirty(kind, id);
     if (kind === "objects") ids.push(id);
   }
+  // Complete the history transfer before synchronous UI listeners read it.
+  inverseStack.push(inverse);
   emit("doc:changed", { ids, ink: true });
   scheduleSave();
   emit("history");
-  return inverse;
 }
 
 export function undo() {
   const entry = undoStack.pop();
   if (!entry) return false;
-  redoStack.push(applyEntry(entry));
+  applyEntry(entry, redoStack);
   return true;
 }
 
 export function redo() {
   const entry = redoStack.pop();
   if (!entry) return false;
-  undoStack.push(applyEntry(entry));
+  applyEntry(entry, undoStack);
   return true;
 }
 
