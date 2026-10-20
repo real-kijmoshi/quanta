@@ -219,6 +219,7 @@ h2 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.05; letter-spacing: -.0
 .team .code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .team .note { color: #5f6644; }
 .team .note a { color: var(--olive); }
+.team .note code { color: var(--ink); }
 
 /* faq */
 .faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; align-items: start; }
@@ -464,10 +465,12 @@ npm start</div></div></div>
       <div class="team reveal" id="team" style="--d:100ms">
         <p class="kicker">Always on</p>
         <h3>Run it for a team</h3>
-        <p>One command, a few questions, your own team workspace. On a Debian or Ubuntu server, the setup wizard handles Docker, HTTPS and your owner account.</p>
+        <p>On a Debian or Ubuntu server, the setup wizard installs Docker if needed and starts your workspace with HTTPS and an owner account. No Node.js installation or source checkout needed.</p>
+        <p class="note">First, point your domain’s DNS A record at the server and allow inbound TCP ports 80 and 443. Then run this command in a terminal on the server:</p>
         <div class="term"><div class="code plain" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/setup-server.sh | bash</div></div>
-        <p class="note" style="margin-top:14px">Point your domain at the server first. Already have Quanta installed? Run <code>quanta setup</code>. The wizard asks for your domain and email, then shows your login details when everything is running.</p>
-        <p class="note" style="margin-top:14px">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
+        <p class="note" style="margin-top:14px">Already have the Quanta command installed on the server? Run <code>quanta setup</code> instead. Enter your domain and owner email, then confirm the deployment plan.</p>
+        <p class="note">Open the workspace URL printed by the wizard and sign in with the temporary password. Change it in Workspace settings, then invite teammates to a folder.</p>
+        <p class="note">For backups, updates and password recovery, see the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
       </div>
     </div>
   </section>
