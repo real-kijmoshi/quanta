@@ -23,10 +23,12 @@
   "type": "module",
   "description": "Collaborative whiteboard and notebook: handwriting, typeset math, plots, runnable code, live sync, MCP",
   "scripts": {
+    "build:site": "node scripts/build-site.mjs",
     "start": "node server/index.mjs",
     "check": "node scripts/check.mjs",
     "test:performance": "node tests/performance-test.mjs",
     "test:selection": "node tests/selection-test.mjs",
+    "test:site": "node tests/site-ink-test.mjs",
     "test:notes": "node tests/notes-test.mjs",
     "test:ai": "node tests/ai-test.mjs",
     "test:cli": "node tests/cli-test.mjs",
@@ -38,7 +40,7 @@
     "test:connections": "node tests/connections-test.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:verify": "node scripts/backup.mjs --verify",
-    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:notes && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:connections && npm run test:ai && npm run test:cli",
+    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:site && npm run test:notes && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:connections && npm run test:ai && npm run test:cli",
     "share": "node server/index.mjs --share",
     "tunnel": "node scripts/tunnel.mjs"
   },

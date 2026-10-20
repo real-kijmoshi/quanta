@@ -55,6 +55,7 @@ button { font-family: inherit; cursor: pointer; }
 .hero-band { background: var(--ink); color: #f0f2e9; position: relative; overflow: hidden; isolation: isolate; }
 .hero-band::before { content: ""; position: absolute; inset: 0; z-index: -2; background-image: radial-gradient(rgba(228,237,135,.17) 1px, transparent 1px); background-size: 26px 26px; mask-image: radial-gradient(120% 90% at 50% 40%, #000 30%, transparent 85%); -webkit-mask-image: radial-gradient(120% 90% at 50% 40%, #000 30%, transparent 85%); }
 .hero-band::after { content: ""; position: absolute; width: 760px; height: 760px; right: -220px; top: -260px; z-index: -2; background: radial-gradient(circle, rgba(228,237,135,.16), transparent 62%); pointer-events: none; }
+.hero-band.is-drawing, .hero-band.is-drawing * { user-select: none !important; -webkit-user-select: none !important; cursor: crosshair; }
 #ink-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; touch-action: pan-y; }
 .hero { display: grid; grid-template-columns: 1fr 1.08fr; gap: 24px; align-items: center; padding: 148px 0 96px; min-height: 780px; pointer-events: none; }
 .hero > * { min-width: 0; }
@@ -675,40 +676,7 @@ document.querySelectorAll('[data-drag]').forEach((handle) => {
   handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
 });
 
-/* ---- draw-anywhere ink on the hero (mouse and pen; touch keeps scrolling) ---- */
-const hero = $('#hero'), canvas = $('#ink-canvas'), ctx = canvas.getContext('2d');
-const strokes = []; let current = null, raf = 0, dpr = 1;
-function resize() { dpr = Math.min(devicePixelRatio || 1, 2); canvas.width = hero.clientWidth * dpr; canvas.height = hero.clientHeight * dpr; }
-addEventListener('resize', resize); resize();
-function paint(now) {
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.lineCap = ctx.lineJoin = 'round';
-  for (let s = strokes.length - 1; s >= 0; s -= 1) {
-    const st = strokes[s];
-    const age = st === current ? 0 : now - st.t;
-    const alpha = Math.max(0, 1 - age / 3200);
-    if (alpha <= 0) { strokes.splice(s, 1); continue; }
-    ctx.strokeStyle = `rgba(228,237,135,${alpha * .9})`;
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    st.pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.stroke();
-  }
-  raf = strokes.length ? requestAnimationFrame(paint) : 0;
-}
-const point = (e) => { const r = hero.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-if (!reduceMotion) {
-  hero.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'touch' || e.button !== 0 || e.target.closest('a,button,input,textarea,.card,.install-line,.hint')) return;
-    current = { pts: [point(e)], t: performance.now() };
-    strokes.push(current);
-    if (!raf) raf = requestAnimationFrame(paint);
-  });
-  addEventListener('pointermove', (e) => { if (current) current.pts.push(point(e)); });
-  const finish = () => { if (current) { current.t = performance.now(); current = null; } };
-  addEventListener('pointerup', finish); addEventListener('pointercancel', finish);
-}
 </script>
+<script type="module" src="hero-ink.js"></script>
 </body>
 </html>

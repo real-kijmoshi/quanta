@@ -8,7 +8,7 @@ npm start                 # http://localhost:4173, boards in ./data
 npm test                  # syntax, rendering, storage, collaboration, hosted, AI (mocked)
 ```
 
-- There is no build step; `client/src/` is served as native ES modules.
+- The board needs no build step; `client/src/` is served as native ES modules.
 - Keep changes focused and add or extend a script in `tests/*-test.mjs` for behavior you change.
 - `quanta` (see `bin/quanta.mjs`) is a thin wrapper around `server/index.mjs` and the scripts; run `node bin/quanta.mjs --help`.
 
@@ -21,7 +21,7 @@ npm test                  # syntax, rendering, storage, collaboration, hosted, A
 | `client/styles/` | Application stylesheets, in the order linked by the shell |
 | `client/diagnostics/` | Browser profiling and recovery tools |
 | `server/` | HTTP entrypoint, storage, authentication, AI, and MCP |
-| `shared/` | Search helpers and Python harness used by browser and server |
+| `shared/` | Pen geometry, search helpers and Python harness shared across runtimes |
 | `tests/` | Automated regression and integration checks |
 | `scripts/` | Maintenance and development commands |
 | `bin/` | Installed `quanta` CLI |
@@ -43,4 +43,6 @@ Local boards stay in the root `data/` directory by default. `data/`, `backups/`,
 2. Commit, then `git tag vX.Y.Z && git push origin main vX.Y.Z`.
 3. The **Release** workflow tests, packs `quanta.tgz`, publishes `install.sh`, `install.ps1` and `SHA256SUMS` on a GitHub release, and pushes a multi-arch image to `ghcr.io/real-kijmoshi/quanta`.
 
-The website in `site/` deploys to GitHub Pages on every push to `main` that touches it.
+The website in `site/` deploys to GitHub Pages when its source or shared pen geometry
+changes on `main`. Run `npm run build:site` to assemble it in `dist/site/`, including
+the board's pen geometry, then serve that directory with a static HTTP server to preview it.

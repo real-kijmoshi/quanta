@@ -1,3 +1,6 @@
+import { dejitter, penPath } from "../../shared/pen-path.js";
+export { smoothPenPoints } from "../../shared/pen-path.js";
+
 // Ink geometry: turns captured points into smooth, pressure-shaped outlines,
 // recognises held shapes, and splits strokes for the precise eraser.
 //
@@ -18,63 +21,6 @@ const pathCache = new WeakMap();
 const boundsCache = new WeakMap();
 
 const dist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
-
-/**
- * Mouse and touch positions are whole pixels, which shows up as a fine wobble.
- * Two passes of a 3-point average remove it without rounding off real corners
- * much; the end points stay exactly where the stroke started and ended.
- */
-function dejitter(points, passes = 2) {
-  let out = points.map((p) => [...p]);
-  for (let pass = 0; pass < passes; pass += 1) {
-    if (out.length < 3) break;
-    const next = [out[0]];
-    for (let i = 1; i < out.length - 1; i += 1) {
-      const a = out[i - 1];
-      const b = out[i];
-      const c = out[i + 1];
-      next.push([(a[0] + 2 * b[0] + c[0]) / 4, (a[1] + 2 * b[1] + c[1]) / 4, b[2]]);
-    }
-    next.push(out[out.length - 1]);
-    out = next;
-  }
-  return out;
-}
-
-/** Filter by distance rather than event count: slow writing and fast flicks
- * should have the same smoothness. Resampling also removes dense clusters of
- * nearly identical input samples without delaying the live pen tip. */
-export function smoothPenPoints(raw, size = 3, captureZoom = 1) {
-  if (raw.length < 3) return raw;
-  // Remove event-to-event noise before interpolating it into spatial samples.
-  // Otherwise a sparse noisy event becomes a whole small zigzag in the curve.
-  raw = dejitter(raw, 2);
-  let length = 0;
-  for (let i = 1; i < raw.length; i++) length += dist(raw[i - 1], raw[i]);
-  if (!length) return [raw[0]];
-  const zoom = Number.isFinite(captureZoom) && captureZoom > 0 ? captureZoom : 1;
-  const spacing = Math.max(0.75 / zoom, size * 0.45, length / 12000);
-  const sampled = [raw[0]];
-  let remaining = spacing;
-  for (let i = 1; i < raw.length; i++) {
-    const a = raw[i - 1];
-    const b = raw[i];
-    const segment = dist(a, b);
-    if (!segment) continue;
-    let offset = remaining;
-    while (offset < segment) {
-      const t = offset / segment;
-      sampled.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, 0.5]);
-      offset += spacing;
-    }
-    remaining = offset - segment;
-  }
-  const end = raw[raw.length - 1];
-  // Avoid a tiny final segment, but always keep the exact pointer endpoint.
-  if (sampled.length > 1 && dist(sampled[sampled.length - 1], end) < spacing * 0.35) sampled.pop();
-  sampled.push(end);
-  return dejitter(sampled, 2);
-}
 
 /** Speed-based pressure for devices that do not report it (mouse, touch). */
 function simulatePressure(points, size) {
@@ -227,20 +173,11 @@ const strokeRuns = (stroke) => {
     if ((stroke.style ?? "ballpoint") === "ballpoint" && stroke.tool !== "highlighter" && !stroke.shape && stroke.points.length > 1) {
       // The default pen has an even width on both mouse and stylus. Use one
       // native curve, preserving pressure variation for Fountain and Brush.
-      const points = smoothPenPoints(stroke.points, stroke.size ?? 3, stroke.captureZoom ?? 1);
-      const path = new Path2D();
-      path.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length - 1; i += 1) {
-        const p = points[i];
-        const next = points[i + 1];
-        path.quadraticCurveTo(p[0], p[1], (p[0] + next[0]) / 2, (p[1] + next[1]) / 2);
-      }
-      const last = points[points.length - 1];
-      path.lineTo(last[0], last[1]);
-      if (points.length === 1) {
-        path.arc(points[0][0], points[0][1], Math.max(0.5, stroke.size ?? 3) / 2, 0, Math.PI * 2);
-        runs = [{ fill: true, path, radius: Math.max(0.5, stroke.size ?? 3) / 2, point: points[0] }];
-      } else runs = [{ width: Math.max(0.5, stroke.size ?? 3), path }];
+      const size = Math.max(0.5, stroke.size ?? 3);
+      const { path, dot } = penPath(stroke.points, size, stroke.captureZoom ?? 1);
+      runs = dot
+        ? [{ fill: true, path, radius: size / 2, point: stroke.points[0] }]
+        : [{ width: size, path }];
     } else {
       const [points, radii] = strokeGeometry(stroke);
       runs = buildRuns(points, radii);

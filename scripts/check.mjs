@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const SOURCE_DIRS = ["bin", "client", "server", "shared", "scripts", "tests"];
+const SOURCE_DIRS = ["bin", "client", "server", "shared", "site", "scripts", "tests"];
 
 async function walk(dir) {
   const files = [];
