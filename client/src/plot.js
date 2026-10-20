@@ -166,12 +166,14 @@ export function renderPlot(model, w, h) {
   for (let gx = Math.ceil(xa / xStep) * xStep; gx <= xb; gx += xStep) {
     const px = sx(gx);
     grid.push(`M${px.toFixed(1)} 0V${h}`);
-    if (Math.abs(gx) > xStep / 1e6) labels.push(`<text x="${px.toFixed(1)}" y="${(axisY + 12).toFixed(1)}" text-anchor="middle">${esc(formatNumber(Number(gx.toPrecision(10))))}</text>`);
+    // Labels hugging the card edge anchor inward so they are never clipped.
+    const anchor = px < 14 ? "start" : px > w - 14 ? "end" : "middle";
+    if (Math.abs(gx) > xStep / 1e6) labels.push(`<text x="${px.toFixed(1)}" y="${(axisY + 12).toFixed(1)}" text-anchor="${anchor}">${esc(formatNumber(Number(gx.toPrecision(10))))}</text>`);
   }
   for (let gy = Math.ceil(ya / yStep) * yStep; gy <= yb; gy += yStep) {
     const py = sy(gy);
     grid.push(`M0 ${py.toFixed(1)}H${w}`);
-    if (Math.abs(gy) > yStep / 1e6) labels.push(`<text x="${(yLabelsLeft ? axisX - 4 : axisX + 4).toFixed(1)}" y="${(py + 3.5).toFixed(1)}" text-anchor="${yLabelsLeft ? "end" : "start"}">${esc(formatNumber(Number(gy.toPrecision(10))))}</text>`);
+    if (Math.abs(gy) > yStep / 1e6) labels.push(`<text x="${(yLabelsLeft ? axisX - 4 : axisX + 4).toFixed(1)}" y="${Math.min(h - 4, Math.max(11, py + 3.5)).toFixed(1)}" text-anchor="${yLabelsLeft ? "end" : "start"}">${esc(formatNumber(Number(gy.toPrecision(10))))}</text>`);
   }
   parts.push(`<path class="plot-grid" d="${grid.join("")}"/>`);
   parts.push(`<path class="plot-axis" d="${ya <= 0 && yb >= 0 ? `M0 ${sy(0).toFixed(1)}H${w}` : ""}${xa <= 0 && xb >= 0 ? `M${sx(0).toFixed(1)} 0V${h}` : ""}"/>`);
@@ -205,7 +207,11 @@ export function renderPlot(model, w, h) {
   const legend = sampled
     .filter((c) => c.label)
     .map((c, i) => `<g transform="translate(10 ${16 + i * 16})"><rect x="0" y="-5" width="12" height="3" rx="1.5" fill="${c.color}"/><text x="18" y="0">${esc(c.label)}${c.error ? " ⚠" : ""}</text></g>`);
-  if (legend.length) parts.push(`<g class="plot-legend">${legend.join("")}</g>`);
+  if (legend.length) {
+    const widest = Math.max(...sampled.filter((c) => c.label).map((c) => c.label.length + (c.error ? 2 : 0)));
+    const chip = `<rect class="plot-legend-bg" x="4" y="4" width="${Math.round(widest * 6.8 + 34)}" height="${legend.length * 16 + 6}" rx="6"/>`;
+    parts.push(`<g class="plot-legend">${chip}${legend.join("")}</g>`);
+  }
 
   return {
     svg: `<svg class="plot-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="none">${parts.join("")}</svg>`,

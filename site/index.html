@@ -19,269 +19,394 @@
 <meta property="og:type" content="website">
 <style>
 :root {
-  --ink: #252824; --ink-2: #2f332d; --paper: #f8f9f3; --wash: #f0f3d9; --citron: #e4ed87; --citron-2: #d5e26c; --olive: #535c24;
-  --muted: #697064; --line: #dfe3d6; --card: #fff;
+  --ink: #252824; --ink-2: #2f332d; --ink-3: #1a1d18; --paper: #f8f9f3; --wash: #f0f3d9; --citron: #e4ed87; --citron-2: #d5e26c; --olive: #535c24;
+  --muted: #697064; --soft: #b9bfae; --line: #dfe3d6; --card: #fff; --blue: #2747d6; --red: #d93a2b; --green: #2f7d57;
   --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.2, .7, .2, 1);
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 ::selection { background: var(--citron); color: var(--ink); }
-:focus-visible { outline: 2px solid var(--olive); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--olive); outline-offset: 3px; border-radius: 6px; }
 a { color: var(--olive); }
 code { font-family: var(--mono); font-size: .9em; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+button { font-family: inherit; cursor: pointer; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* ---------- hero (dark ink) ---------- */
-.hero-band { background: var(--ink); color: #f0f2e9; position: relative; overflow: hidden; }
-.hero-band::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(228,237,135,.16) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(#000 40%, transparent); -webkit-mask-image: linear-gradient(#000 40%, transparent); }
-nav { position: relative; display: flex; align-items: center; gap: 28px; padding: 24px 0; }
-.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 800; font-size: 24px; letter-spacing: -.055em; color: #fff; text-decoration: none; }
-.brand img { width: 34px; height: 34px; display: block; }
-nav a:not(.brand):not(.nav-cta) { color: #b9bfae; text-decoration: none; font-size: 15px; font-weight: 500; }
-nav a:not(.brand):not(.nav-cta):hover { color: #fff; }
-.nav-cta { font-size: 14px; font-weight: 700; color: var(--ink); background: var(--citron); padding: 8px 16px; border-radius: 999px; text-decoration: none; }
-.nav-cta:hover { background: var(--citron-2); }
-.skip { position: absolute; left: 12px; top: -60px; z-index: 20; padding: 8px 14px; border-radius: 8px; background: var(--citron); color: var(--ink); font-weight: 700; text-decoration: none; }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 60; padding: 8px 14px; border-radius: 8px; background: var(--citron); color: var(--ink); font-weight: 700; text-decoration: none; }
 .skip:focus { top: 12px; }
-.hero { position: relative; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 56px 0 96px; }
+
+/* ---------- header ---------- */
+.site-nav { position: fixed; inset: 0 0 auto; z-index: 50; transition: background-color .25s, box-shadow .25s; }
+.site-nav.scrolled { background: rgba(37, 40, 36, .82); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); box-shadow: 0 1px 0 rgba(255,255,255,.07); }
+.site-nav .wrap { display: flex; align-items: center; gap: 26px; height: 68px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 800; font-size: 23px; letter-spacing: -.055em; color: #fff; text-decoration: none; }
+.brand img { width: 32px; height: 32px; display: block; }
+.site-nav a:not(.brand):not(.nav-cta) { color: var(--soft); text-decoration: none; font-size: 15px; font-weight: 500; transition: color .15s; }
+.site-nav a:not(.brand):not(.nav-cta):hover { color: #fff; }
+.nav-cta { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink); background: var(--citron); padding: 8px 16px; border-radius: 999px; text-decoration: none; transition: background-color .15s, transform .15s; }
+.nav-cta:hover { background: var(--citron-2); transform: translateY(-1px); }
+.nav-cta svg { width: 16px; height: 16px; }
+
+/* ---------- hero ---------- */
+.hero-band { background: var(--ink); color: #f0f2e9; position: relative; overflow: hidden; isolation: isolate; }
+.hero-band::before { content: ""; position: absolute; inset: 0; z-index: -2; background-image: radial-gradient(rgba(228,237,135,.17) 1px, transparent 1px); background-size: 26px 26px; mask-image: radial-gradient(120% 90% at 50% 40%, #000 30%, transparent 85%); -webkit-mask-image: radial-gradient(120% 90% at 50% 40%, #000 30%, transparent 85%); }
+.hero-band::after { content: ""; position: absolute; width: 760px; height: 760px; right: -220px; top: -260px; z-index: -2; background: radial-gradient(circle, rgba(228,237,135,.16), transparent 62%); pointer-events: none; }
+#ink-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; touch-action: pan-y; }
+.hero { display: grid; grid-template-columns: 1fr 1.08fr; gap: 24px; align-items: center; padding: 148px 0 96px; min-height: 780px; pointer-events: none; }
 .hero > * { min-width: 0; }
-.eyebrow { font: 500 12px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--citron); margin: 0 0 22px; }
-h1 { font-size: clamp(52px, 7vw, 92px); line-height: 1; letter-spacing: -.065em; font-weight: 800; margin: 0 0 26px; }
+.hero a, .hero button, .hero input, .hero textarea, .hero .card, .hero .install-line { pointer-events: auto; }
+h1 { font-size: clamp(56px, 7.4vw, 104px); line-height: .96; letter-spacing: -.07em; font-weight: 800; margin: 0 0 28px; }
 h1 em { font-style: normal; color: var(--citron); position: relative; white-space: nowrap; }
-h1 em svg { position: absolute; left: -2%; bottom: -.16em; width: 104%; height: .3em; overflow: visible; }
-h1 em path { stroke: var(--citron); stroke-width: 5; fill: none; stroke-linecap: round; stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1.1s .5s ease-out forwards; }
-.lead { font-size: 18px; line-height: 1.75; color: #b9bfae; max-width: 30em; margin: 0 0 32px; }
+h1 em svg { position: absolute; left: -2%; bottom: -.14em; width: 104%; height: .3em; overflow: visible; }
+h1 em path { stroke: var(--citron); stroke-width: 5; fill: none; stroke-linecap: round; stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1.1s .6s ease-out forwards; }
+.lead { font-size: 19px; line-height: 1.7; color: var(--soft); max-width: 29em; margin: 0 0 32px; }
 .cta { display: flex; gap: 12px; flex-wrap: wrap; }
-.btn { display: inline-block; padding: 13px 22px; border-radius: 12px; font-weight: 700; text-decoration: none; transition: background-color .15s, transform .15s; }
-.btn.primary { background: var(--citron); color: var(--ink); }
-.btn.primary:hover { background: var(--citron-2); transform: translateY(-1px); }
-.btn.ghost { color: #f0f2e9; border: 1px solid #4a5044; }
-.btn.ghost:hover { background: var(--ink-2); }
-.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 26px 0 0; padding: 0; list-style: none; font: 12px var(--mono); color: #8d9484; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 14px; font-weight: 700; text-decoration: none; transition: background-color .15s, transform .15s, box-shadow .15s; }
+.btn svg { width: 18px; height: 18px; }
+.btn.primary { background: var(--citron); color: var(--ink); box-shadow: 0 8px 26px -8px rgba(228,237,135,.55); }
+.btn.primary:hover { background: var(--citron-2); transform: translateY(-2px); }
+.btn.ghost { color: #f0f2e9; border: 1px solid #4f5547; }
+.btn.ghost:hover { background: var(--ink-2); border-color: #6a7160; }
+.install-line { display: flex; align-items: center; gap: 12px; max-width: 520px; margin-top: 28px; padding: 10px 10px 10px 16px; background: rgba(0,0,0,.28); border: 1px solid #3a4034; border-radius: 12px; font: 13px var(--mono); color: #d6d9ce; }
+.install-line b { color: var(--citron); font-weight: 500; }
+.install-line span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy { font: 600 12px var(--sans); padding: 6px 12px; border-radius: 8px; border: 1px solid #4f5547; background: #2a2e27; color: #d6d9ce; transition: background-color .15s; }
+.copy:hover { background: #3a3f35; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 24px 0 0; padding: 0; list-style: none; font: 12px var(--mono); color: #8d9484; }
 .facts li::before { content: "◆"; color: var(--citron); margin-right: 8px; font-size: 8px; vertical-align: 2px; }
 
-/* demo board */
-.demo { position: relative; background: #fcfdf9; color: var(--ink); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06); transform: rotate(1.2deg); overflow: hidden; }
-.demo-bar { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: #fff; border-bottom: 1px solid #e0e3d7; font-size: 12px; color: var(--muted); }
-.demo-bar img { width: 22px; height: 22px; }
-.demo-bar strong { color: var(--ink); font-size: 13px; }
-.demo-bar .live { margin-left: auto; background: var(--wash); color: var(--olive); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
-.demo svg { display: block; width: 100%; height: auto; background-image: radial-gradient(#dfe3d6 1px, transparent 1px); background-size: 20px 20px; }
-.ink-line { stroke-dasharray: 700; stroke-dashoffset: 700; animation: draw 2.2s .9s ease-in-out forwards; }
-.ink-line.b { animation-delay: 1.8s; }
-.cursor { animation: float 5s ease-in-out infinite; }
+/* live cards stage */
+.stage { position: relative; height: 580px; }
+.card { position: absolute; border-radius: 16px; box-shadow: 0 28px 70px -18px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07); will-change: transform; transform: translate(var(--dx, 0), var(--dy, 0)) rotate(var(--rot, 0deg)); transition: box-shadow .2s; }
+.card.dragging { box-shadow: 0 40px 90px -16px rgba(0,0,0,.7), 0 0 0 2px var(--citron); z-index: 5; }
+.card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font: 500 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; cursor: grab; touch-action: none; user-select: none; border-radius: 16px 16px 0 0; }
+.card.dragging .card-head { cursor: grabbing; }
+.card-head i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; opacity: .25; }
+.card-head span { margin-left: auto; opacity: .55; }
+.c-math { left: 0; top: 48px; width: 246px; background: #fffbe8; color: var(--ink); --rot: -2deg; }
+.c-math .card-head { color: #7a6a1c; }
+.c-math textarea { display: block; width: 100%; height: 78px; resize: none; border: 0; background: transparent; padding: 4px 14px 0; font: 500 13px/1.65 var(--mono); color: var(--ink); outline: none; }
+.c-math textarea:focus-visible { box-shadow: none; }
+.math-out { padding: 0 14px 14px; font: 500 13px/1.65 var(--mono); display: grid; gap: 0; }
+.math-out div { display: flex; justify-content: space-between; border-top: 1px dashed rgba(0,0,0,.12); padding-top: 2px; }
+.math-out div.err { color: var(--red); }
+.math-out b { color: var(--green); font-weight: 600; }
+.c-plot { right: 0; top: 0; width: 290px; background: #fff; color: var(--ink); --rot: 1.6deg; }
+.c-plot .card-head { color: var(--muted); }
+.c-plot svg { display: block; width: 100%; height: auto; background-image: radial-gradient(#e6e9dd 1px, transparent 1px); background-size: 18px 18px; }
+.plot-axis { stroke: #a7ad9c; stroke-width: 1.2; fill: none; }
+.plot-curve { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.plot-foot { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 9px 14px 12px; border-top: 1px solid var(--line); background: #fbfbf7; border-radius: 0 0 16px 16px; font: 12px var(--mono); }
+.plot-foot em { color: var(--ink); }
+.plot-foot output { color: var(--muted); min-width: 2.6em; text-align: right; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: #d6dacb; }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: #d6dacb; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: var(--ink); border: 3px solid var(--citron); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--ink); border: 3px solid var(--citron); }
+.c-code { left: 52px; top: 330px; width: 318px; background: var(--ink-3); color: #e8eaee; --rot: 1deg; }
+.c-code .card-head { color: var(--soft); }
+.c-code .run { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--sans); letter-spacing: 0; text-transform: none; padding: 5px 11px; border-radius: 7px; border: 0; background: var(--citron); color: var(--ink); transition: background-color .15s, transform .1s; }
+.c-code .run:hover { background: var(--citron-2); }
+.c-code .run:active { transform: scale(.95); }
+.c-code .run svg { width: 10px; height: 10px; }
+.code-body { margin: 0; padding: 6px 14px 12px; font: 12.5px/1.7 var(--mono); white-space: pre; overflow-x: auto; }
+.k { color: var(--citron); } .n { color: #f2a65a; } .c { color: #7d8574; font-style: italic; }
+.code-out { margin: 0; padding: 9px 14px 12px; border-top: 1px solid #343930; background: #20241d; border-radius: 0 0 16px 16px; font: 12.5px/1.5 var(--mono); color: #8fd9ac; min-height: 40px; }
+.code-out small { display: block; color: #7d8574; font-size: 10.5px; letter-spacing: .04em; margin-top: 3px; }
+.c-ink { right: 8px; top: 352px; width: 168px; height: 168px; background: #fcfdf9; display: grid; place-items: center; --rot: -3deg; }
+.c-ink svg { width: 128px; height: 128px; overflow: visible; }
+.c-ink figcaption { position: absolute; bottom: 9px; left: 0; right: 0; text-align: center; font: 500 10.5px var(--mono); color: var(--muted); letter-spacing: .04em; }
+.who { position: absolute; z-index: 6; pointer-events: none; display: flex; align-items: flex-start; gap: 2px; animation: roam var(--t, 14s) ease-in-out infinite; }
+.who svg { width: 22px; height: 24px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.who span { margin-top: 18px; font: 700 11px var(--sans); padding: 3px 9px; border-radius: 99px; background: var(--c); color: var(--ink); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.who.mira { left: 190px; top: 250px; --c: #e4ed87; --t: 15s; }
+.who.jun { left: 330px; top: 200px; --c: #9fd9ff; --t: 19s; animation-delay: -6s; }
+@keyframes roam { 0%,100% { transform: translate(0,0); } 25% { transform: translate(70px,-28px); } 50% { transform: translate(18px,56px); } 75% { transform: translate(-54px,20px); } }
 @keyframes draw { to { stroke-dashoffset: 0; } }
-@keyframes float { 50% { transform: translate(14px, -10px); } }
+.hint { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font: 12px var(--mono); color: #7d8574; pointer-events: none; }
+.hint kbd { font: inherit; color: var(--citron); }
+
+/* ---------- ticker ---------- */
+.ticker { background: var(--citron); color: var(--ink); overflow: hidden; border-block: 1px solid rgba(0,0,0,.08); }
+.ticker-track { display: flex; width: max-content; animation: slide 40s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker ul { display: flex; gap: 0; margin: 0; padding: 0; list-style: none; }
+.ticker li { display: flex; align-items: center; padding: 14px 0; font: 500 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.ticker li::after { content: ""; width: 7px; height: 7px; margin: 0 28px; background: var(--ink); transform: rotate(45deg); }
+@keyframes slide { to { transform: translateX(-50%); } }
 
 /* ---------- sections ---------- */
-section { padding: 96px 0 0; scroll-margin-top: 16px; }
-.kicker { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--olive); margin: 0 0 14px; }
-h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.1; letter-spacing: -.045em; font-weight: 800; margin: 0 0 14px; max-width: 18em; }
-.sub { color: var(--muted); font-size: 17px; max-width: 38em; margin: 0 0 40px; }
+section { padding: 112px 0 0; scroll-margin-top: 24px; }
+.kicker { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--olive); margin: 0 0 16px; }
+h2 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.05; letter-spacing: -.05em; font-weight: 800; margin: 0 0 16px; max-width: 16em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 18px; max-width: 36em; margin: 0 0 44px; text-wrap: pretty; }
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); transition-delay: var(--d, 0ms); }
+.reveal.in { opacity: 1; transform: none; }
 
 /* bento */
 .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px; overflow: hidden; position: relative; }
-.tile h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.03em; }
+.tile { --mx: 50%; --my: 50%; background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 30px; overflow: hidden; position: relative; transition: transform .3s var(--ease), box-shadow .3s; }
+.tile::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(380px circle at var(--mx) var(--my), rgba(228,237,135,.38), transparent 60%); }
+.tile:hover { transform: translateY(-3px); box-shadow: 0 22px 50px -26px rgba(37,40,36,.45); }
+.tile:hover::before { opacity: 1; }
+.tile > * { position: relative; }
+.ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--wash); color: var(--olive); margin-bottom: 18px; }
+.ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tile h3 { margin: 0 0 8px; font-size: 21px; letter-spacing: -.035em; }
 .tile p { margin: 0; color: var(--muted); font-size: 15px; }
-.t-a { grid-column: span 4; background: var(--ink); border-color: var(--ink); color: #f0f2e9; }
-.t-a p { color: #b9bfae; max-width: 26em; }
+.t-a { grid-column: span 4; background: var(--ink); border-color: var(--ink); color: #f0f2e9; min-height: 330px; }
+.t-a .ico { background: rgba(228,237,135,.12); color: var(--citron); }
+.t-a p { color: var(--soft); max-width: 25em; }
+.t-a .snap { position: absolute; right: 24px; bottom: 8px; width: 260px; height: 220px; }
+.t-a .snap-label { position: absolute; right: 34px; bottom: 22px; font: 500 11px var(--mono); color: #8d9484; letter-spacing: .04em; }
 .t-b { grid-column: span 2; background: var(--citron); border-color: var(--citron); }
+.t-b .ico { background: rgba(37,40,36,.08); color: var(--ink); }
 .t-b p { color: #3d4420; }
 .t-c, .t-d, .t-e { grid-column: span 2; }
 .t-f { grid-column: span 3; }
 .t-g { grid-column: span 3; background: var(--wash); border-color: #e1e7b8; }
-.t-a svg { display: block; margin-top: 22px; width: 100%; height: 90px; }
-.mathline { font: 500 15px/1.9 var(--mono); margin-top: 18px; padding: 12px 14px; background: rgba(255,255,255,.55); border-radius: 10px; color: var(--ink); }
+.mathline { font: 500 15px/1.9 var(--mono); margin-top: 20px; padding: 14px 16px; background: rgba(255,255,255,.6); border-radius: 12px; color: var(--ink); }
 .mathline b { color: var(--olive); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
-.chips span { font: 12px var(--mono); padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.chips span { font: 12px var(--mono); padding: 4px 11px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
 .t-g .chips span { background: #fff; border-color: #e1e7b8; }
 
 /* install */
-.install { background: var(--ink); color: #f0f2e9; border-radius: 28px; padding: 44px; margin-top: 0; }
+.install { background: var(--ink); color: #f0f2e9; border-radius: 32px; padding: 56px; position: relative; overflow: hidden; }
+.install::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(228,237,135,.1) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(135deg, #000, transparent 60%); -webkit-mask-image: linear-gradient(135deg, #000, transparent 60%); pointer-events: none; }
+.install > * { position: relative; }
+.install .kicker { color: var(--citron); }
 .install h2 { color: #fff; }
-.install .sub { color: #b9bfae; }
+.install .sub { color: var(--soft); margin-bottom: 30px; }
 .install .sub a { color: var(--citron); }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.tabs button { font: 600 14px var(--sans); padding: 8px 16px; border-radius: 999px; border: 1px solid #4a5044; background: transparent; color: #b9bfae; cursor: pointer; }
+.tabs button { font: 600 14px var(--sans); padding: 9px 18px; border-radius: 999px; border: 1px solid #4a5044; background: transparent; color: var(--soft); transition: color .15s, background-color .15s; }
 .tabs button:hover { color: #fff; }
 .tabs button[aria-selected="true"] { background: var(--citron); border-color: var(--citron); color: var(--ink); }
 .panel[hidden] { display: none; }
-.code { position: relative; background: #1a1d18; border: 1px solid #3a4034; color: #e8eaee; border-radius: 14px; padding: 18px 90px 18px 20px; font: 14px/1.7 var(--mono); overflow-x: auto; white-space: pre; }
-.code button { position: absolute; top: 12px; right: 12px; font: 600 12px var(--sans); padding: 6px 12px; border-radius: 8px; border: 1px solid #4a5044; background: #2a2e27; color: #d6d9ce; cursor: pointer; }
+.term { background: var(--ink-3); border: 1px solid #3a4034; border-radius: 16px; overflow: hidden; }
+.term-bar { display: flex; gap: 7px; padding: 11px 14px; border-bottom: 1px solid #2c3128; }
+.term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a4034; }
+.code { position: relative; color: #e8eaee; padding: 18px 96px 18px 20px; font: 14px/1.75 var(--mono); overflow-x: auto; white-space: pre; }
+.code::before { content: "$ "; color: var(--citron); }
+.code.plain::before { content: none; }
+.code button { position: absolute; top: 14px; right: 14px; font: 600 12px var(--sans); padding: 6px 12px; border-radius: 8px; border: 1px solid #4a5044; background: #2a2e27; color: #d6d9ce; transition: background-color .15s; }
 .code button:hover { background: #343930; }
-.note { color: #9aa190; font-size: 14px; margin: 12px 0 0; }
+.note { color: #9aa190; font-size: 14px; margin: 14px 0 0; }
 .note a { color: var(--citron); }
 .note code { color: #d6d9ce; }
 
-/* cli + steps */
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.cmds { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 8px 8px; }
-.cmd { display: grid; grid-template-columns: minmax(0, 15em) 1fr; gap: 16px; padding: 14px 16px; border-radius: 12px; font-size: 15px; }
-.cmd:nth-child(odd) { background: var(--paper); }
-.cmd code { color: var(--olive); font-weight: 500; overflow-wrap: anywhere; }
-.cmd span { color: var(--muted); }
-.cli-note { color: var(--muted); font-size: 14px; margin: 14px 4px 0; }
-.team { background: var(--wash); border: 1px solid #e1e7b8; border-radius: 20px; padding: 32px; }
-.team h3 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.035em; }
-.team p { color: #4d5433; margin: 0 0 18px; }
-.team .code { background: var(--ink); border-color: var(--ink); }
+/* cli + team */
+.split { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.split > * { min-width: 0; }
+.cmds { background: var(--ink-3); color: #e8eaee; border-radius: 24px; padding: 10px; border: 1px solid #343930; }
+.cmd { display: grid; grid-template-columns: minmax(0, 17em) 1fr; gap: 18px; padding: 14px 18px; border-radius: 14px; font-size: 14.5px; transition: background-color .15s; }
+.cmd:hover { background: #262a23; }
+.cmd code { color: var(--citron); font-weight: 500; overflow-wrap: anywhere; }
+.cmd code::before { content: "$ "; color: #6a7160; }
+.cmd span { color: var(--soft); }
+.cli-note { color: var(--muted); font-size: 14px; margin: 16px 6px 0; }
+.team { background: var(--wash); border: 1px solid #e1e7b8; border-radius: 24px; padding: 34px; }
+.team h3 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.04em; }
+.team p { color: #4d5433; margin: 0 0 20px; }
+.team .term { border-color: var(--ink); background: var(--ink); }
+.team .code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .team .note { color: #5f6644; }
 .team .note a { color: var(--olive); }
 
 /* faq */
-.faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
-details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; }
-summary { font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; align-items: start; }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 24px; transition: border-color .2s, box-shadow .2s; }
+details:hover { border-color: #c9ceb9; }
+details[open] { box-shadow: 0 14px 34px -22px rgba(37,40,36,.4); }
+summary { font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 summary::-webkit-details-marker { display: none; }
-summary::after { content: "+"; font: 500 20px/1 var(--mono); color: var(--olive); }
-details[open] summary::after { content: "–"; }
-details p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+summary::after { content: ""; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--wash) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23535c24' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 6v12M6 12h12'/%3E%3C/svg%3E") center/14px no-repeat; transition: transform .25s var(--ease); }
+details[open] summary::after { transform: rotate(45deg); }
+details p { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
 
 /* closing */
-.closing { margin-top: 96px; background: var(--citron); border-radius: 28px; padding: 64px 32px; text-align: center; }
-.closing h2 { margin: 0 auto 12px; max-width: 14em; }
-.closing p { margin: 0 auto 28px; max-width: 30em; color: #3d4420; }
-.closing .btn.primary { background: var(--ink); color: var(--citron); }
+.closing { margin-top: 112px; background: var(--citron); border-radius: 32px; padding: 84px 32px; text-align: center; position: relative; overflow: hidden; }
+.closing::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(37,40,36,.14) 1px, transparent 1px); background-size: 22px 22px; mask-image: radial-gradient(70% 90% at 50% 50%, #000, transparent); -webkit-mask-image: radial-gradient(70% 90% at 50% 50%, #000, transparent); }
+.closing > * { position: relative; }
+.closing h2 { margin: 0 auto 14px; max-width: 12em; font-size: clamp(36px, 5.4vw, 68px); }
+.closing p { margin: 0 auto 32px; max-width: 30em; color: #3d4420; font-size: 18px; }
+.closing .btn.primary { background: var(--ink); color: var(--citron); box-shadow: 0 10px 28px -10px rgba(37,40,36,.6); }
 .closing .btn.primary:hover { background: #000; }
 .closing .btn.ghost { color: var(--ink); border-color: rgba(37,40,36,.35); }
-.closing .btn.ghost:hover { background: rgba(255,255,255,.35); }
+.closing .btn.ghost:hover { background: rgba(255,255,255,.4); }
 .closing .cta { justify-content: center; }
 
-footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 28px 0 44px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
-footer a { color: var(--muted); }
-footer a:hover { color: var(--ink); }
+footer { margin-top: 80px; border-top: 1px solid var(--line); padding: 32px 0 52px; display: flex; gap: 22px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--ink); text-decoration: underline; }
 .footer-brand { margin-right: auto; }
-.footer-brand strong { display: block; color: var(--ink); font-size: 18px; letter-spacing: -.04em; }
+.footer-brand strong { display: block; color: var(--ink); font-size: 20px; letter-spacing: -.045em; }
 .footer-brand small { display: block; margin-top: 4px; }
 
-@media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; padding-bottom: 72px; }
-  .demo { transform: none; }
+@media (max-width: 1000px) {
+  .hero { grid-template-columns: 1fr; padding: 128px 0 88px; min-height: 0; }
+  .stage { height: auto; display: grid; gap: 18px; max-width: 420px; margin: 8px auto 0; width: 100%; }
+  .card { position: relative; inset: auto; width: auto; --rot: 0deg; }
+  .c-ink, .who { display: none; }
+  .card-head { cursor: default; touch-action: auto; }
+  .hint { display: none; }
   .bento > * { grid-column: span 6 !important; }
-  .split, .faq { grid-template-columns: 1fr; }
+  .t-a .snap { position: relative; display: block; right: auto; bottom: auto; margin: 18px 0 0 auto; }
+  .t-a .snap-label { display: none; }
+  .split, .faq { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
   .wrap { padding: 0 16px; }
-  nav { flex-wrap: wrap; gap: 10px 18px; }
-  nav a:not(.brand):not(.nav-cta) { font-size: 13px; }
-  .nav-cta { display: none; }
-  .brand { flex-basis: 100%; }
-  section { padding-top: 64px; }
-  .install { padding: 28px 18px; border-radius: 22px; }
+  .site-nav .wrap { gap: 16px; height: 60px; }
+  .site-nav a:not(.brand):not(.nav-cta) { display: none; }
+  section { padding-top: 76px; }
+  .install { padding: 32px 20px; border-radius: 24px; }
   .cmd { grid-template-columns: 1fr; gap: 2px; }
-  .closing { padding: 44px 20px; border-radius: 22px; margin-top: 64px; }
+  .closing { padding: 56px 20px; border-radius: 24px; margin-top: 76px; }
   .footer-brand { flex-basis: 100%; }
+  .install-line span { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .btn { transition: none; }
-  h1 em path, .ink-line { animation: none; stroke-dashoffset: 0; }
-  .cursor { animation: none; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .ticker-track { animation: none; }
+  h1 em path { stroke-dashoffset: 0; }
+  .reveal { opacity: 1; transform: none; }
 }
 </style>
 </head>
 <body>
 <a class="skip" href="#features">Skip to content</a>
-<div class="hero-band">
-  <div class="wrap">
-    <nav aria-label="Main navigation">
-      <a class="brand" href="#top" aria-label="Quanta home"><img src="favicon.svg" width="34" height="34" alt="">Quanta</a>
-      <a href="#features">Features</a>
-      <a href="#install">Install</a>
-      <a href="#cli">CLI</a>
-      <a href="#team">Team</a>
-      <a href="#faq">FAQ</a>
-      <a class="nav-cta" href="https://github.com/real-kijmoshi/quanta">GitHub</a>
-    </nav>
 
-    <header class="hero" id="top">
+<header class="site-nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Quanta home"><img src="favicon.svg" width="32" height="32" alt="">Quanta</a>
+    <a href="#features">Features</a>
+    <a href="#install">Install</a>
+    <a href="#cli">CLI</a>
+    <a href="#team">Team</a>
+    <a href="#faq">FAQ</a>
+    <a class="nav-cta" href="https://github.com/real-kijmoshi/quanta"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a10.9 10.9 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>GitHub</a>
+  </div>
+</header>
+
+<div class="hero-band" id="hero">
+  <canvas id="ink-canvas" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="hero" id="top">
       <div>
-        <p class="eyebrow">Whiteboard · notebook · scratchpad</p>
         <h1>A space to <em>think.<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 12 C 40 2, 80 18, 120 8 S 180 6, 196 10"/></svg></em></h1>
-        <p class="lead">Sketch a thought. Solve an equation. Run the code. Handwriting, typeset maths, plots and Python live on one shared canvas, on a server you own.</p>
+        <p class="lead">Sketch a thought. Solve an equation. Run the code. Handwriting, typeset maths, live plots and Python share one infinite canvas, on a server you own.</p>
         <div class="cta">
-          <a class="btn primary" href="#install">Install Quanta</a>
+          <a class="btn primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>Install Quanta</a>
           <a class="btn ghost" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
         </div>
+        <div class="install-line" data-copy-text="curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh"><span><b>$</b> curl -fsSL github.com/real-kijmoshi/quanta/…/install.sh | sh</span><button class="copy" type="button">Copy</button></div>
         <ul class="facts"><li>Open source · MIT</li><li>Runs on your machine</li><li>Boards are plain JSON</li></ul>
       </div>
 
-      <div class="demo" role="img" aria-label="Illustration of a Quanta board with a math card, a plot, a code card and a collaborator's cursor">
-        <div class="demo-bar" aria-hidden="true"><img src="favicon.svg" width="22" height="22" alt=""><strong>Free fall, fresh ideas</strong><span>/ Physics</span><span class="live">2 thinking together</span></div>
-        <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg" font-family="Manrope, system-ui, sans-serif">
-          <rect x="24" y="24" width="190" height="124" rx="12" fill="#ffe79a"/>
-          <text x="42" y="54" font-size="14" font-weight="800" fill="#252824">Free fall</text>
-          <text x="42" y="80" font-size="13" font-family="DM Mono, monospace" fill="#252824">h = 20 m,  g = 9.81</text>
-          <text x="42" y="102" font-size="13" font-family="DM Mono, monospace" fill="#252824">t = sqrt(2h / g)</text>
-          <text x="42" y="130" font-size="16" font-weight="800" fill="#2f7d57">= 2.02 s</text>
+      <div class="stage" aria-label="Interactive preview of Quanta cards. Edit the maths, move the slider, run the code, or drag a card.">
+        <article class="card c-math">
+          <div class="card-head" data-drag><i></i><i></i><i></i><span>Maths</span></div>
+          <label class="sr" for="math-src">Maths card source</label>
+          <textarea id="math-src" spellcheck="false">h = 20
+g = 9.81
+t = sqrt(2h / g)</textarea>
+          <div class="math-out" id="math-out" aria-live="polite"></div>
+        </article>
 
-          <rect x="236" y="24" width="300" height="168" rx="12" fill="#fff" stroke="#d6d9ce"/>
-          <path d="M256 164 H520 M256 164 V46" stroke="#a7ad9c" stroke-width="1.5" fill="none"/>
-          <path d="M256 128 C300 40 330 40 364 128 S440 216 520 80" stroke="#535c24" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <text x="262" y="184" font-size="12" font-family="DM Mono, monospace" fill="#697064">y = sin(a x)   a = 2</text>
+        <article class="card c-plot">
+          <div class="card-head" data-drag><i></i><i></i><i></i><span>Plot</span></div>
+          <svg viewBox="0 0 304 172" role="img" aria-label="Plot of two curves that change with the slider">
+            <path class="plot-axis" d="M0 86H304M152 0V172"/>
+            <path class="plot-curve" id="curve-a" stroke="#2747d6"/>
+            <path class="plot-curve" id="curve-b" stroke="#d93a2b" opacity=".9"/>
+          </svg>
+          <div class="plot-foot"><em>a</em><input id="plot-a" type="range" min="0.5" max="4" step="0.05" value="1.6" aria-label="Parameter a"><output id="plot-a-out" for="plot-a">1.6</output></div>
+        </article>
 
-          <rect x="24" y="214" width="250" height="124" rx="12" fill="#252824"/>
-          <text x="42" y="246" font-size="12" font-family="DM Mono, monospace" fill="#e4ed87">import numpy as np</text>
-          <text x="42" y="268" font-size="12" font-family="DM Mono, monospace" fill="#e8eaee">x = np.linspace(0, 1)</text>
-          <text x="42" y="290" font-size="12" font-family="DM Mono, monospace" fill="#e8eaee">np.trapz(x**2, x)</text>
-          <text x="42" y="320" font-size="13" font-family="DM Mono, monospace" fill="#8fd9ac">0.33340</text>
+        <article class="card c-code">
+          <div class="card-head" data-drag><i></i><i></i><i></i>Python<button class="run" id="run" type="button"><svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M1 0l9 5-9 5z"/></svg>Run</button></div>
+          <pre class="code-body"><span class="k">import</span> numpy <span class="k">as</span> np
+x = np.linspace(<span class="n">0</span>, <span class="n">1</span>, <span class="n">1000</span>)
+np.trapz(x**<span class="n">2</span>, x)</pre>
+          <pre class="code-out" id="code-out" aria-live="polite">Press Run<small>preview · the real app runs Python for real</small></pre>
+        </article>
 
-          <path class="ink-line" d="M300 268 c28 -40 56 40 84 0 s56 -40 84 0 s46 30 62 0" stroke="#252824" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-          <path class="ink-line b" d="M300 318 l210 0" stroke="#c8372d" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".7"/>
-          <circle cx="410" cy="376" r="26" fill="none" stroke="#2f7d57" stroke-width="3"/>
-          <text x="446" y="381" font-size="12" fill="#697064">snaps clean</text>
-          <path d="M214 86 C226 86 226 110 236 110" stroke="#535c24" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <figure class="card c-ink" style="margin:0">
+          <svg viewBox="-60 -60 120 120" aria-hidden="true">
+            <path id="snap-path" fill="none" stroke="#2f7d57" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z">
+              <animate attributeName="d" dur="6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;.45;.6;.95;1" keySplines=".4 0 .2 1;.4 0 .2 1;.4 0 .2 1;.4 0 .2 1"
+                values="M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z;M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z;M-40 0 C-40 -22 -22 -40 0 -40 C22 -40 40 -22 40 0 C40 22 22 40 0 40 C-22 40 -40 22 -40 0 Z;M-40 0 C-40 -22 -22 -40 0 -40 C22 -40 40 -22 40 0 C40 22 22 40 0 40 C-22 40 -40 22 -40 0 Z;M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z"/>
+            </path>
+          </svg>
+          <figcaption>hold still · it snaps</figcaption>
+        </figure>
 
-          <g class="cursor">
-            <path d="M470 238 l0 22 l6 -6 l5 12 l5 -2 l-5 -12 l8 0 z" fill="#e4ed87" stroke="#252824" stroke-width="1.5" stroke-linejoin="round"/>
-            <rect x="492" y="254" width="46" height="20" rx="10" fill="#252824"/>
-            <text x="515" y="268" font-size="11" font-weight="700" fill="#e4ed87" text-anchor="middle">Mira</text>
-          </g>
-        </svg>
+        <div class="who mira" aria-hidden="true"><svg viewBox="0 0 22 24"><path d="M2 1v19l5-5 4 8 4-2-4-8h7z" fill="#e4ed87" stroke="#252824" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Mira</span></div>
+        <div class="who jun" aria-hidden="true"><svg viewBox="0 0 22 24"><path d="M2 1v19l5-5 4 8 4-2-4-8h7z" fill="#9fd9ff" stroke="#252824" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Jun</span></div>
       </div>
-    </header>
+    </div>
+  </div>
+  <p class="hint"><kbd>Draw</kbd> anywhere on this panel · <kbd>drag</kbd> the cards · <kbd>edit</kbd> the maths</p>
+</div>
+
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <ul><li>Handwriting</li><li>Typeset maths</li><li>Live plots</li><li>Python &amp; JavaScript</li><li>Real-time sync</li><li>PDF import</li><li>MCP server</li><li>Self-hosted</li><li>Plain JSON</li></ul>
+    <ul><li>Handwriting</li><li>Typeset maths</li><li>Live plots</li><li>Python &amp; JavaScript</li><li>Real-time sync</li><li>PDF import</li><li>MCP server</li><li>Self-hosted</li><li>Plain JSON</li></ul>
   </div>
 </div>
 
 <main class="wrap">
   <section id="features">
-    <p class="kicker">What's inside</p>
-    <h2>From first scribble to working solution</h2>
-    <p class="sub">Your notebook, whiteboard and scratchpad share the same space, so an idea never has to change tools to keep going.</p>
+    <p class="kicker reveal">What's inside</p>
+    <h2 class="reveal">From first scribble to working solution</h2>
+    <p class="sub reveal">Your notebook, whiteboard and scratchpad share the same space, so an idea never has to change tools to keep going.</p>
     <div class="bento">
-      <div class="tile t-a">
+      <div class="tile t-a reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21l3.5-1 12-12a2.1 2.1 0 0 0-3-3l-12 12L3 21zM14 6l3 3"/></svg></div>
         <h3>Handwriting that behaves</h3>
         <p>Pressure-aware pen, brush and marker, a precise eraser, palm rejection, and shape snapping when you hold still.</p>
-        <svg viewBox="0 0 600 90" aria-hidden="true"><path d="M10 50 C 60 -10, 110 100, 170 40 S 270 -10, 330 45 S 440 95, 500 35 S 570 30, 590 45" stroke="#e4ed87" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="560" cy="14" r="6" fill="#e4ed87"/></svg>
+        <svg class="snap" viewBox="-70 -60 140 120" aria-hidden="true"><path d="M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z" fill="none" stroke="#e4ed87" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><animate attributeName="d" dur="6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;.45;.6;.95;1" keySplines=".4 0 .2 1;.4 0 .2 1;.4 0 .2 1;.4 0 .2 1" values="M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z;M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z;M-40 0 C-40 -22 -22 -40 0 -40 C22 -40 40 -22 40 0 C40 22 22 40 0 40 C-22 40 -40 22 -40 0 Z;M-40 0 C-40 -22 -22 -40 0 -40 C22 -40 40 -22 40 0 C40 22 22 40 0 40 C-22 40 -40 22 -40 0 Z;M-44 4 C-38 -26 -18 -46 4 -38 C26 -34 46 -20 38 6 C36 28 20 42 -2 44 C-24 46 -46 24 -44 4 Z"/></path></svg>
+        <span class="snap-label">wobble → circle</span>
       </div>
-      <div class="tile t-b">
+      <div class="tile t-b reveal" style="--d:80ms">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5H7l6 7-6 7h11"/></svg></div>
         <h3>Maths &amp; plots</h3>
         <p>Cards evaluate and typeset every line, then plot it with sliders.</p>
         <div class="mathline">f(x) = x^2<br>integrate(f, 0, 1)<br><b>= 0.3333</b></div>
       </div>
-      <div class="tile t-c">
+      <div class="tile t-c reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/></svg></div>
         <h3>Runnable code</h3>
         <p>JavaScript in a worker. Python on the host, or in the browser through Pyodide.</p>
         <div class="chips"><span>numpy</span><span>sympy</span><span>matplotlib</span></div>
       </div>
-      <div class="tile t-d">
+      <div class="tile t-d reveal" style="--d:80ms">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.4c1.8.8 3 2.6 3 5.6"/></svg></div>
         <h3>Live collaboration</h3>
         <p>Shared folders with revocable invitation links, live cursors and ink, and offline edits that merge on reconnect.</p>
       </div>
-      <div class="tile t-e">
+      <div class="tile t-e reveal" style="--d:160ms">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4zM18 7h1v13M9 9h5M9 13h5"/></svg></div>
         <h3>Notebooks &amp; PDFs</h3>
         <p>A4 pages in seven paper styles, PDF import you can write on, search, flashcards and printing.</p>
       </div>
-      <div class="tile t-f">
+      <div class="tile t-f reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></svg></div>
         <h3>AI that edits the board</h3>
         <p>Ask Claude, Ollama, OpenRouter, LM Studio or Codex to read and change cards. Every provider uses the same validated tools.</p>
         <div class="chips"><span>Ollama</span><span>Anthropic</span><span>OpenRouter</span><span>LM Studio</span><span>Claude Code</span><span>Codex</span></div>
       </div>
-      <div class="tile t-g">
+      <div class="tile t-g reveal" style="--d:80ms">
+        <div class="ico" style="background:#fff"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v3"/></svg></div>
         <h3>MCP, built in</h3>
         <p>Point any MCP client at <code>/mcp</code> to list, read and edit boards. Changes appear live in open tabs, and an agent can never do more than a person at the canvas.</p>
         <div class="chips"><span>Streamable HTTP</span><span>WebMCP tools</span></div>
@@ -290,65 +415,66 @@ footer a:hover { color: var(--ink); }
   </section>
 
   <section id="install">
-    <div class="install">
-      <p class="kicker" style="color:var(--citron)">Get started</p>
+    <div class="install reveal">
+      <p class="kicker">Get started</p>
       <h2>Up and running in a minute</h2>
       <p class="sub">Needs <a href="https://nodejs.org">Node.js 22</a> or newer. Downloads are checked against a published SHA-256 before anything is installed.</p>
       <div class="tabs" role="tablist" aria-label="Install method">
-        <button role="tab" aria-selected="true" aria-controls="unix" data-tab="unix">macOS / Linux</button>
-        <button role="tab" aria-selected="false" aria-controls="win" tabindex="-1" data-tab="win">Windows</button>
-        <button role="tab" aria-selected="false" aria-controls="docker" tabindex="-1" data-tab="docker">Docker</button>
-        <button role="tab" aria-selected="false" aria-controls="npm" tabindex="-1" data-tab="npm">npm</button>
-        <button role="tab" aria-selected="false" aria-controls="src" tabindex="-1" data-tab="src">From source</button>
+        <button role="tab" id="t-unix" aria-controls="unix" aria-selected="true" data-tab="unix">macOS / Linux</button>
+        <button role="tab" id="t-win" aria-controls="win" aria-selected="false" tabindex="-1" data-tab="win">Windows</button>
+        <button role="tab" id="t-docker" aria-controls="docker" aria-selected="false" tabindex="-1" data-tab="docker">Docker</button>
+        <button role="tab" id="t-npm" aria-controls="npm" aria-selected="false" tabindex="-1" data-tab="npm">npm</button>
+        <button role="tab" id="t-src" aria-controls="src" aria-selected="false" tabindex="-1" data-tab="src">From source</button>
       </div>
-      <div class="panel" id="unix"><div class="code" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh</div>
+      <div class="panel" id="unix" role="tabpanel" aria-labelledby="t-unix"><div class="term"><div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="code" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh</div></div>
         <p class="note">Installs to <code>~/.quanta</code> and links <code>quanta</code> into <code>~/.local/bin</code>. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.sh">install.sh</a>.</p></div>
-      <div class="panel" id="win" hidden><div class="code" data-copy>irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1 | iex</div>
+      <div class="panel" id="win" role="tabpanel" aria-labelledby="t-win" hidden><div class="term"><div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="code" data-copy>irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1 | iex</div></div>
         <p class="note">Run in PowerShell. Installs to <code>%USERPROFILE%\.quanta</code> and adds <code>quanta</code> to your PATH. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.ps1">install.ps1</a>.</p></div>
-      <div class="panel" id="docker" hidden><div class="code" data-copy>docker run -d --name quanta -p 127.0.0.1:4173:4173 -v quanta-data:/data \
+      <div class="panel" id="docker" role="tabpanel" aria-labelledby="t-docker" hidden><div class="term"><div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="code" data-copy>docker run -d --name quanta -p 127.0.0.1:4173:4173 -v quanta-data:/data \
   -e QUANTA_AUTH=1 -e QUANTA_PUBLIC_URL=http://localhost:4173 \
   -e QUANTA_ADMIN_EMAIL=you@example.com -e QUANTA_ADMIN_PASSWORD=choose-a-long-password \
-  ghcr.io/real-kijmoshi/quanta:latest</div>
+  ghcr.io/real-kijmoshi/quanta:latest</div></div>
         <p class="note">Containers run in account mode: open <code>http://localhost:4173</code> and sign in with that email and password. For an HTTPS team server on a real domain, see Run it for a team below.</p></div>
-      <div class="panel" id="npm" hidden><div class="code" data-copy>npm install -g https://github.com/real-kijmoshi/quanta/releases/latest/download/quanta.tgz</div></div>
-      <div class="panel" id="src" hidden><div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git
+      <div class="panel" id="npm" role="tabpanel" aria-labelledby="t-npm" hidden><div class="term"><div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="code" data-copy>npm install -g https://github.com/real-kijmoshi/quanta/releases/latest/download/quanta.tgz</div></div></div>
+      <div class="panel" id="src" role="tabpanel" aria-labelledby="t-src" hidden><div class="term"><div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="code plain" data-copy>git clone https://github.com/real-kijmoshi/quanta.git
 cd quanta
 npm ci --ignore-scripts
-npm start</div></div>
+npm start</div></div></div>
       <p class="note">Then run <code>quanta start --open</code>. Updating is re-running the installer; your boards are never touched.</p>
     </div>
   </section>
 
   <section id="cli">
-    <p class="kicker">Command line</p>
-    <h2>The <code>quanta</code> command</h2>
-    <p class="sub">One entry point for running, sharing and looking after your workspace.</p>
-    <div class="cmds">
-      <div class="cmd"><code>quanta start --open</code><span>Run locally and open your browser</span></div>
-      <div class="cmd"><code>quanta share</code><span>Let other devices on your network join (needs a folder invitation)</span></div>
-      <div class="cmd"><code>quanta tunnel</code><span>Share over the internet with a Cloudflare quick tunnel</span></div>
-      <div class="cmd"><code>quanta backup</code><span>Save a verified copy of your boards</span></div>
-      <div class="cmd"><code>quanta doctor</code><span>Check Node.js, data folder and optional tools</span></div>
-      <div class="cmd"><code>quanta --port 8080 --data ~/boards</code><span>Choose the port and where boards are stored</span></div>
-    </div>
-    <p class="cli-note">Your boards are plain JSON in <code>~/.quanta/data</code>, so updating never touches them.</p>
-  </section>
-
-  <section id="team">
-    <div class="team">
-      <p class="kicker">Always on</p>
-      <h3>Run it for a team</h3>
-      <p>On a fresh Debian or Ubuntu server with a domain pointed at it, one command sets up Docker, HTTPS and an owner account.</p>
-      <div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git && cd quanta
-sudo ./deploy/install.sh board.example.com you@example.com</div>
-      <p class="note" style="margin-top:14px">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
+    <p class="kicker reveal">Command line</p>
+    <h2 class="reveal">The <code>quanta</code> command</h2>
+    <p class="sub reveal">One entry point for running, sharing and looking after your workspace.</p>
+    <div class="split">
+      <div>
+        <div class="cmds reveal">
+          <div class="cmd"><code>quanta start --open</code><span>Run locally and open your browser</span></div>
+          <div class="cmd"><code>quanta share</code><span>Let other devices on your network join (needs a folder invitation)</span></div>
+          <div class="cmd"><code>quanta tunnel</code><span>Share over the internet with a Cloudflare quick tunnel</span></div>
+          <div class="cmd"><code>quanta backup</code><span>Save a verified copy of your boards</span></div>
+          <div class="cmd"><code>quanta doctor</code><span>Check Node.js, data folder and optional tools</span></div>
+          <div class="cmd"><code>quanta --port 8080 --data ~/boards</code><span>Choose the port and where boards are stored</span></div>
+        </div>
+        <p class="cli-note">Your boards are plain JSON in <code>~/.quanta/data</code>, so updating never touches them.</p>
+      </div>
+      <div class="team reveal" id="team" style="--d:100ms">
+        <p class="kicker">Always on</p>
+        <h3>Run it for a team</h3>
+        <p>On a fresh Debian or Ubuntu server with a domain pointed at it, one command sets up Docker, HTTPS and an owner account.</p>
+        <div class="term"><div class="code plain" data-copy>git clone https://github.com/real-kijmoshi/quanta.git && cd quanta
+sudo ./deploy/install.sh board.example.com you@example.com</div></div>
+        <p class="note" style="margin-top:14px">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
+      </div>
     </div>
   </section>
 
   <section id="faq">
-    <p class="kicker">Questions</p>
-    <h2>Good to know</h2>
-    <div class="faq" style="margin-top:32px">
+    <p class="kicker reveal">Questions</p>
+    <h2 class="reveal">Good to know</h2>
+    <div class="faq reveal" style="margin-top:32px">
       <details><summary>Do I need an account or internet?</summary><p>No. Local mode has no accounts and works offline. Only cloud AI providers, the Cloudflare tunnel and on-demand Pyodide packages need a connection.</p></details>
       <details><summary>Where are my boards stored?</summary><p>As plain JSON in <code>~/.quanta/data</code>. Run <code>quanta backup</code> for a verified copy.</p></details>
       <details><summary>Is it safe to run other people's code?</summary><p>Guests run Python in their own browser via Pyodide, and JavaScript in a browser worker. Host Python, AI and MCP are owner-only.</p></details>
@@ -356,7 +482,7 @@ sudo ./deploy/install.sh board.example.com you@example.com</div>
     </div>
   </section>
 
-  <div class="closing">
+  <div class="closing reveal">
     <h2>Give your ideas room.</h2>
     <p>Free, open source and yours to keep. Install it, open a board, and start thinking.</p>
     <div class="cta">
@@ -373,9 +499,33 @@ sudo ./deploy/install.sh board.example.com you@example.com</div>
     <a href="https://github.com/real-kijmoshi/quanta/blob/main/SECURITY.md">Security</a>
   </footer>
 </main>
+
 <script>
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r = document) => r.querySelector(s);
+
+/* nav background once scrolled */
+const nav = $('#nav');
+const onScroll = () => nav.classList.toggle('scrolled', scrollY > 24);
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+/* scroll reveal */
+const reveals = document.querySelectorAll('.reveal');
+if ('IntersectionObserver' in window && !reduceMotion) {
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
+  reveals.forEach((el) => io.observe(el));
+} else reveals.forEach((el) => el.classList.add('in'));
+
+/* bento spotlight */
+document.querySelectorAll('.tile').forEach((tile) => tile.addEventListener('pointermove', (e) => {
+  const r = tile.getBoundingClientRect();
+  tile.style.setProperty('--mx', `${e.clientX - r.left}px`);
+  tile.style.setProperty('--my', `${e.clientY - r.top}px`);
+}));
+
+/* install tabs (arrow keys move between tabs) */
 const tabs = [...document.querySelectorAll('[data-tab]')];
-const select = tab => tabs.forEach(t => {
+const select = (tab) => tabs.forEach((t) => {
   const on = t === tab;
   t.setAttribute('aria-selected', on);
   t.tabIndex = on ? 0 : -1;
@@ -383,26 +533,182 @@ const select = tab => tabs.forEach(t => {
 });
 tabs.forEach((tab, i) => {
   tab.addEventListener('click', () => select(tab));
-  tab.addEventListener('keydown', e => {
-    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
-    if (next === undefined) return;
-    e.preventDefault();
-    const target = tabs[(next + tabs.length) % tabs.length];
-    select(target);
-    target.focus();
+  tab.addEventListener('keydown', (e) => {
+    const target = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (target === undefined) return;
+    const next = tabs[(target + tabs.length) % tabs.length];
+    next.focus(); select(next); e.preventDefault();
   });
 });
-document.querySelectorAll('[data-copy]').forEach(box => {
+
+/* copy buttons */
+async function copy(text, button) {
+  const label = button.textContent;
+  try { await navigator.clipboard.writeText(text); button.textContent = 'Copied'; }
+  catch { button.textContent = 'Press Ctrl+C'; }
+  setTimeout(() => { button.textContent = label; }, 1600);
+}
+document.querySelectorAll('[data-copy]').forEach((box) => {
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = 'Copy';
-  button.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(box.firstChild.textContent.trim()); button.textContent = 'Copied'; }
-    catch { button.textContent = 'Press Ctrl+C'; }
-    setTimeout(() => { button.textContent = 'Copy'; }, 1600);
-  });
+  const text = box.textContent.trim();
+  button.addEventListener('click', () => copy(text, button));
   box.appendChild(button);
 });
+const line = $('.install-line');
+line.querySelector('button').addEventListener('click', (e) => copy(line.dataset.copyText, e.currentTarget));
+
+/* ---- live math card: a tiny parser, no eval ---- */
+function evaluateMath(source) {
+  const fns = { sqrt: Math.sqrt, sin: Math.sin, cos: Math.cos, tan: Math.tan, ln: Math.log, log: Math.log10, abs: Math.abs, exp: Math.exp };
+  const vars = { pi: Math.PI, e: Math.E };
+  return source.split('\n').map((raw) => {
+    const text = raw.trim();
+    if (!text) return null;
+    try {
+      const m = /^([A-Za-z_]\w*)\s*=(?!=)\s*(.+)$/.exec(text);
+      const value = parse(m ? m[2] : text);
+      if (m) vars[m[1]] = value;
+      return { value, name: m ? m[1] : '' };
+    } catch { return { error: true }; }
+  });
+  function parse(src) {
+    const tokens = src.match(/\d*\.?\d+(?:e[+-]?\d+)?|[A-Za-z_]\w*|[-+*/^(),]/gi);
+    if (!tokens || tokens.join('').length < src.replace(/\s/g, '').length) throw new Error('bad token');
+    let i = 0;
+    const peek = () => tokens[i];
+    const next = () => tokens[i++];
+    const isNum = (t) => t !== undefined && /^[\d.]/.test(t);
+    const isId = (t) => t !== undefined && /^[A-Za-z_]/.test(t);
+    function expr() { let v = term(); while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term(); return v; }
+    function term() {
+      let v = unary();
+      for (;;) {
+        const t = peek();
+        if (t === '*') { next(); v *= unary(); }
+        else if (t === '/') { next(); v /= unary(); }
+        else if (isId(t) || t === '(') v *= unary();
+        else return v;
+      }
+    }
+    function unary() { return peek() === '-' ? (next(), -unary()) : power(); }
+    function power() { const b = atom(); return peek() === '^' ? (next(), Math.pow(b, unary())) : b; }
+    function atom() {
+      const t = next();
+      if (isNum(t)) return parseFloat(t);
+      if (t === '(') { const v = expr(); if (next() !== ')') throw new Error('expected )'); return v; }
+      if (isId(t)) {
+        if (fns[t] && peek() === '(') { next(); const v = expr(); if (next() !== ')') throw new Error('expected )'); return fns[t](v); }
+        if (!(t in vars)) throw new Error('unknown ' + t);
+        return vars[t];
+      }
+      throw new Error('unexpected');
+    }
+    const result = expr();
+    if (i !== tokens.length || !Number.isFinite(result)) throw new Error('bad expression');
+    return result;
+  }
+}
+const fmt = (n) => String(Number(n.toPrecision(4)));
+const mathSrc = $('#math-src'), mathOut = $('#math-out');
+function renderMath() {
+  const rows = evaluateMath(mathSrc.value);
+  mathOut.innerHTML = '';
+  rows.forEach((r) => {
+    if (!r) return;
+    const d = document.createElement('div');
+    if (r.error) { d.className = 'err'; d.textContent = 'can’t evaluate'; }
+    else d.innerHTML = `<span>${r.name || ''} =</span><b>${fmt(r.value)}</b>`;
+    mathOut.append(d);
+  });
+}
+mathSrc.addEventListener('input', renderMath); renderMath();
+
+/* ---- live plot card ---- */
+const slider = $('#plot-a'), sliderOut = $('#plot-a-out'), curveA = $('#curve-a'), curveB = $('#curve-b');
+function renderPlot() {
+  const a = Number(slider.value);
+  sliderOut.textContent = a.toFixed(1);
+  const W = 304, H = 172, span = Math.PI * 2;
+  let da = '', db = '';
+  for (let k = 0; k <= 240; k += 1) {
+    const x = -span + (2 * span * k) / 240;
+    const px = (k / 240 * W).toFixed(1);
+    da += `${k ? 'L' : 'M'}${px} ${(H / 2 - Math.sin(a * x) * 54).toFixed(1)}`;
+    db += `${k ? 'L' : 'M'}${px} ${(H / 2 - (Math.sin(a * x) / (1 + x * x / 6)) * 54).toFixed(1)}`;
+  }
+  curveA.setAttribute('d', da); curveB.setAttribute('d', db);
+}
+slider.addEventListener('input', renderPlot); renderPlot();
+
+/* ---- code card: compute the real trapezoid result in the page ---- */
+const runBtn = $('#run'), codeOut = $('#code-out');
+runBtn.addEventListener('click', () => {
+  codeOut.innerHTML = 'running…<small>preview · the real app runs Python for real</small>';
+  setTimeout(() => {
+    const n = 1000; let sum = 0;
+    for (let k = 0; k < n; k += 1) { const x0 = k / (n - 1), x1 = (k + 1) / (n - 1); if (k < n - 1) sum += ((x0 * x0 + x1 * x1) / 2) * (x1 - x0); }
+    codeOut.innerHTML = `${sum.toFixed(7)}<small>preview · the real app runs Python for real</small>`;
+  }, reduceMotion ? 0 : 420);
+});
+
+/* ---- draggable cards (desktop) ---- */
+const wide = matchMedia('(min-width: 1001px)');
+document.querySelectorAll('[data-drag]').forEach((handle) => {
+  const card = handle.closest('.card');
+  let start = null;
+  handle.addEventListener('pointerdown', (e) => {
+    if (!wide.matches || e.target.closest('button')) return;
+    start = { x: e.clientX, y: e.clientY, dx: parseFloat(card.dataset.dx || 0), dy: parseFloat(card.dataset.dy || 0) };
+    handle.setPointerCapture(e.pointerId);
+    card.classList.add('dragging');
+    card.parentElement.append(card);
+  });
+  handle.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const dx = start.dx + e.clientX - start.x, dy = start.dy + e.clientY - start.y;
+    card.dataset.dx = dx; card.dataset.dy = dy;
+    card.style.setProperty('--dx', dx + 'px'); card.style.setProperty('--dy', dy + 'px');
+  });
+  const end = () => { start = null; card.classList.remove('dragging'); };
+  handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
+});
+
+/* ---- draw-anywhere ink on the hero (mouse and pen; touch keeps scrolling) ---- */
+const hero = $('#hero'), canvas = $('#ink-canvas'), ctx = canvas.getContext('2d');
+const strokes = []; let current = null, raf = 0, dpr = 1;
+function resize() { dpr = Math.min(devicePixelRatio || 1, 2); canvas.width = hero.clientWidth * dpr; canvas.height = hero.clientHeight * dpr; }
+addEventListener('resize', resize); resize();
+function paint(now) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.lineCap = ctx.lineJoin = 'round';
+  for (let s = strokes.length - 1; s >= 0; s -= 1) {
+    const st = strokes[s];
+    const age = st === current ? 0 : now - st.t;
+    const alpha = Math.max(0, 1 - age / 3200);
+    if (alpha <= 0) { strokes.splice(s, 1); continue; }
+    ctx.strokeStyle = `rgba(228,237,135,${alpha * .9})`;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    st.pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+  }
+  raf = strokes.length ? requestAnimationFrame(paint) : 0;
+}
+const point = (e) => { const r = hero.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+if (!reduceMotion) {
+  hero.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' || e.button !== 0 || e.target.closest('a,button,input,textarea,.card,.install-line,.hint')) return;
+    current = { pts: [point(e)], t: performance.now() };
+    strokes.push(current);
+    if (!raf) raf = requestAnimationFrame(paint);
+  });
+  addEventListener('pointermove', (e) => { if (current) current.pts.push(point(e)); });
+  const finish = () => { if (current) { current.t = performance.now(); current = null; } };
+  addEventListener('pointerup', finish); addEventListener('pointercancel', finish);
+}
 </script>
 </body>
 </html>

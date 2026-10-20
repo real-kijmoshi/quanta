@@ -52,3 +52,34 @@ textarea:focus-visible, select:focus-visible { outline: none; box-shadow: 0 0 0 
   .icon-btn:active, .pill-btn:active, .ghost-btn:active, .solid-btn:active, .tool:active { transform: none; }
 }
 @media print { .topbar { box-shadow: none; } }
+
+/* ---- Plots, code and math cards ---- */
+.obj-plot, .obj-code, .obj-math { border-radius: 12px; }
+.obj-plot.selected, .obj-code.selected, .obj-math.selected { border-color: var(--blue); }
+.plot-labels text, .plot-point-label { paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+.plot-labels text { font-size: 10px; fill: #5d636b; }
+.plot-legend-bg { fill: rgba(255, 255, 255, .88); stroke: var(--line); stroke-width: 1; }
+.plot-grid { stroke: rgba(60, 70, 90, .08); }
+.plot-curve { stroke-width: 2.4; }
+.plot-sliders { background: var(--chrome); padding: 6px 12px; }
+.slider-name { font-family: var(--mono); font-style: italic; color: var(--ink); }
+.slider-value { text-align: right; font-variant-numeric: tabular-nums; }
+.slider input { height: 16px; cursor: pointer; }
+.plot-errors { background: #fdf4f3; border-top: 1px solid #f4d4d1; padding: 6px 10px; }
+
+.obj-head { padding: 6px 8px 6px 10px; background: var(--chrome); }
+.lang-select { padding: 2px 4px; border-radius: 5px; font-weight: 600; }
+.lang-select:hover { background: var(--line-soft); color: var(--ink); }
+.run-btn { padding: 5px 11px; transition: background-color .12s ease, transform .08s ease; }
+.run-btn:hover { background: #000; }
+.run-btn:active { transform: scale(.96); }
+.run-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.code-wrap textarea, .code-hl { padding: 12px 14px; }
+.obj-output { font-size: 11.5px; padding: 8px 12px; }
+.obj-output::before { content: "Output"; display: block; font-family: system-ui, sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 2px; }
+.obj-output.ok::before { color: var(--green); }
+.obj-output.bad::before { content: "Error"; color: var(--red); }
+.math-view { padding: 12px 16px; gap: 7px; }
+.mval { font-weight: 500; font-variant-numeric: tabular-nums; }
+.mrow + .mrow { border-top-style: solid; }
+.math-results { background: var(--chrome); }
