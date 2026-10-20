@@ -1,10 +1,11 @@
 // All canvas pointer input: pan, pinch-zoom, marquee select, drag, resize,
 // draw, erase, lasso, arrows. Stylus, mouse, and touch each get sensible
-// defaults: a pen always draws, fingers pan and pinch (unless finger drawing
-// is on), and two fingers always pinch-zoom.
+// defaults: fingers pan while drawing (unless finger drawing is on), selection
+// tools work with any pointer, and two fingers always pinch-zoom.
 import { $, app, emit, on, toast } from "./core.js";
-import { beginGesture, endGesture, object, objectList, sendPresence, updateObject, updateObjects } from "./doc.js";
+import { beginGesture, endGesture, object, objectList, sendPresence, strokeList, updateObject, updateObjects } from "./doc.js";
 import { fromEndpoints, endpoints } from "./arrows.js";
+import { strokeHits, strokeInPolygon } from "./stroke.js";
 import {
   beginLasso,
   beginStroke,
@@ -16,9 +17,11 @@ import {
   eraseAt,
   extendStroke,
   inkSettings,
+  inkSelection,
   isInkTool,
   lassoHitTest,
   moveLasso,
+  selectInk,
 } from "./ink.js";
 import {
   childrenOfFrame,
@@ -27,6 +30,7 @@ import {
   objectAt,
   select,
   selectionBounds,
+  startEdit,
   stopEdit,
   toggleSelect,
   updateSelectionUI,
@@ -99,8 +103,12 @@ function onWheel(event) {
 }
 
 function onDoubleClick(event) {
-  if (event.target.closest(".obj") || app.mode !== "select") return;
-  createObjectAt("note", screenToWorld(event.clientX, event.clientY));
+  if (event.target.closest(".obj, button, input, textarea, .obj-toolbar, .lasso-bar") || app.mode !== "select") return;
+  const point = screenToWorld(event.clientX, event.clientY);
+  // Pointer capture can retarget the double click to the shell even when the
+  // user clicked a card. Resolve geometry to keep editing existing cards.
+  const target = objectAt(point);
+  if (target) startEdit(target.id);
 }
 
 function beginPan(event) {
@@ -196,8 +204,7 @@ function onPointerDown(event) {
     event.button === 1 ||
     app.mode === "hand" ||
     app.spacePan ||
-    (event.pointerType === "touch" && isInkTool(app.mode) && !fingerDraws) ||
-    (event.pointerType === "touch" && app.mode === "select" && !node && !handle);
+    (event.pointerType === "touch" && ["pen", "highlighter", "eraser"].includes(app.mode) && !fingerDraws);
   if (wantsPan) {
     beginPan(event);
     return;
@@ -224,6 +231,14 @@ function onPointerDown(event) {
   }
 
   if (app.mode === "select") {
+    if (!handle && !arrowEnd && !event.shiftKey && lassoHitTest(point)) {
+      beginLasso(point);
+      drag = { kind: "lasso", pointerId: event.pointerId };
+      return;
+    }
+    const previousInk = inkSelection();
+    const origin = new Set([...app.selection, ...(previousInk?.objectIds ?? [])]);
+    const originStrokes = previousInk?.strokeIds ?? [];
     clearInkSelection();
     if (arrowEnd && node && app.selection.has(node.dataset.id)) {
       const arrow = object(node.dataset.id);
@@ -246,7 +261,27 @@ function onPointerDown(event) {
       };
       return;
     }
-    const target = node ? object(node.dataset.id) : null;
+    const stroke = !handle && !arrowEnd && strokeList().findLast((s) => strokeHits(s, [point.x, point.y], 6 / view.zoom));
+    if (stroke) {
+      clearSelection();
+      const ids = event.shiftKey ? new Set(originStrokes) : new Set();
+      if (ids.has(stroke.id)) ids.delete(stroke.id);
+      else ids.add(stroke.id);
+      selectInk([...ids], event.shiftKey ? [...origin] : []);
+      if (!event.shiftKey) {
+        beginLasso(point);
+        drag = { kind: "lasso", pointerId: event.pointerId };
+      }
+      return;
+    }
+    const target = node ? object(node.dataset.id) : objectAt(point);
+    if (target && event.shiftKey && originStrokes.length) {
+      if (origin.has(target.id)) origin.delete(target.id);
+      else origin.add(target.id);
+      clearSelection();
+      selectInk(originStrokes, [...origin]);
+      return;
+    }
     if (target && !target.props?.locked) {
       const id = target.id;
       if (event.shiftKey) toggleSelect(id);
@@ -274,7 +309,8 @@ function onPointerDown(event) {
       kind: "marquee",
       start: point,
       add: event.shiftKey,
-      origin: new Set(app.selection),
+      origin,
+      originStrokes,
       lockedTarget: target?.id ?? null,
       pointerId: event.pointerId,
       screen: { x: event.clientX, y: event.clientY },
@@ -307,7 +343,7 @@ function sizeMarquee(a, b) {
   marquee.style.height = `${Math.abs(y2 - y1)}px`;
 }
 
-function marqueeSelect(a, b, add, origin) {
+function marqueeSelect(a, b, add, origin, originStrokes = []) {
   const rect = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), r: Math.max(a.x, b.x), b: Math.max(a.y, b.y) };
   const hits = objectList()
     .filter((o) =>
@@ -318,7 +354,17 @@ function marqueeSelect(a, b, add, origin) {
         : o.x + o.w >= rect.x && o.x <= rect.r && o.y + o.h >= rect.y && o.y <= rect.b,
     )
     .map((o) => o.id);
-  select(add ? [...origin, ...hits] : hits);
+  const polygon = [[rect.x, rect.y], [rect.r, rect.y], [rect.r, rect.b], [rect.x, rect.b]];
+  const strokes = strokeList().filter((s) => strokeInPolygon(s, polygon)).map((s) => s.id);
+  const strokeIds = add ? [...new Set([...originStrokes, ...strokes])] : strokes;
+  const objectIds = add ? [...new Set([...origin, ...hits])] : hits;
+  if (strokeIds.length) {
+    clearSelection();
+    selectInk(strokeIds, objectIds);
+  } else {
+    clearInkSelection();
+    select(objectIds);
+  }
 }
 
 function applyResize(context, point) {
@@ -455,7 +501,7 @@ function onPointerMove(event) {
   }
   if (drag.kind === "marquee") {
     sizeMarquee(drag.start, point);
-    marqueeSelect(drag.start, point, drag.add, drag.origin);
+    marqueeSelect(drag.start, point, drag.add, drag.origin, drag.originStrokes);
     return;
   }
   if (drag.kind === "arrow") {
@@ -530,6 +576,7 @@ function onPointerUp(event) {
     endGesture();
   } else if (current.kind === "erase") endGesture();
   else if (current.kind === "lasso") {
+    moveLasso(screenToWorld(event.clientX, event.clientY));
     endLasso();
   } else if (current.kind === "move" || current.kind === "resize") {
     endGesture();
@@ -543,6 +590,7 @@ function onPointerUp(event) {
   } else if (current.kind === "marquee") {
     marquee.hidden = true;
     const moved = Math.hypot(event.clientX - current.screen.x, event.clientY - current.screen.y) > 4;
+    if (moved) marqueeSelect(current.start, screenToWorld(event.clientX, event.clientY), current.add, current.origin, current.originStrokes);
     if (!moved && current.lockedTarget) select([current.lockedTarget]);
   } else if (current.kind === "arrow") {
     if (current.created) {
@@ -565,9 +613,10 @@ function onPointerUp(event) {
 }
 
 export function setMode(mode) {
+  if (mode !== "select") stopEdit();
   app.mode = mode;
   if (CREATE_MODES.has(mode)) app.lastCreateMode = mode;
-  if (mode !== "lasso") clearInkSelection();
+  if (mode !== "lasso" && mode !== "select") clearInkSelection();
   if (mode !== "select") clearSelection();
   shell.style.cursor = "";
   emit("mode", mode);

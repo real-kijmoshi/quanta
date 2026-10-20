@@ -3,7 +3,7 @@
 // so they stay put at any zoom level.
 //
 // Three canvases: highlighter ink (multiply-blended so text shows through, like
-// a real marker), pen ink, and a live layer redrawn every frame for the stroke
+// a real marker), pen ink, and a live layer painted on input for the stroke
 // being drawn, the lasso, and other people's in-progress strokes.
 import { $, app, el, emit, on, prefs, setPrefs, uid } from "./core.js";
 import {
@@ -163,6 +163,14 @@ function scheduleLive() {
   });
 }
 
+function paintLiveNow() {
+  // Pointer events already arrive near a display frame. Deferring local ink
+  // again can leave the line a frame behind the native cursor.
+  if (liveFrame) cancelAnimationFrame(liveFrame);
+  liveFrame = 0;
+  redrawLive();
+}
+
 function prepare(context, canvas, { camera = view, padding = 0 } = {}) {
   const dpr = inkDpr();
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -308,6 +316,7 @@ export function beginStroke(event, tool) {
     size: highlighter ? inkSettings.highlightSize : inkSettings.size,
     style: inkSettings.style,
     captureZoom: view.zoom,
+    createdAt: Date.now(),
     sim: event.pointerType !== "pen",
     points: [pointFrom(event)],
     version: 0,
@@ -316,8 +325,8 @@ export function beginStroke(event, tool) {
   activeBounds = { x: first[0], y: first[1], r: first[0], b: first[1] };
   holdAnchor = { x: event.clientX, y: event.clientY };
   armHold();
+  paintLiveNow();
   sendPresence({ inkStroke: active }, { urgent: true });
-  scheduleLive();
 }
 
 function armHold() {
@@ -361,8 +370,8 @@ export function extendStroke(event) {
     armHold();
   }
   const last = active.points[active.points.length - 1];
+  paintLiveNow();
   sendPresence({ inkStroke: active, x: Math.round(last[0]), y: Math.round(last[1]) });
-  scheduleLive();
 }
 
 export function cancelStroke() {
@@ -431,6 +440,18 @@ export function eraseAt(point) {
 let lassoBar = null;
 
 export const inkSelection = () => (lasso && lasso.mode !== "drawing" ? lasso : null);
+
+export function selectInk(strokeIds, objectIds = []) {
+  clearInkSelection();
+  if (!strokeIds.length && !objectIds.length) return 0;
+  lasso = { mode: "idle", strokeIds, objectIds, bounds: null };
+  lasso.bounds = selectionBox();
+  scheduleLive();
+  positionLassoBar();
+  const count = strokeIds.length + objectIds.length;
+  emit("ink:selection", count);
+  return count;
+}
 
 export function clearInkSelection() {
   if (!lasso) return;
@@ -537,7 +558,7 @@ export function moveLasso(point) {
   };
   if (lasso.objectIds.length) {
     updateObjects(
-      lasso.objectIds,
+      lasso.objectIds.filter((id) => !object(id)?.props?.locked),
       (current) => {
         const source = lasso.objectOrigins.get(current.id);
         return {
@@ -571,13 +592,9 @@ export function endLasso() {
       clearInkSelection();
       return 0;
     }
-    lasso = { mode: "idle", polygon, strokeIds, objectIds, bounds: null };
-    lasso.bounds = selectionBox();
-    scheduleLive();
-    positionLassoBar();
-    emit("ink:selection", strokeIds.length + objectIds.length);
-    return strokeIds.length + objectIds.length;
+    return selectInk(strokeIds, objectIds);
   }
+  if (lasso.mode === "idle") return lasso.strokeIds.length + lasso.objectIds.length;
   // Commit a move or scale: bake the transform into the stroke points.
   const { dx, dy, scale } = lasso.offset;
   const o = lasso.origin;
@@ -660,6 +677,7 @@ function mountLassoBar() {
       el("button", { class: "ink-color small", style: `--ink:${color}`, title: "Recolour ink", dataset: { act: "color", color }, type: "button" }),
     )),
     el("div", { class: "tb-group" }, [
+      el("button", { class: "tb-btn", dataset: { act: "recognize" }, type: "button", title: "Convert selected handwriting to text", text: "To text" }),
       el("button", { class: "tb-btn", dataset: { act: "duplicate" }, type: "button", title: "Duplicate (Ctrl+D)", text: "Duplicate" }),
       el("button", { class: "tb-btn danger", dataset: { act: "delete" }, type: "button", title: "Delete (Del)", text: "Delete" }),
     ]),
@@ -670,7 +688,8 @@ function mountLassoBar() {
     if (!button || !lasso) return;
     if (button.dataset.act === "color") {
       updateStrokes(lasso.strokeIds, (s) => (s.tool === "highlighter" ? {} : { color: button.dataset.color }));
-    } else if (button.dataset.act === "duplicate") duplicateInkSelection();
+    } else if (button.dataset.act === "recognize") emit("notes:recognize");
+    else if (button.dataset.act === "duplicate") duplicateInkSelection();
     else if (button.dataset.act === "delete") deleteInkSelection();
   });
   on("view", positionLassoBar);

@@ -4,6 +4,10 @@ data/
 npm-debug.log*
 backups/
 artifacts/
+dist/
+*.tgz
 .env
 .env.*
 !.env.example
+.claude/
+.commandcode/

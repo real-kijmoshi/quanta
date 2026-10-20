@@ -1,0 +1,45 @@
+services:
+  quanta:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      QUANTA_AUTH: "1"
+      QUANTA_PUBLIC_URL: https://${QUANTA_DOMAIN:?Set QUANTA_DOMAIN in .env}
+      QUANTA_ADMIN_EMAIL: ${QUANTA_ADMIN_EMAIL:?Set QUANTA_ADMIN_EMAIL in .env}
+      QUANTA_ADMIN_PASSWORD: ${QUANTA_ADMIN_PASSWORD:?Set QUANTA_ADMIN_PASSWORD in .env}
+    volumes:
+      - quanta_data:/data
+      - quanta_backups:/backups
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      QUANTA_DOMAIN: ${QUANTA_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      quanta:
+        condition: service_healthy
+volumes:
+  quanta_data:
+  quanta_backups:
+  caddy_data:
+  caddy_config:

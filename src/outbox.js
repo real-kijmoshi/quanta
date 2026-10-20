@@ -1,7 +1,7 @@
 // Small per-board change journal; unlike full snapshots, writing this before
 // transmission also survives reloads and switching boards during a failure.
-import { prefs } from './core.js';
-const key = id => `quanta:outbox:${id}`;
+import { prefs, storageKey } from './core.js';
+const key = id => storageKey(`outbox:${id}`);
 export const readOutbox = id => prefs(`outbox:${id}`, null);
 export function queueChanges(id, ops) {
   const queued = readOutbox(id) ?? { objects: {}, strokes: {}, deleted: {} };

@@ -7,6 +7,7 @@
   --line: #dfe1dc;
   --line-soft: #ebece7;
   --paper: #f7f8fa;
+  --canvas-paper: #f2f2f2;
   --chrome: #fbfbf9;
   --white: #fff;
   --blue: #5a67eb;
@@ -348,7 +349,7 @@ code { font-family: var(--mono); font-size: .92em; background: #fff; padding: 1p
   user-select: none;
   flex: 1;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--canvas-paper);
   touch-action: none;
   outline: none;
 }
@@ -1000,7 +1001,7 @@ body.presenting .canvas-grid { opacity: .4; }
    ====================================================================== */
 
 :root {
-  --grid-dot: #c9cfd7;
+  --grid-dot: #d3d3d3;
   --grid-line: rgba(80, 92, 110, .08);
   --grid-major: rgba(80, 92, 110, .15);
   --grid-rule: rgba(70, 110, 180, .13);
@@ -1329,7 +1330,7 @@ body.presenting .canvas-grid { opacity: .4; }
 .menu-label { font-size: 10px; font-weight: 800; color: var(--faint); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px 2px; }
 .menu-row { display: flex; gap: 4px; padding: 4px 6px 6px; }
 .menu .bg-choice { flex: 1; font-size: 10.5px; padding: 26px 2px 4px; border: 1px solid var(--line); border-radius: 7px; text-align: center; position: relative; background: #fff; }
-.bg-choice::before { content: ""; position: absolute; left: 4px; right: 4px; top: 4px; height: 18px; border-radius: 4px; background-color: var(--paper); background-size: 6px 6px; }
+.bg-choice::before { content: ""; position: absolute; left: 4px; right: 4px; top: 4px; height: 18px; border-radius: 4px; background-color: var(--canvas-paper); background-size: 6px 6px; }
 .bg-choice[data-kind="dots"]::before { background-image: radial-gradient(circle, var(--grid-dot) .75px, transparent 1px); }
 .bg-choice[data-kind="grid"]::before { background-image: linear-gradient(#d9dce3 1px, transparent 1px), linear-gradient(90deg, #d9dce3 1px, transparent 1px); }
 .bg-choice[data-kind="graph"]::before { background-image: linear-gradient(#c9ced8 1px, transparent 1px), linear-gradient(90deg, #c9ced8 1px, transparent 1px); background-size: 4px 4px; }

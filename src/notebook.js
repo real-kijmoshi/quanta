@@ -54,6 +54,7 @@ async function loadPdfJs() {
 }
 
 export async function importPdf(file) {
+  const boardId = state.board?.id;
   let lib;
   try {
     lib = await loadPdfJs();
@@ -77,6 +78,7 @@ export async function importPdf(file) {
   for (let n = 1; n <= total; n += 1) {
     toast(`Importing ${name}: page ${n} of ${total}…`);
     const page = await doc.getPage(n);
+    const pdfText = (await page.getTextContent()).items.map((item) => item.str || "").join(" ").slice(0, 100000);
     const base = page.getViewport({ scale: 1 });
     const scale = PAGE.w / base.width;
     const size = { w: Math.round(base.width * scale), h: Math.round(base.height * scale) };
@@ -92,8 +94,13 @@ export async function importPdf(file) {
     await page.render({ canvasContext: context, viewport }).promise;
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
     const src = await uploadAsset(blob);
+    if (state.board?.id !== boardId) {
+      await doc.destroy();
+      toast("PDF import stopped because the notebook changed. Pages already imported remain in the original notebook.", "warn");
+      return;
+    }
     transact(() => {
-      const frame = addObject({ type: "frame", x: slot.x, y, w: size.w, h: size.h, text: total > 1 ? `${name} · ${n}` : name, props: { page: true, paper: "none" } });
+      const frame = addObject({ type: "frame", x: slot.x, y, w: size.w, h: size.h, text: total > 1 ? `${name} · ${n}` : name, props: { page: true, paper: "none", pdfText } });
       addObject({ type: "image", x: slot.x, y, w: size.w, h: size.h, z: -500 + n / 1000, text: `${name} page ${n}`, props: { src, locked: true, pdfPage: n } });
       first ??= frame;
     });
@@ -101,6 +108,7 @@ export async function importPdf(file) {
     page.cleanup();
   }
   if (first) goToPage(first);
+  await doc.destroy();
   toast(`Imported ${total} page${total === 1 ? "" : "s"} — pick the pen (P) to annotate`);
 }
 
@@ -131,8 +139,9 @@ export async function printPages() {
   const frames = pages();
   const targets = frames.some((f) => f.props?.page) ? frames.filter((f) => f.props?.page) : frames;
   if (!targets.length) {
-    toast("Add a page or a frame first — each one prints as a sheet", "warn");
-    return;
+    const bounds = contentBounds();
+    if (!bounds) { toast("Add something to the board before exporting it", "warn"); return; }
+    targets.push({ id: "print-board", x: bounds.x - 24, y: bounds.y - 24, w: Math.max(1, bounds.r - bounds.x + 48), h: Math.max(1, bounds.b - bounds.y + 48), props: { paper: "none" } });
   }
   const root = $("#printRoot");
   root.replaceChildren();
@@ -141,8 +150,10 @@ export async function printPages() {
   root.append(style);
   for (const frame of targets) {
     const sheet = el("section", { class: "print-page", dataset: { paper: frame.props?.paper ?? "none" } });
-    const scale = (landscape ? 1123 : 794) / frame.w;
+    const scale = Math.min((landscape ? 1123 : 794) / frame.w, (landscape ? 794 : 1123) / frame.h);
     const inner = el("div", { class: "print-inner", style: `width:${frame.w}px;height:${frame.h}px;transform:scale(${scale})` });
+    // Include the actual stationery, which is otherwise omitted with frames.
+    inner.append(el("div", { class: "obj-frame page print-paper", dataset: { paper: frame.props?.paper ?? "none" } }, [el("div", { class: "frame-fill" })]));
     const area = { x: frame.x, y: frame.y, r: frame.x + frame.w, b: frame.y + frame.h };
     for (const obj of objectList()) {
       if (obj.id === frame.id || obj.type === "frame" || obj.type === "comment") continue;
@@ -193,6 +204,27 @@ function obj(type, x, y, w, h, text = "", props = {}) {
 
 export const TEMPLATES = [
   { id: "blank", name: "Blank board", hint: "Infinite canvas, dotted", build: () => ({ objects: [], background: "dots" }) },
+  {
+    id: "sprint", name: "Sprint planning", hint: "Align on a goal and map the work ahead",
+    build: () => ({ background: "dots", objects: [
+      obj("text", 0, -100, 1000, 80, "# A clear plan. A shared direction.\nSet a sprint goal, break down the work, and agree on what done looks like."),
+      ...["Backlog", "This sprint", "In progress", "Done"].map((title, i) => obj("frame", i * 340, 30, 310, 650, title)),
+      obj("note", 20, 100, 270, 170, "## Start with the goal\nWhat outcome matters most this sprint?", { color: "yellow" }),
+      obj("note", 360, 100, 270, 170, "## Define the work\n- [ ] Agree on scope\n- [ ] Assign an owner\n- [ ] Write acceptance criteria", { color: "blue" }),
+      obj("note", 700, 100, 270, 170, "## Make progress visible\nMove cards here when work begins.\nCall out blockers early.", { color: "pink" }),
+      obj("note", 1040, 100, 270, 170, "## Celebrate the outcome\nMove finished work here.\nShare what you learned.", { color: "green" }),
+    ] }),
+  },
+  {
+    id: "retro", name: "Team retrospective", hint: "Reflect together and leave with a next step",
+    build: () => ({ background: "dots", objects: [
+      obj("text", 0, -100, 1000, 80, "# Better, together.\nTake a few quiet minutes to reflect, then discuss the themes as a team."),
+      ...["What went well", "What could improve", "What we will try"].map((title, i) => obj("frame", i * 400, 30, 370, 620, title)),
+      obj("note", 25, 105, 320, 200, "## Keep doing\nWhat helped us do our best work?\nWhat are we proud of?", { color: "green" }),
+      obj("note", 425, 105, 320, 200, "## Make space for honesty\nWhat slowed us down?\nWhere did we need more support?", { color: "pink" }),
+      obj("note", 825, 105, 320, 200, "## One small experiment\n- [ ] Choose an action\n- [ ] Name an owner\n- [ ] Pick a date to check in", { color: "yellow" }),
+    ] }),
+  },
   {
     id: "notebook",
     name: "Notebook",

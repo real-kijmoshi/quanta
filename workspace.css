@@ -1,0 +1,95 @@
+/* Small additions to the original Quanta chrome. Shared tokens live in styles.css. */
+.sidebar-backdrop, .mobile-sidebar-close { display: none; }
+
+.workspace-nav {
+  display: flex;
+  gap: 4px;
+  margin: 0 14px 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.nav-item { padding: 5px 8px; border-radius: 6px; font-size: 11px; color: var(--muted); }
+.nav-item:hover { background: var(--line-soft); color: var(--ink); }
+.nav-item.active { background: var(--blue-wash); color: var(--blue-dark); }
+.nav-item span { margin-left: 5px; font-family: var(--mono); font-size: 10px; opacity: .7; }
+.command-launch { flex: 0 0 auto; padding: 4px; color: var(--muted); font-family: var(--mono); font-size: 10px; border-radius: 5px; }
+.command-launch:hover { background: var(--line-soft); color: var(--ink); }
+.row-menu { flex: 0 0 auto; }
+.board-row:focus-visible .row-menu, .folder-row:focus-within .row-menu { opacity: 1; }
+
+.topbar { min-height: 49px; }
+.board-name { width: 210px; }
+.favorite-board { flex: 0 0 26px; width: 26px; height: 26px; padding: 2px; font-size: 20px; color: var(--faint); }
+.favorite-board.starred { color: #ad822b; }
+.save-status { white-space: nowrap; }
+.peer-stack { gap: 0; }
+.team-btn { padding: 6px 8px; color: var(--muted); font-size: 11px; }
+.live-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+.pill-btn[aria-expanded="true"] { border-color: var(--blue); color: var(--blue-dark); background: var(--blue-wash); }
+
+.empty-board {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  width: min(350px, calc(100% - 32px));
+  text-align: center;
+  pointer-events: none;
+  z-index: 8;
+}
+.empty-board p { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.empty-actions { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.empty-actions button { pointer-events: auto; box-shadow: none; font-size: 11px; font-weight: 500; }
+
+.panel-intro { padding: 14px; border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: 12px; line-height: 1.6; }
+.team-person { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.team-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; color: #fff; background: var(--peer); font-size: 11px; font-weight: 700; }
+.team-person-name { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.team-person-name strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-person-name small, .team-you { color: var(--muted); font-size: 11px; }
+.is-following { background: var(--blue-wash); border-color: var(--blue); color: var(--blue-dark); }
+.panel-empty { padding: 20px 8px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.full-width { display: block; width: 100%; text-align: center; }
+.panel-foot .hint { margin: 0 0 10px; line-height: 1.7; }
+#teamPanel .panel-foot .hint { margin: 10px 0 0; }
+.overview-search { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+.overview-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 6px; border-radius: 7px; }
+.overview-item:hover { background: var(--blue-wash); }
+.overview-item > span:last-child { display: grid; gap: 3px; overflow: hidden; }
+.overview-item strong { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.overview-item small { font-size: 10px; text-transform: capitalize; color: var(--muted); }
+.overview-kind { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--paper); color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.kind-note { background: #fff6d8; }
+.kind-frame { background: var(--blue-wash); color: var(--blue-dark); }
+.kind-code { font-size: 10px; }
+.boot-error { position: fixed; z-index: 1000; inset: 12px 12px auto; padding: 20px; background: #fff0ec; border: 1px solid #e3b2a3; color: #a13921; white-space: pre-wrap; }
+.template-art[data-template="sprint"], .template-art[data-template="retro"] { background: repeating-linear-gradient(90deg, #eceef4 0 30%, transparent 30% 34%); }
+.template-art[data-template="sprint"]::after, .template-art[data-template="retro"]::after { content: ""; position: absolute; top: 29px; left: 10%; width: 18%; height: 27px; background: var(--note-yellow); box-shadow: 50px 7px var(--note-green), 100px -3px var(--note-pink); border-radius: 3px; }
+
+@media (min-width: 1001px) and (max-width: 1550px) {
+  .zoom-bar { bottom: 92px; }
+  .help-hint { bottom: 104px; }
+  .ink-bar { bottom: 140px; }
+}
+@media (max-width: 1150px) {
+  .board-name { width: 170px; }
+  .save-status { max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+  .topbar { gap: 6px; }
+}
+@media (max-width: 760px) {
+  .app, .app.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
+  .sidebar, .app:not(.sidebar-hidden) .sidebar { position: fixed; inset: 0 auto 0 0; width: min(280px, 85vw); transform: translateX(0); z-index: 50; transition: transform .16s ease, opacity .16s ease; box-shadow: var(--shadow-md); }
+  .app.sidebar-hidden .sidebar { transform: translateX(-100%); }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(24, 26, 30, .2); z-index: 45; }
+  .app.sidebar-hidden .sidebar-backdrop { display: none; }
+  .mobile-sidebar-close { display: grid; place-items: center; min-width: 28px; height: 28px; font-size: 22px; color: var(--muted); border-radius: 6px; }
+  .topbar { padding: 8px; gap: 5px; }
+  .board-name { flex: 1; width: 110px; min-width: 65px; font-size: 13px; padding: 5px; }
+  .topbar .icon-btn { flex: 0 0 27px; }
+  .favorite-board, .save-status, .team-btn, #presentBtn, #pagesBtn, #aiBtn { display: none; }
+  .topbar .pill-btn { flex: 0 0 auto; padding: 7px 9px; }
+  .top-spacer { display: none; }
+  .me-chip { flex: 0 0 27px; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none !important; } }
+@media print { .empty-board, #teamPanel, #overviewPanel, .sidebar-backdrop { display: none !important; } }

@@ -11,23 +11,38 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="workspace.css" />
+  <link rel="stylesheet" href="folders.css" />
+  <link rel="stylesheet" href="collaboration.css" />
+  <link rel="stylesheet" href="notes.css" />
 </head>
-<body>
+<body class="booting">
   <div class="app" id="app">
     <aside class="sidebar" id="sidebar" aria-label="Boards">
       <div class="side-head">
         <span class="brand">Quanta</span>
         <button class="ghost-btn" id="newBoardBtn" title="New board (Ctrl+Shift+N)">＋ New</button>
+        <button class="mobile-sidebar-close" id="mobileSidebarClose" aria-label="Close sidebar">×</button>
       </div>
       <div class="side-search">
         <input id="searchInput" type="search" placeholder="Search boards and cards…" aria-label="Search" autocomplete="off" />
       </div>
+      <div class="workspace-label" id="workspaceLabel">My workspace</div>
+      <nav class="workspace-nav" aria-label="Workspace navigation">
+        <button class="nav-item" data-board-filter="shared" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v11H3z"/><circle cx="15" cy="14" r="2"/><path d="M12 19v-1a3 3 0 0 1 6 0v1"/></svg>Shared folders</button>
+        <button class="nav-item active" data-board-filter="all" aria-pressed="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>All boards <span id="workspaceBoardCount">0</span></button>
+        <button class="nav-item" data-board-filter="starred" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></svg>Starred</button>
+      </nav>
+      <div class="sidebar-section-head"><span>Folders & boards</span><button id="sidebarInviteBtn" title="Invite people" aria-label="Invite people"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M19 7v6M16 10h6"/></svg></button></div>
       <div class="side-list" id="boardList"></div>
+      <button class="workspace-settings" id="workspaceSettingsBtn"><span class="workspace-settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 9h8M8 13h8M8 17h3"/></svg></span><span><strong>Workspace settings</strong><small>Local · on this computer</small></span><span aria-hidden="true">›</span></button>
       <div class="side-foot">
         <button class="ghost-btn small" id="newFolderBtn">＋ Folder</button>
+        <button class="command-launch" id="commandBtn" title="Commands (Ctrl+K)" aria-label="Search commands">Ctrl K</button>
         <span class="server-state" id="serverState"></span>
       </div>
     </aside>
+    <button class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close sidebar"></button>
 
     <main class="workspace">
       <header class="topbar">
@@ -35,9 +50,15 @@
           <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
         <input class="board-name" id="boardName" aria-label="Board name" spellcheck="false" />
-        <span class="save-status" id="saveStatus"></span>
+        <button class="board-folder-location" id="boardFolderLocation" title="Board folder"></button>
+        <button class="icon-btn favorite-board" id="favoriteBoardBtn" title="Star this board" aria-label="Star this board" aria-pressed="false">☆</button>
+        <button class="pill-btn" id="boardLinksBtn" title="Related boards" aria-controls="linksPanel"><span aria-hidden="true">↗</span><span class="pill-label">Links</span><b id="boardLinksCount"></b></button>
+        <span class="save-status" id="saveStatus" role="status"></span>
         <div class="top-spacer"></div>
         <div class="peer-stack" id="peerStack" aria-label="People on this board"></div>
+        <button class="pill-btn team-btn" id="teamBtn" title="People and live collaboration"><span class="live-dot"></span><span id="teamCount">Just you</span></button>
+        <button class="pill-btn" id="overviewBtn" title="Find and navigate board content" aria-label="Board overview"><svg viewBox="0 0 24 24"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></svg></button>
+        <button class="pill-btn" id="notesToolsBtn" title="Notes tools on any board" aria-label="Notes tools">Notes</button>
         <button class="pill-btn" id="pagesBtn" title="Pages and frames (Shift+G)">
           <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M4 6v15h12"/></svg>
           <span class="pill-label">Pages</span>
@@ -92,6 +113,10 @@
         <div class="peer-cursors" id="peerCursors" aria-hidden="true"></div>
         <div class="draw-cursor" id="drawCursor" hidden aria-hidden="true"></div>
         <div class="follow-banner" id="followBanner" hidden></div>
+        <div class="empty-board" id="emptyBoard" hidden>
+          <p>Press <kbd>N</kbd> to add a note, or <kbd>P</kbd> to draw.</p>
+          <div class="empty-actions"><button class="ghost-btn" data-quick-add="note">+ Note</button><button class="ghost-btn" id="emptyTemplates">Templates</button></div>
+        </div>
 
         <div class="toolbar" id="toolbar" role="toolbar" aria-label="Tools">
           <button class="tool" data-tool="select" title="Select (V)"><svg viewBox="0 0 24 24"><path d="m5 3 14 9-6.2 1.1L9 19z"/></svg><span>Select</span></button>
@@ -133,6 +158,29 @@
       </section>
     </main>
   </div>
+
+  <aside class="panel" id="linksPanel" hidden aria-label="Related boards">
+    <header><h2>Related boards</h2><button class="panel-close" data-close="linksPanel" aria-label="Close">×</button></header>
+    <div class="panel-body board-links-body">
+      <p class="hint">Keep the bigger picture connected.</p>
+      <div id="boardLinksList"></div>
+      <h3>Add a connection</h3>
+      <input id="boardLinkSearch" class="folder-input" type="search" placeholder="Search boards or folders…" aria-label="Search boards to connect" />
+      <div id="boardLinkCandidates"></div>
+    </div>
+  </aside>
+  <aside class="panel" id="teamPanel" hidden aria-label="People on this board">
+    <header><h2>People on this board</h2><button class="panel-close" data-close="teamPanel" aria-label="Close">×</button></header>
+    <div class="panel-intro">Follow a collaborator to see their view.</div>
+    <div class="panel-body" id="teamList"></div>
+    <footer class="panel-foot"><button class="solid-btn full-width" id="teamInvite">Invite collaborators</button><p class="hint">Everyone with network access can edit. Names identify presence, not authenticated accounts.</p></footer>
+  </aside>
+  <aside class="panel" id="overviewPanel" hidden aria-label="Board overview">
+    <header><h2>Board overview</h2><button class="panel-close" data-close="overviewPanel" aria-label="Close">×</button></header>
+    <div class="overview-search"><input class="text-input" id="overviewSearch" placeholder="Find a card or frame…" aria-label="Find board content" type="search"></div>
+    <div class="panel-body" id="overviewList"></div>
+    <footer class="panel-foot"><p class="hint" id="boardStats"></p><button class="ghost-btn full-width" id="overviewFit">Fit board <kbd>Shift 1</kbd></button></footer>
+  </aside>
 
   <aside class="panel" id="pagesPanel" hidden aria-label="Pages">
     <header>

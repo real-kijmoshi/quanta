@@ -20,6 +20,7 @@ import {
   uid,
 } from "./core.js";
 import {
+  api,
   addObject,
   boardSettings,
   canRedo,
@@ -63,6 +64,7 @@ import { setMode, toggleStickyTool } from "./canvas.js";
 import { addPage, goToPage, importPdf, insertImage, pages, printPages, TEMPLATES, templateDoc } from "./notebook.js";
 import { runCodeObject } from "./run.js";
 import { startPresentation } from "./present.js";
+import { editFolder, folderTree, shareFolder } from "./folders.js";
 import { centerOn, fitBoard, restoreView, screenToWorld, setZoom, shellRect, view, zoomBy } from "./view.js";
 
 const TOOL_KEYS = {
@@ -120,12 +122,12 @@ export function mountUi() {
   });
   on("status", renderStatus);
   on("peers", renderPeers);
-  on("peer:update", renderCursors);
-  on("peer:left", renderCursors);
+  on("peer:update", scheduleCursors);
+  on("peer:left", scheduleCursors);
   on("follow", renderFollow);
   on("view", () => {
     $("#zoomLabel").textContent = `${Math.round(view.zoom * 100)}%`;
-    renderCursors();
+    scheduleCursors();
   });
   on("history", renderHistoryButtons);
   let pagesTimer = null;
@@ -148,7 +150,7 @@ export function mountUi() {
     setTimeout(() => $(`#commentList [data-thread="${id}"] textarea`)?.focus(), 0);
   });
   on("board:gone", () => {
-    toast("This board was deleted by someone else");
+    toast("This board is no longer available");
     openBoard(state.workspace.boards[0]?.id);
   });
 
@@ -156,23 +158,34 @@ export function mountUi() {
   renderToolState();
   renderHistoryButtons();
   renderBackgroundChoices();
-  if (!prefs("identity:named")) setTimeout(() => openNameSheet(), 400);
+  if (!prefs("identity:named")) setTimeout(() => { if (state.workspace.access?.owner !== false) openNameSheet(); }, 400);
 }
 
 // -------------------------------------------------------------------- sidebar
+
+function setSidebarHidden(collapsed) {
+  $("#app").classList.toggle("sidebar-hidden", collapsed);
+  const sidebar = $("#sidebar");
+  if (collapsed && sidebar.contains(document.activeElement)) $("#sidebarToggle").focus();
+  sidebar.inert = collapsed;
+  sidebar.setAttribute("aria-hidden", String(collapsed));
+  $("#sidebarToggle").setAttribute("aria-expanded", String(!collapsed));
+  $("#sidebarToggle").setAttribute("aria-controls", "sidebar");
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 180);
+}
 
 function mountSidebar() {
   $("#newBoardBtn").addEventListener("click", () => openTemplates());
   $("#newFolderBtn").addEventListener("click", async () => {
     if (state.serverless) return toast("Folders need the local server running");
-    await createFolder("New folder");
+    editFolder();
   });
   $("#sidebarToggle").addEventListener("click", () => {
-    const collapsed = $("#app").classList.toggle("sidebar-hidden");
+    const collapsed = !$("#app").classList.contains("sidebar-hidden");
+    setSidebarHidden(collapsed);
     setPrefs("sidebarHidden", collapsed);
-    setTimeout(() => window.dispatchEvent(new Event("resize")), 180);
   });
-  if (prefs("sidebarHidden", window.innerWidth < 900)) $("#app").classList.add("sidebar-hidden");
+  setSidebarHidden(prefs("sidebarHidden", window.innerWidth < 900));
 
   const search = $("#searchInput");
   let timer = null;
@@ -195,18 +208,18 @@ async function switchBoard(id) {
   await flushSave();
   await openBoard(id);
   restoreView(id);
-  if (window.innerWidth < 700) $("#app").classList.add("sidebar-hidden");
+  if (window.innerWidth < 700) setSidebarHidden(true);
 }
 
 function boardRow(row) {
   const active = row.id === state.board?.id;
   const node = el(
     "button",
-    { class: `board-row${active ? " active" : ""}`, dataset: { board: row.id }, title: row.name, draggable: "true" },
+    { class: `board-row${active ? " active" : ""}`, dataset: { board: row.id }, "aria-current": active ? "page" : null, title: row.name, draggable: "true" },
     [
       el("span", { class: "row-main" }, [
         el("strong", { text: row.name }),
-        el("small", { text: `${row.objects ?? 0} cards · ${row.strokes ?? 0} strokes · ${relativeTime(row.updatedAt)}` }),
+        el("small", { text: `${row.objects ?? 0} ${row.objects === 1 ? "card" : "cards"} · ${row.strokes ?? 0} ${row.strokes === 1 ? "stroke" : "strokes"} · ${relativeTime(row.updatedAt)}` }),
       ]),
       el("span", { class: "row-menu", dataset: { act: "menu" }, text: "⋯", title: "Board actions" }),
     ],
@@ -243,8 +256,9 @@ function boardMenu(row, anchor) {
       },
     }),
     el("button", { text: "Copy link", onclick: () => copyBoardLink(row.id) }),
+    el("button", { text: "Related boards", onclick: async () => { closeMenus(); await switchBoard(row.id); openPanel("linksPanel"); } }),
     ...moveTargets.map((folder) => el("button", { text: `Move to “${folder.name}”`, onclick: () => moveBoard(row.id, folder.id) })),
-    row.folderId ? el("button", { text: "Move out of folder", onclick: () => moveBoard(row.id, null) }) : null,
+    row.folderId && state.workspace.access?.owner !== false ? el("button", { text: "Move out of folder", onclick: () => moveBoard(row.id, null) }) : null,
     el("button", {
       text: "Export JSON",
       onclick: async () => {
@@ -255,6 +269,7 @@ function boardMenu(row, anchor) {
     el("hr"),
     el("button", {
       class: "danger",
+      hidden: state.workspace.access?.owner === false,
       text: "Delete",
       onclick: () =>
         confirmSheet(`Delete “${row.name}”?`, "The board moves to Recently deleted boards. You can restore it from the board menu.", async () => {
@@ -298,66 +313,27 @@ function inlineRename(node, current, commit) {
   input.addEventListener("blur", () => finish(true));
 }
 
+let boardFilter = "all";
+on("boards:filter", (filter) => { boardFilter = filter; renderSidebar(); });
+on("boards:starred", () => renderSidebar());
+
 function renderSidebar() {
   const list = $("#boardList");
   if ($("#searchInput").value.trim()) return;
-  const { folders, boards } = state.workspace;
+  const starred = new Set(prefs("starredBoards", []));
+  const boards = state.workspace.boards
+    .filter((row) => boardFilter !== "starred" || starred.has(row.id))
+    .toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const folders = boardFilter === "starred" ? [] : state.workspace.folders;
   const children = [];
-  const grouped = new Map(folders.map((f) => [f.id, []]));
-  const loose = [];
-  for (const row of boards) {
-    if (row.folderId && grouped.has(row.folderId)) grouped.get(row.folderId).push(row);
-    else loose.push(row);
-  }
-  for (const folder of folders) {
-    const open = prefs(`folderOpen:${folder.id}`, true);
-    const header = el("div", { class: `folder-row${open ? " open" : ""}` }, [
-      el("button", { class: "folder-toggle", text: open ? "⌄" : "›" }),
-      el("strong", { text: folder.name }),
-      el("span", { class: "folder-count", text: String(grouped.get(folder.id).length) }),
-      el("span", { class: "row-menu", dataset: { act: "folder-menu" }, text: "⋯" }),
-    ]);
-    header.addEventListener("click", (event) => {
-      if (event.target.dataset.act === "folder-menu") {
-        event.stopPropagation();
-        closeMenus();
-        const menu = el("div", { class: "menu floating" }, [
-          el("button", { text: "Rename", onclick: () => inlineRename(header.querySelector("strong"), folder.name, (name) => renameFolder(folder.id, name)) }),
-          el("button", {
-            class: "danger",
-            text: "Delete folder",
-            onclick: () => confirmSheet(`Delete folder “${folder.name}”?`, "Boards inside it are kept and moved out of the folder.", () => deleteFolder(folder.id)),
-          }),
-        ]);
-        const rect = event.target.getBoundingClientRect();
-        menu.style.left = `${rect.left - 80}px`;
-        menu.style.top = `${rect.bottom + 4}px`;
-        document.body.append(menu);
-        return;
-      }
-      setPrefs(`folderOpen:${folder.id}`, !open);
-      renderSidebar();
-    });
-    header.addEventListener("dragover", (event) => {
-      if (event.dataTransfer.types.includes("text/quanta-board")) {
-        event.preventDefault();
-        header.classList.add("drop");
-      }
-    });
-    header.addEventListener("dragleave", () => header.classList.remove("drop"));
-    header.addEventListener("drop", (event) => {
-      header.classList.remove("drop");
-      const id = event.dataTransfer.getData("text/quanta-board");
-      if (id) moveBoard(id, folder.id);
-    });
-    children.push(header);
-    if (open) children.push(el("div", { class: "folder-children" }, grouped.get(folder.id).map(boardRow)));
-  }
-  if (loose.length) {
+  const loose = boards.filter((row) => !row.folderId || !folders.some((f) => f.id === row.folderId));
+  if (boardFilter !== "starred") children.push(...folderTree(boards, boardRow, renderSidebar, boardFilter === "shared"));
+  if (loose.length && boardFilter !== "shared") {
     children.push(el("div", { class: "side-label", text: folders.length ? "Other boards" : "Boards" }));
     children.push(...loose.map(boardRow));
   }
-  if (!boards.length) children.push(el("p", { class: "side-empty", text: "No boards yet. Create one above." }));
+  if (!boards.length && !folders.length) children.push(el("p", { class: "side-empty", text: boardFilter === "starred" ? "Star a board using the star next to its title to keep it close." : "No boards yet. Create one above." }));
+  if (!children.length && boardFilter === "shared") children.push(el("p", { class: "side-empty", text: "A place for your team. Use Share on any board to choose a folder and invite people." }));
   list.replaceChildren(...children);
 }
 
@@ -374,6 +350,8 @@ async function renderSearch(query) {
       ]),
     );
   const hits = await searchWorkspace(query);
+  // An earlier, slower request must never overwrite a more recent query.
+  if ($("#searchInput").value.trim() !== query) return;
   const remote = hits
     .filter((hit) => hit.boardId !== state.board?.id)
     .slice(0, 20)
@@ -540,6 +518,7 @@ function renderPeers() {
         class: `peer-chip${app.following === peer.id ? " following" : ""}`,
         style: `--peer:${peer.color}`,
         title: app.following === peer.id ? `Following ${peer.name} — click to stop` : `${peer.name} — click to follow their view`,
+        "aria-label": `Follow ${peer.name}`,
         text: initials(peer.name),
         onclick: () => toggleFollow(peer.id),
       }),
@@ -550,7 +529,7 @@ function renderPeers() {
   renderCursors();
 }
 
-function toggleFollow(id) {
+export function toggleFollow(id) {
   app.following = app.following === id ? null : id;
   emit("follow", app.following);
   const peer = app.peers.get(id);
@@ -575,6 +554,11 @@ function renderFollow() {
 // Cursor elements are kept and moved, not rebuilt, since updates arrive many
 // times a second per collaborator.
 const cursorNodes = new Map();
+let cursorFrame = null;
+function scheduleCursors() {
+  if (cursorFrame !== null) return;
+  cursorFrame = requestAnimationFrame(() => { cursorFrame = null; renderCursors(); });
+}
 
 function renderCursors() {
   const layer = $("#peerCursors");
@@ -897,7 +881,21 @@ async function copyBoardLink(id) {
 }
 
 function openShare() {
+  const folder = state.workspace.folders.find((f) => f.id === state.board?.folderId);
+  if (folder && state.workspace.access?.owner !== false) return shareFolder(folder);
   const body = $("#shareBody");
+  const destination = el("select", { class: "folder-input", "aria-label": "Folder to share" }, [
+    ...state.workspace.folders.map((item) => el("option", { value: item.id, text: item.name })),
+    el("option", { value: "", text: "Create a new shared folder" }),
+  ]);
+  const organize = state.workspace.access?.owner !== false ? el("button", { class: "solid-btn", text: "Move to folder & invite", onclick: async () => {
+    try {
+      const created = state.workspace.folders.find((item) => item.id === destination.value) ?? await createFolder(state.board.name);
+      await moveBoard(state.board.id, created.id);
+      $("#shareOverlay").hidden = true;
+      await shareFolder(created);
+    } catch (error) { toast(error.message, "bad"); }
+  } }) : null;
   const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
   const lan = healthInfo?.lan ?? [];
   const links = local ? lan.map((base) => boardLink(state.board.id, base)) : [boardLink(state.board.id)];
@@ -908,9 +906,10 @@ function openShare() {
     ]);
   const peers = [...app.peers.values()];
   body.replaceChildren(
+    ...(organize ? [el("p", { text: "Choose a folder for this board, then invite your teammates. Everyone in the folder can edit together." }), el("div", { class: "share-destination" }, [destination, organize])] : []),
     ...(links.length
       ? [
-          el("p", { text: "Anyone on the same network can open this link and edit live — they'll see your cursor, ink as you write it, and what you select." }),
+          el("p", { text: "People with a folder invitation can open this link and edit live — they'll see your cursor, ink as you write it, and what you select." }),
           ...links.map(row),
         ]
       : [
@@ -925,7 +924,8 @@ function openShare() {
         ...peers.map((peer) => el("span", { class: "person", style: `--peer:${peer.color}` }, [el("i", { text: initials(peer.name) }), el("span", { text: peer.name })])),
       ]),
     ]),
-    el("p", { class: "hint", text: "Python cards run on the host computer for the host, and in each guest's browser for everyone else." }),
+    el("p", { class: "hint", text: state.workspace.access?.owner === false ? "Your invitation gives access to this folder and its subfolders." : "Move this board into a folder, then share the folder to invite people. Each invitation can be revoked separately." }),
+    ...(state.workspace.access?.owner === false ? [el("button", { class: "ghost-btn", text: "Leave shared folder", onclick: async () => { await api("/api/access", { method: "DELETE" }); location.reload(); } })] : []),
   );
   $("#shareOverlay").hidden = false;
 }
@@ -947,7 +947,7 @@ function mountTemplates() {
     if (!card) return;
     $("#templateOverlay").hidden = true;
     const template = TEMPLATES.find((t) => t.id === card.dataset.template);
-    const board = await createBoard(template.id === "blank" ? "Untitled board" : template.name, null, templateDoc(template.id));
+    const board = await createBoard(template.id === "blank" ? "Untitled board" : template.name, state.workspace.access?.folderId ?? null, templateDoc(template.id));
     await switchBoard(board.id);
     fitBoard();
     if (template.id === "blank") {
@@ -1132,6 +1132,13 @@ const viewCenter = () => {
 };
 
 const COMMANDS = [
+  { id: "notes-tools", title: "Notes tools on this board", run: () => emit("notes:tools") },
+  { id: "recognize-text", title: "Recognize handwriting or scan text (OCR)", run: () => emit("notes:recognize") },
+  { id: "board-audio", title: "Audio recordings and transcripts", run: () => emit("notes:audio") },
+  { id: "study-cards", title: "Study flashcards on this board", run: () => emit("notes:study") },
+  { id: "team", title: "People: follow a collaborator", run: () => togglePanel("teamPanel") },
+  { id: "overview", title: "Board overview: find a card or frame", run: () => togglePanel("overviewPanel") },
+  { id: "star-board", title: "Star or unstar this board", run: () => $("#favoriteBoardBtn").click() },
   { id: "recover-board", title: "Recently deleted boards", run: () => openRecovery() },
   { id: "new-board", title: "New board…", run: () => openTemplates() },
   { id: "add-page", title: "Add a notebook page", run: () => addPage(pagePaper) },
@@ -1311,7 +1318,7 @@ const SHORTCUTS = [
   ["Pen barrel button", "Erase while held"],
   ["N  T  R  A  G", "Note, text, shape, arrow, frame"],
   ["F  Y  C  K", "Math, plot, code, comment"],
-  ["Double-click", "New note on empty canvas · edit a card"],
+  ["Double-click", "Edit a card"],
   ["Enter / Esc", "Edit the selected card / stop editing"],
   ["Ctrl+Enter", "Run the selected code card"],
   ["Drag empty space", "Marquee select · Shift adds"],

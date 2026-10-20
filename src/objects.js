@@ -63,6 +63,8 @@ export const PAPERS = [
   ["grid", "Grid"],
   ["dots", "Dots"],
   ["graph", "Graph"],
+  ["cornell", "Cornell"],
+  ["music", "Music"],
 ];
 const ARROW_PAD = 24;
 const RICH_TYPES = new Set(["note", "text"]);
@@ -123,6 +125,7 @@ export function mountObjects() {
   setDuplicateHandler((ids, offset) => duplicateObjects(ids, offset));
 
   world.addEventListener("dblclick", (event) => {
+    if (app.mode !== "select") return;
     const node = event.target.closest(".obj");
     if (!node) return;
     event.stopPropagation();

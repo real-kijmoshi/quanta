@@ -3,6 +3,26 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const ink = readFileSync(new URL('../src/ink.js', import.meta.url), 'utf8');
+{
+  const canvas = readFileSync(new URL('../src/canvas.js', import.meta.url), 'utf8');
+  let hit = { id: 'existing-card' };
+  const edits = [], created = [];
+  const inputContext = vm.createContext({
+    app: { mode: 'select' }, screenToWorld: (x, y) => ({ x, y }),
+    objectAt: () => hit, startEdit: id => edits.push(id), createObjectAt: (...args) => created.push(args),
+  });
+  vm.runInContext(canvas.slice(canvas.indexOf('function onDoubleClick('), canvas.indexOf('function beginPan(')), inputContext);
+  inputContext.event = { target: { closest: () => null }, clientX: 10, clientY: 20 };
+  vm.runInContext('onDoubleClick(event)', inputContext);
+  assert.deepEqual(edits, ['existing-card'], 'captured double clicks must edit the existing card');
+  assert.equal(created.length, 0, 'double clicking a card must not create another card');
+  hit = null;
+  vm.runInContext('onDoubleClick(event)', inputContext);
+  assert.equal(created.length, 0, 'double clicking empty canvas must not create a note');
+  inputContext.event.target.closest = () => ({});
+  vm.runInContext('onDoubleClick(event)', inputContext);
+  assert.equal(created.length, 0, 'double clicking a toolbar control cannot create cards');
+}
 const start = ink.indexOf('let baseKey = null;');
 const end = ink.indexOf('let liveEmpty', start);
 let strokes = [];
@@ -300,11 +320,64 @@ vm.runInContext('redrawLive()', live);
 assert.equal(live.layers.live.style.display, 'none', 'completion hides the remaining preview');
 console.log(`Low-zoom regressions passed: ${legacyGeometry.length} curve points reduced to ${zoomGeometry.length}; live frames clear only the painted bounds.`);
 
+// Local ink must reach the canvas inside the input handler, even when a peer
+// update has already queued a live frame. Predictions remain preview-only.
+const inkFrames = new Map();
+let nextInkFrame = 0;
+const inkOrder = [], inkPaints = [], savedInk = [];
+Object.assign(live, {
+  liveFrame: 0, holdTimer: null, holdAnchor: null,
+  inkSettings: { snap: false, size: 3.5, highlightSize: 5, color: '#2747d6', highlightColor: '#ffe14d', style: 'ballpoint' },
+  uid: () => 'local-stroke',
+  screenToWorld: (x, y) => ({ x: (x - live.view.x) / live.view.zoom, y: (y - live.view.y) / live.view.zoom }),
+  clearTimeout() {}, setTimeout() { return 1; },
+  requestAnimationFrame(fn) { const id = ++nextInkFrame; inkFrames.set(id, fn); return id; },
+  cancelAnimationFrame(id) { inkFrames.delete(id); },
+  sendPresence() { inkOrder.push('presence'); },
+  paintStroke(_ctx, stroke) { inkOrder.push('paint'); inkPaints.push(structuredClone(stroke)); },
+  addStroke(stroke) { savedInk.push(structuredClone(stroke)); },
+  scheduleRedraw() {},
+});
+vm.runInContext(ink.slice(ink.indexOf('function scheduleLive()'), ink.indexOf('function prepare(')), live);
+vm.runInContext(ink.slice(ink.indexOf('function pointFrom('), ink.indexOf('// ------------------------------------------------------------------- eraser')).replaceAll('export function', 'function'), live);
+for (const zoom of [.05, 1, 2]) {
+  live.view.zoom = zoom;
+  for (const tool of ['pen', 'highlighter']) {
+    for (const pointerType of ['mouse', 'pen', 'touch']) {
+      inkFrames.clear(); inkOrder.length = 0; inkPaints.length = 0;
+      live.input = { clientX: 100, clientY: 100, pointerType, pressure: .7 };
+      live.tool = tool;
+      vm.runInContext('scheduleLive(); beginStroke(input, tool)', live);
+      assert.equal(inkPaints.length, 1, 'pointer-down paints without waiting for a frame');
+      assert.equal(inkFrames.size, 0, 'immediate drawing cancels an already queued live frame');
+      assert.deepEqual(inkOrder, ['paint', 'presence'], 'local ink paints before collaboration work');
+      live.input = {
+        clientX: 130, clientY: 115, pointerType, pressure: .7,
+        getCoalescedEvents: () => [
+          { clientX: 110, clientY: 105, pointerType, pressure: .6 },
+          { clientX: 130, clientY: 115, pointerType, pressure: .7 },
+        ],
+        getPredictedEvents: () => [{ clientX: 145, clientY: 120, pointerType, pressure: .7 }],
+      };
+      vm.runInContext('extendStroke(input)', live);
+      assert.equal(inkPaints.length, 2, 'pointer-move paints before returning');
+      assert.equal(inkFrames.size, 0, 'local drawing never queues an additional display frame');
+      assert.equal(inkPaints.at(-1).points.length, 4, 'the preview includes every coalesced sample and prediction');
+      vm.runInContext('endStroke()', live);
+      assert.equal(savedInk.at(-1).points.length, 3, 'only measured points are committed');
+      assert.equal(savedInk.at(-1).predicted, undefined, 'predicted ink is never saved');
+    }
+  }
+}
+vm.runInContext('paintLiveNow(); scheduleLive(); scheduleLive()', live);
+assert.equal(inkFrames.size, 1, 'peer and selection redraws still coalesce');
+console.log('Ink latency regressions passed: mouse, stylus, and touch paint synchronously at three zoom levels; predictions stay preview-only.');
+
 const { dotPattern } = await import('../src/grid.js');
 for (const zoom of [.05, .06, .13, .5, 1, 2, 8]) {
   const pattern = dotPattern(zoom);
-  assert.ok(pattern.step >= 12 && pattern.step <= 24);
+  assert.ok(pattern.step >= 14 && pattern.step <= 28);
   const svg = decodeURIComponent(pattern.image.slice(24, -2));
   assert.equal((svg.match(/<circle /g) ?? []).length, 4, 'grid tile has four non-overlapping dots');
-  assert.equal((svg.match(/r="0.75"/g) ?? []).length, 4, 'dots never grow at high or low zoom');
+  assert.equal((svg.match(/r="1.25"/g) ?? []).length, 4, 'dots never grow at high or low zoom');
 }

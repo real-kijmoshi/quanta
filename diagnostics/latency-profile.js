@@ -8,6 +8,7 @@ const run = document.querySelector('#run'), progress = document.querySelector('#
 const nativeRaf = window.requestAnimationFrame.bind(window);
 let mounted = false, result, phase = 'idle', pending = null, touchedLive = false;
 let renderCosts = [], liveAreas = [], panCosts = [], eventCosts = [], submitLatencies = [];
+let livePaintStarted = 0;
 const visibilityChanges = [], longTasks = [];
 document.addEventListener('visibilitychange', () => visibilityChanges.push({ at: performance.now(), state: document.visibilityState }));
 try { new PerformanceObserver(list => { for (const entry of list.getEntries()) longTasks.push({ start: entry.startTime, duration: entry.duration }); }).observe({ type: 'longtask', buffered: false }); } catch {}
@@ -63,7 +64,13 @@ run.onclick = async () => {
     state.board = board(); inkSettings.snap = false;
     emit('board:opened'); applyView({ quiet: true }); await settle();
     context = document.querySelector('#inkLive').getContext('2d');
-    proto.setTransform = function(...args) { if (this === context) touchedLive = true; return originalTransform.apply(this, args); };
+    proto.setTransform = function(...args) {
+      if (this === context) {
+        if (!touchedLive) livePaintStarted = performance.now();
+        touchedLive = true;
+      }
+      return originalTransform.apply(this, args);
+    };
     window.requestAnimationFrame = function(callback) {
       return originalRaf.call(window, timestamp => {
         const t0 = performance.now(); touchedLive = false;
@@ -98,8 +105,18 @@ run.onclick = async () => {
           await new Promise(resolve => setTimeout(resolve, 4));
           const samples = Array.from({ length: 6 }, point);
           pending = { started: performance.now(), viewportPixels: rect.width * rect.height * Math.min(2, devicePixelRatio) ** 2 };
+          const inputStarted = pending.started;
+          touchedLive = false;
           extendStroke({ ...samples.at(-1), getCoalescedEvents: () => samples });
-          eventCosts.push(performance.now() - pending.started);
+          const inputEnded = performance.now();
+          eventCosts.push(inputEnded - inputStarted);
+          // Local ink can submit synchronously, before any RAF callback runs.
+          if (touchedLive && pending) {
+            renderCosts.push(inputEnded - livePaintStarted);
+            submitLatencies.push(inputEnded - inputStarted);
+            liveAreas.push(context.canvas.width * context.canvas.height / pending.viewportPixels);
+            pending = null;
+          }
           await frame();
           const now = performance.now(); inputIntervals.push(now - previous); previous = now; inputFrames++;
         }

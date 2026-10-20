@@ -173,6 +173,7 @@ export function addObject(input) {
     markDirty("objects", obj.id);
   });
   touch([obj.id]);
+  emit("object:created", obj);
   return obj;
 }
 
@@ -263,7 +264,7 @@ export function raiseObjects(ids, direction = 1) {
 }
 
 export function addStroke(stroke) {
-  const value = { ...stroke, updatedAt: Date.now() };
+  const value = { ...stroke, createdAt: stroke.createdAt ?? Date.now(), updatedAt: Date.now() };
   withHistory(true, () => {
     record("strokes", value.id);
     state.board.strokes[value.id] = value;
@@ -271,6 +272,7 @@ export function addStroke(stroke) {
     markDirty("strokes", value.id);
   });
   touch([], { ink: true });
+  emit("ink:committed", value);
   return value;
 }
 
@@ -328,7 +330,7 @@ export function setBoardSettings(patch) {
 // --------------------------------------------------------- load and persist
 
 
-async function api(path, options = {}) {
+export async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "content-type": "application/json" },
     ...options,
@@ -526,7 +528,8 @@ export async function loadWorkspace() {
     state.workspace = await api("/api/workspace");
     state.serverless = false;
     setPrefs("cache:workspace", state.workspace);
-  } catch {
+  } catch (error) {
+    if (error.status === 401 || error.status === 403) throw error;
     state.serverless = true;
     state.workspace = prefs("cache:workspace", { folders: [], boards: [] });
     setStatus("offline");
@@ -541,10 +544,16 @@ export async function openBoard(id) {
     await cacheBoard(state.board);
   }
   let doc = null;
+  let cachedFallback = state.serverless;
   if (!state.serverless && id) {
-    doc = await api(`/api/boards/${id}`).catch(() => null);
+    doc = await api(`/api/boards/${id}`).catch((error) => {
+      if (!error.status) { cachedFallback = true; setStatus("offline"); return null; }
+      if (error.status === 403) return null;
+      if (error.status !== 404) throw error;
+      return null;
+    });
   }
-  doc ??= await readCachedBoard(id);
+  if (cachedFallback) doc ??= await readCachedBoard(id);
   if (!doc) {
     if (state.serverless) {
       doc = {
@@ -559,7 +568,7 @@ export async function openBoard(id) {
     } else {
       const first = state.workspace.boards[0];
       if (first && first.id !== id) return openBoard(first.id);
-      doc = await api("/api/boards", { method: "POST", body: { name: "Untitled board" } });
+      doc = await api("/api/boards", { method: "POST", body: { name: "Untitled board", folderId: state.workspace.access?.folderId ?? null } });
       await loadWorkspace();
     }
   }
@@ -583,6 +592,12 @@ export async function openBoard(id) {
   redoStack.length = 0;
   app.selection.clear();
   app.peers.clear();
+  app.following = null;
+  clearTimeout(presenceTimer);
+  presenceTimer = null;
+  presenceState = {};
+  inkSent = { id: null, count: 0, version: 0 };
+  emit("follow", null);
   emit("board:opened", doc);
   emit("settings", state.board.settings);
   emit("history");
@@ -629,7 +644,9 @@ export async function renameBoard(id, name) {
 
 export async function moveBoard(id, folderId) {
   if (state.serverless) return;
-  await api(`/api/boards/${id}`, { method: "PATCH", body: { folderId } }).catch(() => {});
+  const doc = await api(`/api/boards/${id}`, { method: "PATCH", body: { folderId } });
+  if (state.board?.id === id) state.board.folderId = doc.folderId;
+  await loadWorkspace();
 }
 
 export async function deleteBoard(id) {
@@ -650,9 +667,11 @@ export async function restoreBoard(id) {
   return restored;
 }
 
-export async function createFolder(name = "New folder") {
+export async function createFolder(name = "New folder", parentId = null) {
   if (state.serverless) return null;
-  return api("/api/folders", { method: "POST", body: { name } }).catch(() => null);
+  const folder = await api("/api/folders", { method: "POST", body: { name, parentId } });
+  await loadWorkspace();
+  return folder;
 }
 
 export async function renameFolder(id, name) {
@@ -662,7 +681,7 @@ export async function renameFolder(id, name) {
 
 export async function deleteFolder(id) {
   if (state.serverless) return;
-  await api(`/api/folders/${id}`, { method: "DELETE" }).catch(() => {});
+  await api(`/api/folders/${id}`, { method: "DELETE" });
 }
 
 export async function searchWorkspace(query) {
@@ -708,14 +727,17 @@ function connectSync() {
   const me = identity();
   const boardId = state.board.id;
   const url = `/api/events?client=${encodeURIComponent(me.id)}&board=${encodeURIComponent(boardId)}`;
-  source = new EventSource(url);
+  const connection = new EventSource(url);
+  source = connection;
   source.onmessage = (event) => {
+    if (source !== connection) return;
     let payload;
     try {
       payload = JSON.parse(event.data);
     } catch {
       return;
     }
+    if (payload.type === "access-revoked") { connection.close(); location.reload(); return; }
     if (state.board?.id !== boardId) return;
     if (payload.type === "hello") {
       app.peers.clear();
@@ -731,6 +753,7 @@ function connectSync() {
         emit("board:renamed", { id: boardId, name: payload.board.name });
       }
     } else if (payload.type === "meta" && payload.boardId === boardId) {
+      if ("folderId" in payload) state.board.folderId = payload.folderId;
       if (payload.name && payload.name !== state.board.name) {
         state.board.name = payload.name;
         emit("board:renamed", { id: boardId, name: payload.name });
@@ -753,11 +776,13 @@ function connectSync() {
     }
   };
   source.onerror = () => {
+    if (source !== connection) return;
     wasOffline = true;
     app.online = false;
     setStatus("offline");
   };
   source.onopen = async () => {
+    if (source !== connection) return;
     app.online = true;
     // Announce ourselves right away, so people already here see us join.
     sendPresence({}, { urgent: true });
@@ -767,7 +792,7 @@ function connectSync() {
       const fresh = await api(`/api/boards/${boardId}`).catch(() => null);
       if (fresh && state.board?.id === boardId) mergeRemote(fresh);
     }
-    if (await flushSave() !== false) setStatus("saved");
+    if (state.board?.id === boardId && await flushSave() !== false && source === connection) setStatus("saved");
   };
 }
 
@@ -780,6 +805,8 @@ let lastPresence = 0;
 let presenceTimer = null;
 let presenceState = {};
 let inkSent = { id: null, count: 0, version: 0 };
+let presenceInFlight = false;
+let presenceQueued = false;
 
 /**
  * Share cursor, viewport, selection, and in-progress ink with collaborators.
@@ -788,6 +815,12 @@ let inkSent = { id: null, count: 0, version: 0 };
 export function sendPresence(patch = {}, { urgent = false } = {}) {
   if (state.serverless || !state.board) return;
   presenceState = { ...presenceState, ...patch };
+  // One ordered request at a time. Slow connections coalesce to the latest
+  // cursor and viewport, while ink keeps all points since the last send.
+  if (presenceInFlight) {
+    presenceQueued = true;
+    return;
+  }
   const now = Date.now();
   const gap = urgent || presenceState.inkStroke ? 45 : 90;
   if (now - lastPresence < gap) {
@@ -823,12 +856,26 @@ export function sendPresence(patch = {}, { urgent = false } = {}) {
     body.ink = { id: inkSent.id, done: true };
     inkSent = { id: null, count: 0, version: 0 };
   }
+  presenceInFlight = true;
   fetch("/api/presence", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
     keepalive: true,
-  }).catch(() => {});
+    signal: AbortSignal.timeout(8000),
+  }).then((response) => {
+    if (!response.ok) throw new Error("Presence unavailable");
+  }).catch(() => {
+    if (state.board?.id === body.boardId && body.ink && !body.ink.done && inkSent.id === body.ink.id) {
+      inkSent = { id: null, count: 0, version: 0 };
+    }
+  }).finally(() => {
+    presenceInFlight = false;
+    if (presenceQueued) {
+      presenceQueued = false;
+      sendPresence();
+    }
+  });
 }
 
 window.addEventListener("pagehide", () => {
