@@ -15,6 +15,7 @@ import { ensureAccount, mountAccount, showNoFolders } from "./account.js";
 import { mountNotes } from "./notes.js";
 import { mountSettings } from "./settings.js";
 import { mountSwitcher } from "./switcher.js";
+import { mountToolbar } from "./toolbar.js";
 
 async function boot() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -33,6 +34,7 @@ async function boot() {
   mountObjects();
   mountCanvas();
   mountUi();
+  mountToolbar();
   mountWorkspace();
   mountFolders();
   mountAccount();

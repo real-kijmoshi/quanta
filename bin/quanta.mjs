@@ -14,9 +14,11 @@ const HELP = `Quanta ${pkg.version} - whiteboard and notebook for maths, physics
 Usage: quanta [command] [options]
 
 Running:
-  quanta                  Start in the background and open your browser
+  quanta                  Start in the background and open the dashboard
+                          (links, mode switching, logs, settings, updates)
   quanta --tunnel         ...and share it over the internet (Cloudflare quick tunnel)
   quanta --share          ...and share it on your local network
+  ui                      Open the dashboard without starting anything
   stop                    Stop the background workspace
   restart                 Stop, then start again with the same options
   status                  Is it running? Prints its links
@@ -44,6 +46,7 @@ Options:
   -l, --local             Only this computer (overrides a saved default)
   -f, --foreground        Run in this terminal instead of the background (Ctrl+C stops)
   -o, --open / --no-open  Open (or don't open) the browser
+      --no-ui             Print the links and exit instead of opening the dashboard
   -p, --port <n>          Port (default 4173)
   -d, --data <dir>        Data folder (default ~/.quanta/data, or ./data in a source checkout)
   -h, --help              Show this help
@@ -91,6 +94,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "-s" || a === "--share") opts.mode = "share";
   else if (a === "-l" || a === "--local") opts.mode = "local";
   else if (a === "--foreground" || a === "--fg") opts.foreground = true;
+  else if (a === "--no-ui") opts.ui = false;
   else if (a === "--check") opts.check = true;
   else if (a === "--force") opts.force = true;
   else if (a === "-f") opts.follow = opts.foreground = true; // `logs -f` follows; otherwise foreground
@@ -303,9 +307,26 @@ async function update() {
 
 mkdirSync(home, { recursive: true });
 
+// In a real terminal, plain `quanta` (and `quanta ui`) opens the dashboard.
+const interactive = process.stdin.isTTY && process.stdout.isTTY && opts.ui !== false && !process.env.QUANTA_NO_UI && !process.env.CI;
+async function dashboard(autoStart) {
+  const { runTui } = await import("./tui.mjs");
+  await runTui({
+    pkg, home, runFile, logFile, configFile, env, readJson, alive, openBrowser, newer, latestVersion,
+    cli: fileURLToPath(import.meta.url), port, mode, open: opts.open ?? config.open,
+    data: opts.data ? resolve(opts.data) : null, autoStart, requestedMode: opts.mode,
+  });
+}
+
 switch (command) {
+  case "ui":
+  case "dashboard":
+    if (!interactive) fail("the dashboard needs an interactive terminal. Try: quanta status");
+    await dashboard(false);
+    break;
   case "start":
-    if (opts.foreground) {
+    if (!opts.foreground && interactive) await dashboard(true);
+    else if (opts.foreground) {
       startForeground();
       if (opts.open ?? false) (async () => { for (let i = 0; i < 60 && !(await healthy(port)); i++) await sleep(500); openBrowser(`http://localhost:${port}`); })();
     } else await startBackground();

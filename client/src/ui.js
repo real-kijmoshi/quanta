@@ -84,6 +84,7 @@ const TOOL_KEYS = {
   c: "code",
   k: "comment",
   o: "portal",
+  w: "window",
 };
 
 let clipboard = [];
@@ -1197,6 +1198,8 @@ const COMMANDS = [
   { id: "switch-board", icon: "⇄", title: "Switch board", keys: "Ctrl B", run: () => emit("switcher:open") },
   { id: "new-board", icon: "＋", title: "New board…", keys: "Ctrl ⇧ N", run: () => openTemplates() },
   { id: "add-portal", icon: "◎", title: "Add a portal to another board", keys: "O", run: () => createObjectAt("portal", viewCenter()) },
+  { id: "add-window", icon: "▣", title: "Add a window into another board", keys: "W", run: () => createObjectAt("window", viewCenter()) },
+  { id: "customize-toolbar", icon: "⚙", title: "Customize toolbar", run: () => emit("settings:open", "canvas") },
   { id: "settings", icon: "⚙", title: "Settings", keys: "Ctrl ,", run: () => emit("settings:open") },
   { id: "add-page", icon: "▯", title: "Add a notebook page", run: () => addPage(pagePaper) },
   { id: "insert-image", icon: "▨", title: "Insert image", run: () => $("#imageInput").click() },
@@ -1403,7 +1406,8 @@ const SHORTCUTS = [
   ["P  M  E  L", "Pen, marker, eraser, lasso"],
   ["Draw, then hold", "Snap to a line, circle, rectangle, triangle, or arrow"],
   ["Pen barrel button", "Erase while held"],
-  ["N  T  R  A  G  O", "Note, text, shape, arrow, frame, portal"],
+  ["N  T  R  A  G", "Note, text, shape, arrow, frame"],
+  ["O  W", "Portal, window into another board"],
   ["F  Y  C  K", "Math, plot, code, comment"],
   ["Double-click", "Edit a card"],
   ["Enter / Esc", "Edit the selected card / stop editing"],

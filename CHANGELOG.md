@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0
+
+- Terminal dashboard: plain `quanta` opens an interactive screen with live status, uptime and connections, local/network/public links, one-key copy, mode switching (←→ restarts in local, share or tunnel), a live log, settings, backup, doctor and one-key updates. `quanta ui` opens it without starting; scripts and pipes keep the plain output.
+- Portals land where you choose: after picking the destination, click a spot on a map of that board (the dashed frame is what you will see on arrival). Portals can also lead elsewhere on the same board.
+- Windows: a see-through portal that shows a live view of where it leads; switch any portal between Ring and Window, and zoom the view with −/+.
+- Customisable toolbar: show, hide and reorder tools in Settings (drag or arrows, or right-click the toolbar). Hidden tools live in a "More" menu and keep their shortcuts; Portal and Window start there.
+- Pen options follow the toolbar: a vertical panel beside a left or right dock, and a new Top dock. Side docks go icon-only on short screens so every tool fits.
+- Notebook mode (beta) is back as a Settings switch: the GoodNotes-style layout with page thumbnails, notebook ribbon and focus mode.
+- Network links list your Wi-Fi address before virtual and link-local adapters.
+
 ## 0.10.1
 
 - New `quanta update` command: checks GitHub for a newer release, installs it with the verified installer (or npm, depending on how Quanta was installed), keeps your boards, and restarts a running background workspace. `quanta update --check` only reports.

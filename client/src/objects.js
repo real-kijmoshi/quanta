@@ -118,6 +118,7 @@ export function mountObjects() {
       const obj = object(id);
       if (obj?.type !== "portal") continue;
       node._rendered = null;
+      node._viewKey = null;
       render(node, obj);
     }
   });
@@ -183,6 +184,16 @@ export function mountObjects() {
     } else if (act === "edit") startEdit(ids[0]);
     else if (act === "portal-target") emit("portal:pick", ids[0]);
     else if (act === "portal-go") emit("portal:enter", ids[0]);
+    else if (act === "portal-spot") emit("portal:spot", ids[0]);
+    else if (act === "portal-style") {
+      const portal = object(ids[0]);
+      // Keep the centre where it was while the shape changes.
+      const size = value === "window" ? WINDOW_SIZE : RING_SIZE;
+      updateObject(ids[0], { x: Math.round(portal.x + portal.w / 2 - size.w / 2), y: Math.round(portal.y + portal.h / 2 - size.h / 2), ...size, props: { ...portal.props, style: value } });
+    } else if (act === "portal-lens") {
+      const lens = object(ids[0]).props?.lens ?? 0.5;
+      setProp("lens", Math.max(0.05, Math.min(3, value === "in" ? lens * 1.5 : lens / 1.5)));
+    }
     updateSelectionUI();
   });
 }
@@ -282,8 +293,10 @@ function build(obj) {
   } else if (obj.type === "comment") {
     node.append(el("span", { class: "pin-dot" }), el("span", { class: "pin-count" }));
   } else if (obj.type === "portal") {
+    // Both looks are built once; the style class picks which one shows.
     node.append(
       el("div", { class: "portal-ring", "aria-hidden": "true" }),
+      el("canvas", { class: "portal-view", "aria-hidden": "true" }),
       el("div", { class: "portal-label" }, [el("small", { text: "Portal to" }), el("strong")]),
       el("button", { class: "portal-go", type: "button", text: "Enter →" }),
     );
@@ -558,10 +571,22 @@ function render(node, obj) {
   } else if (obj.type === "portal") {
     // Look the name up live so a renamed destination stays current.
     const target = state.workspace.boards.find((b) => b.id === obj.props?.boardId);
+    const windowed = obj.props?.style === "window";
+    const here = target && target.id === state.board?.id;
+    node.querySelector(".portal-label small").textContent = windowed ? (here ? "Window to elsewhere on" : "Window to") : "Portal to";
     node.querySelector(".portal-label strong").textContent = obj.props?.boardId ? target?.name ?? "Missing board" : "Choose a destination";
     node.querySelector(".portal-go").textContent = obj.props?.boardId ? "Enter →" : "Pick board";
     node.classList.toggle("unlinked", !target);
+    node.classList.toggle("window", windowed);
     node.title = target ? `Double-click to go to “${target.name}”` : "Pick a board for this portal";
+    if (windowed) {
+      // Repaint the view only when what it shows changed, not on every move.
+      const key = JSON.stringify([obj.props?.boardId, obj.props?.spot, obj.props?.lens, obj.w, obj.h]);
+      if (node._viewKey !== key) {
+        node._viewKey = key;
+        emit("portal:paint", { id: obj.id, canvas: node.querySelector(".portal-view") });
+      }
+    }
   } else if (obj.type === "comment") {
     const count = (obj.props?.thread ?? []).length;
     node.querySelector(".pin-count").textContent = count > 1 ? String(count) : "";
@@ -716,7 +741,17 @@ function toolbarContent(items) {
     parts.push(group(INK_COLORS.slice(0, 5).map((color) => el("button", { class: "ink-color small", style: `--ink:${color}`, dataset: { act: "arrow-color", value: color }, title: "Colour", type: "button" }))));
   }
   if (only("portal") && items.length === 1) {
-    parts.push(group([btn("portal-target", "Destination…", "Choose the board this portal leads to"), btn("portal-go", "Enter →", "Go through the portal")]));
+    const windowed = items[0].props?.style === "window";
+    parts.push(group([
+      btn("portal-target", "Destination…", "Choose the board this portal leads to"),
+      btn("portal-spot", items[0].props?.spot ? "Landing spot ✓" : "Landing spot…", "Choose where on that board you arrive"),
+    ]));
+    parts.push(group([
+      btn("portal-style", "◎ Ring", "A round portal", "ring", { cls: windowed ? "" : "on" }),
+      btn("portal-style", "▣ Window", "A see-through window showing the destination", "window", { cls: windowed ? "on" : "" }),
+      ...(windowed ? [btn("portal-lens", "−", "Show more of the destination", "out"), btn("portal-lens", "+", "Show the destination closer", "in")] : []),
+    ]));
+    parts.push(group([btn("portal-go", "Enter →", "Go through the portal")]));
   }
   if (items.length === 1 && ["note", "text", "math", "plot", "code", "shape"].includes(items[0].type)) {
     parts.push(group([btn("edit", "Edit", "Edit (Enter)")]));
@@ -836,6 +871,9 @@ export function stopEdit() {
 
 // ------------------------------------------------------------------ creation
 
+const WINDOW_SIZE = { w: 380, h: 250 };
+const RING_SIZE = { w: 180, h: 180 };
+
 const SEED_TEXT = {
   code: "// Ctrl+Enter to run\nconsole.log('hello');",
   math: "x = 2\ny = x^3 + 1",
@@ -843,6 +881,8 @@ const SEED_TEXT = {
 };
 
 export function createObjectAt(type, point, extra = {}) {
+  // A window is a rectangular portal that shows where it leads.
+  if (type === "window") return createObjectAt("portal", point, { ...WINDOW_SIZE, ...extra, props: { style: "window", ...extra.props } });
   const size = defaultSize(type);
   const props = {
     ...(type === "note" ? { color: "yellow" } : {}),
