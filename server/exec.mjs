@@ -1,5 +1,5 @@
 // Runs code cards for real. Python and Node run as local child processes, so
-// this is only ever exposed to loopback requests (see server.mjs).
+// this is only ever exposed to loopback requests (see index.mjs).
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,7 @@ const TIMEOUT = Number(process.env.QUANTA_RUN_TIMEOUT ?? 20000);
 const MAX_OUTPUT = 4 * 1024 * 1024;
 const MARK = "\x1e";
 
-const HARNESS = readFileSync(fileURLToPath(new URL("../src/harness.py", import.meta.url)), "utf8");
+const HARNESS = readFileSync(fileURLToPath(new URL("../shared/harness.py", import.meta.url)), "utf8");
 const PY_ARGS = ["-X", "utf8", "-c", `${HARNESS}\nimport sys as _s\n_s.exit(0 if _quanta_run(_s.stdin.read()) else 1)\n`];
 
 const CANDIDATES = {

@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { writeJson, readJson, drainWrites } from "./persistence.mjs";
 import { validateOps, validateJson } from "./validation.mjs";
 import { lockWorkspace } from "./workspace-lock.mjs";
-import { searchableObjectText } from "../src/content-search.js";
+import { searchableObjectText } from "../shared/content-search.js";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const dataDir = process.env.QUANTA_DATA ?? join(root, "data");

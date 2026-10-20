@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 // Two browser tabs share profile storage, but must have distinct live IDs.
 const storage = new Map([["quanta:identity", JSON.stringify({ id: "legacy", name: "Sam", color: "#123456" })]]);
-const core = (await readFile(new URL("../src/core.js", import.meta.url), "utf8")).replace(/^export /gm, "");
+const core = (await readFile(new URL("../client/src/core.js", import.meta.url), "utf8")).replace(/^export /gm, "");
 function tab() {
   const context = vm.createContext({ EventTarget, CustomEvent, console, localStorage: {
     getItem: (key) => storage.get(key) ?? null,
@@ -27,7 +27,7 @@ const requests = [];
 const timers = new Map();
 let timerId = 0;
 const streams = [];
-const doc = (await readFile(new URL("../src/doc.js", import.meta.url), "utf8"))
+const doc = (await readFile(new URL("../client/src/doc.js", import.meta.url), "utf8"))
   .replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
 const context = vm.createContext({
   Date: class extends Date { static now() { return now; } },
@@ -80,7 +80,7 @@ old.onmessage({ data: JSON.stringify({ type: "presence", peer: { id: "stale-peer
 assert.equal(vm.runInContext("app.peers.size", context), 0);
 
 // Closing the old SSE stream after a board switch cannot erase new presence.
-const server = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+const server = await readFile(new URL("../server/index.mjs", import.meta.url), "utf8");
 const live = server.slice(server.indexOf("const clients = new Set();"), server.indexOf("// ------------------------------------------------------------------- routes"));
 const serverContext = vm.createContext({ Date, URL, store: { events: { on() {} }, uid: () => "generated" }, setInterval: () => 1, clearInterval() {},
   // These streams represent the local owner; folder scopes have HTTP coverage.

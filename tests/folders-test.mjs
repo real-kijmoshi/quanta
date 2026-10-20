@@ -11,8 +11,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const work = await mkdtemp(join(tmpdir(), "quanta-folders-test-"));
 const ownerToken = randomBytes(32).toString("base64url");
 process.env.QUANTA_DATA = join(work, "data");
-const store = await import("../lib/store.mjs");
-const { accessFor, invitationAccess, visibleWorkspace } = await import("../lib/folder-access.mjs");
+const store = await import("../server/store.mjs");
+const { accessFor, invitationAccess, visibleWorkspace } = await import("../server/folder-access.mjs");
 let child, exit;
 const streams = [];
 try {
@@ -54,7 +54,7 @@ try {
   await new Promise((done) => reservation.listen(0, "127.0.0.1", done));
   const port = reservation.address().port;
   await new Promise((done) => reservation.close(done));
-  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server.mjs", import.meta.url))], {
+  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server/index.mjs", import.meta.url))], {
     windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", QUANTA_ALLOWED_HOSTS: "tunnel.test", QUANTA_OWNER_TOKEN: ownerToken, ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "", OPENROUTER_API_KEY: "" },
   });

@@ -1,5 +1,5 @@
-import { init, close } from "../lib/store.mjs";
-import { initAuth, resetAccountPassword, hosted } from "../lib/auth.mjs";
+import { init, close } from "../server/store.mjs";
+import { initAuth, resetAccountPassword, hosted } from "../server/auth.mjs";
 
 try {
   if (!hosted) throw new Error("Set QUANTA_AUTH=1 and QUANTA_PUBLIC_URL for the hosted workspace");

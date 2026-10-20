@@ -6,7 +6,7 @@ import { createObjectAt, select } from "./objects.js";
 import { setMode } from "./canvas.js";
 import { centerOn, fitBoard, screenToWorld, shellRect, view } from "./view.js";
 import { runCommand, toggleFollow, togglePanel } from "./ui.js";
-import { searchableObjectText } from "./content-search.js";
+import { searchableObjectText } from "../../shared/content-search.js";
 
 export function mountWorkspace() {
   $("#commandBtn").onclick = () => emit("palette:open");

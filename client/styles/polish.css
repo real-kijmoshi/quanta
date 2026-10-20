@@ -1,0 +1,54 @@
+/* UI/UX polish layer: interaction feedback, legibility, touch targets, motion preferences.
+   Loaded last; only refines existing components. */
+
+::selection { background: var(--blue-wash); color: var(--ink); }
+
+/* Consistent, smooth feedback on every control */
+.icon-btn, .pill-btn, .ghost-btn, .solid-btn, .tool, .nav-item, .board-name, .menu button {
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease, transform .08s ease;
+}
+.icon-btn:active, .pill-btn:active, .ghost-btn:active, .solid-btn:active, .tool:active { transform: scale(.96); }
+.pill-btn:hover { box-shadow: var(--shadow-md); }
+.pill-btn:focus-visible, .icon-btn:focus-visible, .tool:focus-visible { outline-offset: 1px; }
+
+/* Topbar stays readable over the canvas edge and keeps a subtle depth cue */
+.topbar { box-shadow: 0 1px 0 rgba(24, 26, 30, .03), 0 4px 14px -10px rgba(24, 26, 30, .25); }
+.save-status:empty { display: none; }
+
+/* Toolbar: labels were 9px, active tool gets a clear lift */
+.tool span { font-size: 10px; }
+.tool.active { box-shadow: 0 2px 8px rgba(24, 26, 30, .25); }
+.tool:disabled { opacity: .4; }
+
+/* Menus and dialogs ease in instead of popping */
+.menu:not([hidden]) { animation: polish-pop .12s ease-out; transform-origin: top right; }
+dialog[open], .settings-dialog, .folder-dialog { animation: polish-rise .16s ease-out; }
+@keyframes polish-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@keyframes polish-rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* Menus: clearer hover and a calmer destructive action */
+.menu button:hover { background: var(--line-soft); }
+.menu button.danger:hover { background: #fdecea; color: var(--red); }
+
+/* Inputs get a visible focus state that matches the board name field */
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:focus-visible, select:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--blue-wash), inset 0 0 0 1px var(--blue); border-radius: 7px; }
+
+/* Quiet, consistent scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #c9ccc6 transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #c9ccc6; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #aeb2ab; background-clip: content-box; }
+
+/* Touch: meet the 40px target guideline */
+@media (pointer: coarse) {
+  .icon-btn { width: 40px; height: 40px; padding: 9px; }
+  .pill-btn { min-height: 38px; }
+  .menu button { min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .icon-btn:active, .pill-btn:active, .ghost-btn:active, .solid-btn:active, .tool:active { transform: none; }
+}
+@media print { .topbar { box-shadow: none; } }

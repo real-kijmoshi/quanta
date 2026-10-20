@@ -47,7 +47,7 @@ function signIn(token) {
     let register = !!token;
     const screen = el("main", { class: "account-screen" });
     const art = el("section", { class: "account-art", "aria-hidden": "true" }, [
-      el("span", { class: "account-wordmark", text: "Quanta / a space to think" }),
+      el("span", { class: "account-wordmark", text: "A space to think." }),
       el("div", { class: "account-art-notes" }, [el("div", { text: "A little curiosity." }), el("div", { text: "A shared perspective." }), el("div", { text: "Something brilliant." })]),
       el("h2", { text: "Big ideas start\nwith a little space." }),
       el("p", { text: "Sketch, solve, and work things out together." }),

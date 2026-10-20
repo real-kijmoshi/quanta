@@ -4,6 +4,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 const port = 4173;
 const ownerToken = randomBytes(32).toString("base64url");
@@ -32,7 +33,7 @@ const onOutput = data => {
     console.log("\nOpen the Owner URL to manage the workspace. Share only the Public URL; invitees still need a folder invitation.\n");
     // 2. Start the server, allowing exactly this tunnel hostname and recognizing
     //    the private owner link so the operator keeps owner access through the tunnel.
-    const server = spawn(process.execPath, ["server.mjs", "--share"], {
+    const server = spawn(process.execPath, [fileURLToPath(new URL("../server/index.mjs", import.meta.url)), "--share"], {
       stdio: "inherit",
       env: { ...process.env, QUANTA_ALLOWED_HOSTS: hostname, QUANTA_OWNER_TOKEN: ownerToken },
     });

@@ -1,6 +1,6 @@
 // Pure notebook geometry shared by the editor and regression checks.
 import { strokeBounds, boxesTouch } from "./stroke.js";
-import { searchableObjectText } from "./content-search.js";
+import { searchableObjectText } from "../../shared/content-search.js";
 
 export const NOTE_PAPERS = [["none", "Blank"], ["ruled", "Ruled"], ["grid", "Grid"], ["dots", "Dots"], ["graph", "Graph"], ["cornell", "Cornell"], ["music", "Music"]];
 export const NOTE_SIZES = { a4: { w: 794, h: 1123 }, letter: { w: 816, h: 1056 }, square: { w: 900, h: 900 } };

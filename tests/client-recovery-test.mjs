@@ -7,8 +7,8 @@ globalThis.localStorage = {
   setItem: (key, value) => storage.set(key, value),
   removeItem: key => storage.delete(key),
 };
-const { queueChanges, acknowledgeChanges, readOutbox } = await import('../src/outbox.js');
-const { cacheBoard, readCachedBoard } = await import('../src/local-cache.js');
+const { queueChanges, acknowledgeChanges, readOutbox } = await import('../client/src/outbox.js');
+const { cacheBoard, readCachedBoard } = await import('../client/src/local-cache.js');
 const entity = (id, text, updatedAt) => ({ id, type: 'note', x: 0, y: 0, w: 100, h: 80, text, updatedAt });
 const ops = value => ({ objects: { [value.id]: value }, strokes: {}, deleted: {} });
 const first = ops(entity('n1', 'first', 1));
@@ -38,7 +38,7 @@ const context = vm.createContext({
     return new Promise(resolve => pending.push({ path, body: JSON.parse(options.body), resolve }));
   },
 });
-const source = (await readFile(new URL('../src/doc.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
+const source = (await readFile(new URL('../client/src/doc.js', import.meta.url), 'utf8')).replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
 vm.runInContext(source, context);
 vm.runInContext(`state.board = ${JSON.stringify(board('a'))}; state.board.objects.n1 = ${JSON.stringify(entity('n1', 'before request', 1))}; dirty.objects.add('n1');`, context);
 const initialFlush = vm.runInContext('flushSave()', context);

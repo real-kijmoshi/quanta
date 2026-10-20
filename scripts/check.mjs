@@ -7,12 +7,11 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const SKIP = new Set(["node_modules", "data", "backups", "artifacts", ".git"]);
+const SOURCE_DIRS = ["bin", "client", "server", "shared", "scripts", "tests"];
 
 async function walk(dir) {
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
-    if (SKIP.has(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await walk(full)));
     else if ([".js", ".mjs"].includes(extname(entry.name))) files.push(full);
@@ -20,7 +19,7 @@ async function walk(dir) {
   return files;
 }
 
-const files = await walk(root);
+const files = (await Promise.all(SOURCE_DIRS.map(dir => walk(join(root, dir))))).flat();
 let failed = 0;
 for (const file of files) {
   try {

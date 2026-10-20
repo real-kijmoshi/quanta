@@ -11,7 +11,7 @@ function boot() {
   ready ??= (async () => {
     importScripts(`${PYODIDE}pyodide.js`);
     const pyodide = await loadPyodide({ indexURL: PYODIDE });
-    const harness = await fetch(new URL("./harness.py", self.location.href)).then((r) => r.text());
+    const harness = await fetch(new URL("../../shared/harness.py", self.location.href)).then((r) => r.text());
     pyodide.runPython(harness);
     return pyodide;
   })();

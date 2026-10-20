@@ -89,7 +89,7 @@ async function waitAndOpen(port) {
 switch (command) {
   case "start":
   case "share": {
-    run("server.mjs", command === "share" ? ["--share"] : []);
+    run("server/index.mjs", command === "share" ? ["--share"] : []);
     if (opts.open) waitAndOpen(env.PORT ?? "4173");
     break;
   }

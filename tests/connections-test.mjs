@@ -34,7 +34,7 @@ globalThis.fetch = async (url, init = {}) => {
 let child, closed;
 const password = "test-only-password-2026";
 async function start() {
-  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server.mjs", import.meta.url))], {
+  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server/index.mjs", import.meta.url))], {
     windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", QUANTA_DATA: dataDir, QUANTA_AUTH: "1", QUANTA_PUBLIC_URL: "https://quanta.test", QUANTA_ADMIN_EMAIL: "owner@example.com", QUANTA_ADMIN_PASSWORD: password, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", OPENROUTER_API_KEY: "" },
   });

@@ -1,6 +1,11 @@
 /* Quanta — a technical whiteboard. Light, papery, quiet chrome. */
 
 :root {
+  --brand-ink: #252824;
+  --brand-citron: #e4ed87;
+  --brand-citron-hover: #d5e26c;
+  --brand-wash: #f0f3d9;
+  --brand-olive: #535c24;
   --ink: #202225;
   --muted: #6d737b;
   --faint: #9aa0a6;
@@ -97,20 +102,28 @@ code { font-family: var(--mono); font-size: .92em; background: #fff; padding: 1p
   padding: 14px 14px 10px;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--brand-ink);
   font-weight: 800;
-  font-size: 15px;
-  letter-spacing: -.02em;
+  font-size: 22px;
+  letter-spacing: -.055em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
-.brand::after {
+.brand::before {
   content: "";
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--blue);
-  margin-left: 5px;
-  vertical-align: 3px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  background: url("../favicon.svg") center / contain no-repeat;
 }
+#nameOverlay .brand { margin-bottom: 26px; }
+#nameOverlay .sheet-box { padding: 30px; }
+#nameOverlay h2 { font-size: 23px; letter-spacing: -.045em; }
+#nameOverlay .solid-btn { background: var(--brand-citron); color: var(--brand-ink); }
+#nameOverlay .solid-btn:hover { background: var(--brand-citron-hover); }
 .ghost-btn {
   border: 1px solid var(--line);
   background: var(--white);

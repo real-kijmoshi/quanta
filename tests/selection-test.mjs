@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { pointInPolygon, strokeBounds, strokeHits, strokeInPolygon } from '../src/stroke.js';
+import { pointInPolygon, strokeBounds, strokeHits, strokeInPolygon } from '../client/src/stroke.js';
 
-const canvas = readFileSync(new URL('../src/canvas.js', import.meta.url), 'utf8');
-const ink = readFileSync(new URL('../src/ink.js', import.meta.url), 'utf8');
+const canvas = readFileSync(new URL('../client/src/canvas.js', import.meta.url), 'utf8');
+const ink = readFileSync(new URL('../client/src/ink.js', import.meta.url), 'utf8');
 const withoutExports = source => source.replace(/^export /gm, '');
 
 function fixture(pointerType, zoom = 1) {

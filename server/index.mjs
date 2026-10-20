@@ -6,19 +6,21 @@ import { networkInterfaces } from "node:os";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { checkRequest, responseHeaders } from "./lib/http-policy.mjs";
-import { validateJson } from "./lib/validation.mjs";
+import { checkRequest, responseHeaders } from "./http-policy.mjs";
+import { validateJson } from "./validation.mjs";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import * as store from "./lib/store.mjs";
-import { accessFor, invitationAccess, ownerTokenMatches, visibleWorkspace, canBoard, requireBoard, requireFolder, requireOwner } from "./lib/folder-access.mjs";
-import { createMcpServer } from "./lib/mcp.mjs";
-import { detectRuntimes, runCode } from "./lib/exec.mjs";
-import * as ai from "./lib/ai.mjs";
-import { hosted, publicUrl, initAuth, handleAuth, currentUser, invitationMembers, accessForUserId } from "./lib/auth.mjs";
-import * as connections from "./lib/connections.mjs";
-import { fetchModels } from "./lib/providers.mjs";
+import * as store from "./store.mjs";
+import { accessFor, invitationAccess, ownerTokenMatches, visibleWorkspace, canBoard, requireBoard, requireFolder, requireOwner } from "./folder-access.mjs";
+import { createMcpServer } from "./mcp.mjs";
+import { detectRuntimes, runCode } from "./exec.mjs";
+import * as ai from "./ai.mjs";
+import { hosted, publicUrl, initAuth, handleAuth, currentUser, invitationMembers, accessForUserId } from "./auth.mjs";
+import * as connections from "./connections.mjs";
+import { fetchModels } from "./providers.mjs";
 
-const root = fileURLToPath(new URL(".", import.meta.url)).replace(/[\\/]+$/, "");
+const root = fileURLToPath(new URL("../", import.meta.url)).replace(/[\\/]+$/, "");
+const clientRoot = join(root, "client");
+const sharedRoot = join(root, "shared");
 const port = Number(process.env.PORT ?? 4173);
 const host = process.env.HOST ?? (process.argv.includes("--share") ? "0.0.0.0" : "127.0.0.1");
 const remoteRun = process.env.QUANTA_REMOTE_RUN === "1";
@@ -508,12 +510,17 @@ async function handleApi(req, res, url) {
   return false;
 }
 
-const PRIVATE = /^(data|backups|artifacts|node_modules|lib|scripts|deploy|docs|\.git)([/\\]|$)|(^|[/\\])\.[^/\\]+|^(server\.mjs|package(-lock)?\.json|Dockerfile|compose\.yaml)$/;
+// Only client/ and the explicitly shared runtime are public.
+const PRIVATE = /(^|[/\\])\.[^/\\]+/;
 
 async function serveStatic(req, res, url) {
   const requested = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
   const safe = normalize(requested).replace(/^(\.\.[/\\])+/, "").replace(/^[/\\]+/, "");
-  let base = root;
+  if (PRIVATE.test(safe)) {
+    res.writeHead(404).end("Not Found");
+    return;
+  }
+  let base = clientRoot;
   let rel = safe;
   let immutable = false;
   const [head, sub = "", ...rest] = safe.split(/[/\\]/);
@@ -539,9 +546,9 @@ async function serveStatic(req, res, url) {
     base = store.assetsDir;
     rel = sub;
     immutable = false;
-  } else if (PRIVATE.test(safe)) {
-    res.writeHead(404).end("Not Found");
-    return;
+  } else if (head === "shared") {
+    base = sharedRoot;
+    rel = [sub, ...rest].join(sep);
   }
   const file = join(base, rel);
   if (!file.startsWith(base + sep)) {

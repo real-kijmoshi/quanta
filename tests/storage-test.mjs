@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, rm, mkdir, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep, basename } from 'node:path';
-import { writeJson, readJson, drainWrites } from '../lib/persistence.mjs';
-import { validateOps } from '../lib/validation.mjs';
-import { createBackup, verifyBackup } from './backup.mjs';
-import { lockWorkspace } from '../lib/workspace-lock.mjs';
+import { writeJson, readJson, drainWrites } from '../server/persistence.mjs';
+import { validateOps } from '../server/validation.mjs';
+import { createBackup, verifyBackup } from '../scripts/backup.mjs';
+import { lockWorkspace } from '../server/workspace-lock.mjs';
 
 const work = await mkdtemp(join(tmpdir(), 'quanta-storage-test-'));
 process.env.QUANTA_DATA = join(work, 'data');
-const store = await import('../lib/store.mjs');
+const store = await import('../server/store.mjs');
 try {
   const file = join(work, 'serial.json');
   await Promise.all(Array.from({ length: 40 }, (_, revision) => writeJson(file, { revision })));

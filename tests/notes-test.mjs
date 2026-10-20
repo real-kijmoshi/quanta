@@ -3,8 +3,8 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import vm from "node:vm";
-import { notebookPages, pageContents, pageMatches, translatePoints, reviewSchedule, flashcardData } from "../src/notes-model.js";
-import { responseHeaders } from "../lib/http-policy.mjs";
+import { notebookPages, pageContents, pageMatches, translatePoints, reviewSchedule, flashcardData } from "../client/src/notes-model.js";
+import { responseHeaders } from "../server/http-policy.mjs";
 
 const stripModule = (source) => source.replace(/^import\b[\s\S]*?from "[^"\n]+";\r?\n/gm, "").replace(/^export /gm, "");
 const page = (id, y, h = 200) => ({ id, type: "frame", x: 20, y, w: 180, h, text: id, props: { page: true, paper: "ruled" } });
@@ -24,7 +24,7 @@ assert.equal(reviewSchedule({ interval: 4, reviews: 2 }, "good", 0).interval, 10
 assert.equal(reviewSchedule({ interval: 4, reviews: 2 }, "hard", 0).reviews, 3);
 assert.deepEqual(flashcardData({ text: "**Edited question**\n\nEdited answer", props: { studyCard: { question: "stale" } } }), { question: "Edited question", answer: "Edited answer" });
 
-const operations = stripModule(await readFile(new URL("../src/notes-pages.js", import.meta.url), "utf8"));
+const operations = stripModule(await readFile(new URL("../client/src/notes-pages.js", import.meta.url), "utf8"));
 function fixture() {
   let objects = structuredClone([p1, p2, card, { id: "target", type: "shape", x: 100, y: 60, w: 40, h: 40, props: {} }, { id: "arrow", type: "arrow", x: 50, y: 60, w: 50, h: 2, props: { from: "card", to: "target" } }]);
   let strokes = structuredClone([ink, { ...ink, id: "ink2", points: [[40, 290, .4], [50, 310, .6]] }]);
@@ -82,7 +82,7 @@ function fixture() {
 }
 
 // Exercise the actual recording lifecycle without opening a real microphone.
-const notes = stripModule(await readFile(new URL("../src/notes.js", import.meta.url), "utf8"));
+const notes = stripModule(await readFile(new URL("../client/src/notes.js", import.meta.url), "utf8"));
 {
   const board = { id: "board", objects: { p1: structuredClone(p1) } }, messages = [], downloads = [], events = [];
   let tracksStopped = 0, recordingInstance;
@@ -151,7 +151,7 @@ assert.match(headers["permissions-policy"], /camera=\(\)/);
     })) }; } },
     file: { name: "Lecture.pdf", arrayBuffer: async () => Buffer.from(pdf) },
   });
-  vm.runInContext(stripModule(await readFile(new URL("../src/notebook.js", import.meta.url), "utf8")), context);
+  vm.runInContext(stripModule(await readFile(new URL("../client/src/notebook.js", import.meta.url), "utf8")), context);
   vm.runInContext("pdfjs = fakePdfJs", context);
   await vm.runInContext("importPdf(file)", context);
   assert.equal(created.length, 2, "PDF import creates the page and annotation background");
@@ -162,7 +162,7 @@ assert.match(headers["permissions-policy"], /camera=\(\)/);
 
 const work = await mkdtemp(join(tmpdir(), "quanta-notes-test-"));
 process.env.QUANTA_DATA = join(work, "data");
-const store = await import("../lib/store.mjs");
+const store = await import("../server/store.mjs");
 try {
   await store.init();
   for (const [mime, extension] of [["audio/mp4", "m4a"], ["audio/webm;codecs=opus", "webm"], ["audio/ogg;codecs=opus", "ogg"]]) {

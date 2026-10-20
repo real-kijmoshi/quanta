@@ -20,7 +20,7 @@ await writeFile(preload, "globalThis.fetch = async () => Response.json({ data: [
 let child, closed;
 const password = "test-only-password-2026";
 async function start() {
-  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server.mjs", import.meta.url))], {
+  child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server/index.mjs", import.meta.url))], {
     windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", QUANTA_DATA: dataDir, QUANTA_AUTH: "1", QUANTA_PUBLIC_URL: "https://quanta.test", QUANTA_ADMIN_EMAIL: "owner@example.com", QUANTA_ADMIN_PASSWORD: password, ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "", OPENROUTER_API_KEY: "" },
   });
@@ -129,14 +129,14 @@ try {
   const persisted = await readFile(join(dataDir, "accounts.json"), "utf8");
   for (const secret of [password, "updated-test-password-2026", alice.split("=")[1], invite.token]) assert.ok(!persisted.includes(secret), "plaintext passwords, cookies, and invitations are not persisted");
   await stop();
-  await promisify(execFile)(process.execPath, [fileURLToPath(new URL("./reset-password.mjs", import.meta.url)), "alice@example.com"], { windowsHide: true, env: { ...process.env, QUANTA_DATA: dataDir, QUANTA_AUTH: "1", QUANTA_PUBLIC_URL: "https://quanta.test", QUANTA_RESET_PASSWORD: "recovered-password-2026" } });
+  await promisify(execFile)(process.execPath, [fileURLToPath(new URL("../scripts/reset-password.mjs", import.meta.url)), "alice@example.com"], { windowsHide: true, env: { ...process.env, QUANTA_DATA: dataDir, QUANTA_AUTH: "1", QUANTA_PUBLIC_URL: "https://quanta.test", QUANTA_RESET_PASSWORD: "recovered-password-2026" } });
   await start();
   assert.equal((await post("/api/auth/login", null, { email: "alice@example.com", password: "recovered-password-2026" })).status, 200, "administrator password recovery works offline");
   const storage = new Map();
   globalThis.localStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) };
-  const { prefs, setPrefs } = await import("../src/core.js");
-  const { queueChanges, readOutbox } = await import("../src/outbox.js");
-  const { cacheBoard, readCachedBoard } = await import("../src/local-cache.js");
+  const { prefs, setPrefs } = await import("../client/src/core.js");
+  const { queueChanges, readOutbox } = await import("../client/src/outbox.js");
+  const { cacheBoard, readCachedBoard } = await import("../client/src/local-cache.js");
   globalThis.quantaAccountId = "alice";
   setPrefs("cache:workspace", { private: true });
   queueChanges("same-board", { objects: { note: { text: "private" } }, strokes: {}, deleted: {} });

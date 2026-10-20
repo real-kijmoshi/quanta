@@ -3,44 +3,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quanta - whiteboard for maths, physics and code</title>
-<meta name="description" content="Quanta is a self-hosted whiteboard and notebook with handwriting, typeset maths, plots, runnable code, live collaboration and an AI/MCP interface. One command to install.">
+<title>Quanta — A space to think</title>
+<meta name="description" content="A space to think. Sketch, solve, and run code together on a whiteboard you control. Quanta is open source and runs on your machine.">
+<meta name="theme-color" content="#f8f9f3">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<meta property="og:title" content="Quanta">
-<meta property="og:description" content="Self-hosted whiteboard and notebook for maths, physics and code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta property="og:title" content="Quanta — A space to think">
+<meta property="og:description" content="Sketch, solve, and run code together on a whiteboard you control. Open source. On your machine.">
+<meta property="og:type" content="website">
 <style>
 :root {
-  --ink: #202225; --muted: #5f656d; --line: #dfe1dc; --bg: #fbfbf9; --card: #fff;
-  --blue: #5a67eb; --blue-dark: #4450d8; --wash: #eef0fe; --code-bg: #1d2026; --code-ink: #e8eaee;
+  --ink: #252824; --muted: #697064; --line: #dfe3d6; --bg: #f8f9f3; --card: #fff;
+  --citron: #e4ed87; --citron-hover: #d5e26c; --blue: #535c24; --blue-dark: #424b1c; --wash: #f0f3d9; --code-bg: #252824; --code-ink: #e8eaee;
   --mono: ui-monospace, "DM Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --ink: #eceef1; --muted: #a0a6ae; --line: #2d3138; --bg: #15171a; --card: #1c1f24; --wash: #232749; --blue: #8a95ff; --blue-dark: #a3acff; }
+  :root { --ink: #f0f2e9; --muted: #acb2a3; --line: #373d31; --bg: #1c201a; --card: #252a22; --wash: #333c25; --blue: #e4ed87; --blue-dark: #e4ed87; }
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 Manrope, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--citron); color: #252824; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
 a { color: var(--blue-dark); }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
-nav { display: flex; align-items: center; gap: 22px; padding: 18px 0; }
-nav .brand { font-weight: 700; font-size: 20px; letter-spacing: -.02em; color: var(--ink); text-decoration: none; margin-right: auto; display: flex; gap: 8px; align-items: center; }
+nav { display: flex; align-items: center; gap: 24px; padding: 26px 0; border-bottom: 1px solid var(--line); }
+nav .brand { font-weight: 800; font-size: 25px; letter-spacing: -.055em; color: var(--ink); text-decoration: none; margin-right: auto; display: flex; gap: 10px; align-items: center; }
+.brand img { display: block; width: 36px; height: 36px; }
 nav a:not(.brand) { color: var(--muted); text-decoration: none; font-size: 15px; }
 nav a:not(.brand):hover { color: var(--ink); }
-.hero { padding: 56px 0 40px; text-align: center; }
-h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.08; letter-spacing: -.03em; margin: 0 auto 18px; max-width: 16em; }
-.hero p.lead { font-size: 19px; color: var(--muted); max-width: 36em; margin: 0 auto 28px; }
+.hero { padding: 64px 0 24px; text-align: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 11px/1.5 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 24px; }
+.eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--blue); border-radius: 50%; }
+h1 { font-size: clamp(54px, 8.4vw, 98px); line-height: 1.05; letter-spacing: -.065em; font-weight: 700; margin: 0 auto 28px; max-width: 12em; }
+h1 span { position: relative; display: inline-block; z-index: 0; }
+h1 span::after { content: ""; position: absolute; left: -.02em; right: -.04em; bottom: .05em; height: .2em; background: var(--citron); z-index: -1; transform: rotate(-2deg); border-radius: 2px; }
+.hero p.lead { font-size: 17px; line-height: 1.8; color: var(--muted); max-width: 36em; margin: 0 auto 28px; }
 .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .btn { display: inline-block; padding: 11px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--card); }
-.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-.btn.primary:hover { background: var(--blue-dark); }
+.btn { transition: background-color .15s, border-color .15s; }
+.btn.primary { background: var(--citron); border-color: #d5de79; color: #252824; font-weight: 800; }
+.btn.primary:hover { background: var(--citron-hover); }
+.btn:not(.primary):hover { background: var(--wash); }
+.hero-details { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 22px; margin: 20px 0 0; color: var(--muted); font-size: 11px; }
+.hero-details span::before { content: "✓"; margin-right: 6px; color: var(--blue); }
 .board { margin: 44px auto 0; max-width: 860px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
-  background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 20px 20px; box-shadow: 0 18px 50px rgba(24,26,30,.12); overflow: hidden; }
+  background-image: radial-gradient(#dfe3d6 1px, transparent 1px); background-size: 20px 20px; box-shadow: 0 18px 50px rgba(24,26,30,.08); overflow: hidden; background-color: #fcfdf9; text-align: left; }
+.board-topbar { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid #e0e3d7; background: #fff; color: #697064; font-size: 11px; }
+.board-topbar img { width: 24px; height: 24px; }
+.board-topbar strong { color: #252824; font-size: 12px; font-weight: 700; }
+.board-topbar .board-live { margin-left: auto; color: #535c24; background: #f0f3d9; border-radius: 20px; padding: 3px 9px; font-size: 10px; }
 .board svg { display: block; width: 100%; height: auto; }
 section { padding: 56px 0 8px; }
 h2 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 8px; }
 .sub { color: var(--muted); margin: 0 0 28px; max-width: 40em; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+.card::before { content: ""; display: block; width: 24px; height: 4px; border-radius: 2px; background: var(--citron); margin-bottom: 18px; }
 .card h3 { margin: 0 0 6px; font-size: 17px; }
 .card p { margin: 0; color: var(--muted); font-size: 15px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -56,13 +77,36 @@ tr:last-child td { border-bottom: 0; }
 td:first-child { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
 footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
 footer a { color: var(--muted); }
+.footer-brand { margin-right: auto; }
+.footer-brand strong { display: block; color: var(--ink); font-size: 18px; letter-spacing: -.04em; }
+.footer-brand small { display: block; margin-top: 4px; }
 code { font-family: var(--mono); font-size: .92em; }
+section[id] { scroll-margin-top: 24px; }
+@media (max-width: 600px) {
+  nav { flex-wrap: wrap; gap: 12px 18px; padding: 20px 0; }
+  nav .brand { flex-basis: 100%; }
+  nav a:not(.brand) { font-size: 12px; }
+  .hero { padding-top: 40px; }
+  .eyebrow { font-size: 9px; letter-spacing: .03em; }
+  .hero p.lead { font-size: 15px; }
+  .board { margin-top: 32px; }
+  .board-topbar { padding: 10px; }
+  .board-topbar > span:not(.board-live) { display: none; }
+  section { padding-top: 40px; }
+  h2 { font-size: 26px; }
+  .grid { grid-template-columns: 1fr; }
+  td:first-child { white-space: normal; overflow-wrap: anywhere; }
+  th, td { padding: 10px; font-size: 13px; }
+  .footer-brand { flex-basis: 100%; }
+}
+@media (prefers-color-scheme: dark) { h1 span::after { background: #596328; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <nav>
-    <a class="brand" href="#top"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#5a67eb"/><path d="M6 15c2-8 4-8 6 0s4 0 6-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Quanta</a>
+  <nav aria-label="Main navigation">
+    <a class="brand" href="#top" aria-label="Quanta home"><img src="favicon.svg" width="36" height="36" alt="">Quanta</a>
     <a href="#features">Features</a>
     <a href="#install">Install</a>
     <a href="#cli">CLI</a>
@@ -71,13 +115,16 @@ code { font-family: var(--mono); font-size: .92em; }
   </nav>
 
   <header class="hero" id="top">
-    <h1>A whiteboard that understands maths, physics and code</h1>
-    <p class="lead">Write by hand, typeset equations, plot functions and run Python or JavaScript on one infinite canvas. Everything stays on your machine, and your friends can join live.</p>
+    <p class="eyebrow">A whiteboard for maths, physics &amp; code</p>
+    <h1>A space to <span>think.</span></h1>
+    <p class="lead">Sketch a thought. Solve an equation. See where it takes you. Bring handwriting, maths, and runnable code together on one shared canvas.</p>
     <div class="cta">
       <a class="btn primary" href="#install">Install Quanta</a>
       <a class="btn" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
     </div>
+    <div class="hero-details"><span>Open source</span><span>Runs on your machine</span><span>Better together</span></div>
     <div class="board" role="img" aria-label="Illustration of a board with a math card, a plot and a code card">
+      <div class="board-topbar" aria-hidden="true"><img src="favicon.svg" width="24" height="24" alt=""><strong>Free fall, fresh ideas</strong><span>/ Physics notebook</span><span class="board-live">Thinking together</span></div>
       <svg viewBox="0 0 860 420" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
         <rect x="40" y="40" width="250" height="150" rx="10" fill="#ffe79a"/>
         <text x="60" y="76" font-size="15" font-weight="700" fill="#202225">Free fall</text>
@@ -105,7 +152,7 @@ code { font-family: var(--mono); font-size: .92em; }
 
   <section id="features">
     <h2>Built for thinking out loud</h2>
-    <p class="sub">A notebook, a whiteboard and a scratchpad, without sending your work to anyone's cloud.</p>
+    <p class="sub">Follow an idea from the first scribble to the working solution. Your notebook, whiteboard, and scratchpad share the same space.</p>
     <div class="grid">
       <div class="card"><h3>Handwriting that behaves</h3><p>Pressure-aware pen, brush and marker, precise eraser, palm rejection, and shape snapping when you hold still.</p></div>
       <div class="card"><h3>Maths and plots</h3><p>Math cards evaluate and typeset each line. Plot cards draw functions, parametric curves and points, with sliders for variables.</p></div>
@@ -165,7 +212,7 @@ sudo ./deploy/install.sh board.example.com you@example.com</div>
   </section>
 
   <footer>
-    <span>Quanta &middot; MIT licensed</span>
+    <span class="footer-brand"><strong>Quanta</strong>A space to think.<small>Open source &middot; MIT licensed</small></span>
     <a href="https://github.com/real-kijmoshi/quanta">Source</a>
     <a href="https://github.com/real-kijmoshi/quanta/releases">Releases</a>
     <a href="https://github.com/real-kijmoshi/quanta/issues">Issues</a>

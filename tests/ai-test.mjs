@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { request } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createBrowserTools } from "../src/webmcp.js";
+import { createBrowserTools } from "../client/src/webmcp.js";
 
 const work = await mkdtemp(join(tmpdir(), "quanta-ai-test-"));
 const originalFetch = globalThis.fetch;
@@ -55,9 +55,9 @@ try {
     const message = followup ? { role: "assistant", content: "Created the note." } : { role: "assistant", content: "", tool_calls: [{ id: "one", type: "function", function: { name: "add_object", arguments: String(url).includes("/api/chat") ? { type: "note", text: "API note" } : JSON.stringify({ type: "note", text: "API note" }) } }] };
     return Response.json(String(url).includes("/api/chat") ? { message } : { choices: [{ message }] });
   };
-  const providers = await import("../lib/providers.mjs");
-  const ai = await import("../lib/ai.mjs");
-  store = await import("../lib/store.mjs");
+  const providers = await import("../server/providers.mjs");
+  const ai = await import("../server/ai.mjs");
+  store = await import("../server/store.mjs");
   await store.init();
   const board = await store.createBoard({ name: "Provider tests" });
   await providers.refreshProviders();
@@ -120,7 +120,7 @@ try {
   await new Promise((resolve) => reservation.close(resolve));
   await store.close();
   store = null;
-  const server = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server.mjs", import.meta.url))], { windowsHide: true, env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "" }, stdio: ["ignore", "pipe", "pipe"] });
+  const server = spawn(process.execPath, ["--import", pathToFileURL(preload).href, fileURLToPath(new URL("../server/index.mjs", import.meta.url))], { windowsHide: true, env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "" }, stdio: ["ignore", "pipe", "pipe"] });
   let serverError = "";
   server.stderr.on("data", (part) => { serverError += part; });
   const exit = new Promise((resolve) => server.once("close", resolve));
@@ -161,7 +161,7 @@ try {
       assert.notEqual(result.headers.get('access-control-allow-origin'), '*');
     }
     const navigationHeaders = { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate', 'sec-fetch-dest': 'document' };
-    const { checkRequest } = await import('../lib/http-policy.mjs');
+    const { checkRequest } = await import('../server/http-policy.mjs');
     const policyRequest = (path, method = 'GET', headers = navigationHeaders) => ({ url: path, method, headers: { host: '127.0.0.1:4173', ...headers } });
     assert.equal(checkRequest(policyRequest('/')).pathname, '/', 'public navigation into the application is allowed');
     for (const path of ['/api/workspace', '/mcp', '/health']) assert.throws(() => checkRequest(policyRequest(path)), error => error.status === 403);

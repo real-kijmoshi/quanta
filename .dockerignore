@@ -7,3 +7,8 @@ artifacts
 .env.*
 !.env.example
 *.log
+
+.claude
+.commandcode
+tests
+site

@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const ink = readFileSync(new URL('../src/ink.js', import.meta.url), 'utf8');
+const ink = readFileSync(new URL('../client/src/ink.js', import.meta.url), 'utf8');
 {
-  const canvas = readFileSync(new URL('../src/canvas.js', import.meta.url), 'utf8');
+  const canvas = readFileSync(new URL('../client/src/canvas.js', import.meta.url), 'utf8');
   let hit = { id: 'existing-card' };
   const edits = [], created = [];
   const inputContext = vm.createContext({
@@ -111,7 +111,7 @@ redraw(false);
 assert.equal(clears, 2, 'resizing invalidates retained pixels');
 console.log('Pan cache regressions passed: cached movement skips scans and paints; edits, edges, zoom, board changes, and resize invalidate correctly.');
 
-const canvas = readFileSync(new URL('../src/canvas.js', import.meta.url), 'utf8');
+const canvas = readFileSync(new URL('../client/src/canvas.js', import.meta.url), 'utf8');
 const queueStart = canvas.indexOf('let moveFrame = 0;');
 const queueEnd = canvas.indexOf('function onPointerMove(event)', queueStart);
 let processed = [];
@@ -134,7 +134,7 @@ vm.runInContext("queuePointerMove({x:101,pointerType:'pen'}); queuePointerMove({
 assert.deepEqual(processed, [99, 100, 101, 102], 'ink must retain every input event');
 console.log('Performance regressions passed: 10,000-stroke append paints 1 stroke; drag bursts coalesce 100:1.');
 
-const objectsSource = readFileSync(new URL('../src/objects.js', import.meta.url), 'utf8');
+const objectsSource = readFileSync(new URL('../client/src/objects.js', import.meta.url), 'utf8');
 const indexStart = objectsSource.indexOf('const attachedArrows =');
 const indexEnd = objectsSource.indexOf('let selectedNodes', indexStart);
 const arrows = vm.createContext({});
@@ -162,7 +162,7 @@ vm.runInContext(`
 console.log('Drag regressions passed: connector links update on reconnect/delete; translation skips content rendering.');
 
 // Exercise geometry for every pen route, including tap dots and snapped shapes.
-const { paintStroke } = await import('../src/stroke.js');
+const { paintStroke } = await import('../client/src/stroke.js');
 let curveCount = 0;
 let drawCount = 0;
 globalThis.Path2D = class {
@@ -190,7 +190,7 @@ assert.equal(penContext.lineWidth, 3, 'display width must not alter cached geome
 paintStroke(penContext, { ...thin, tool: 'highlighter' }, { minWidth: 100 });
 assert.ok(penContext.lineWidth < 100, 'marker widths stay unchanged');
 
-const viewSource = readFileSync(new URL('../src/view.js', import.meta.url), 'utf8');
+const viewSource = readFileSync(new URL('../client/src/view.js', import.meta.url), 'utf8');
 let cameraFrame;
 let cameraFrames = 0;
 let viewEvents = 0;
@@ -212,7 +212,7 @@ assert.equal(viewEvents, 1);
 assert.equal(camera.world.style.transform, 'translate(99px, 0px) scale(1)');
 console.log('Camera and pen regressions passed: 100 camera updates render once; all pen routes paint.');
 
-const { inkCursor } = await import('../src/native-cursor.js');
+const { inkCursor } = await import('../client/src/native-cursor.js');
 for (const tool of ['pen', 'highlighter', 'eraser', 'lasso']) {
   for (const size of [0, 5.5, 28, 500]) {
     const cursor = inkCursor(tool, size, '#2747d6');
@@ -248,7 +248,7 @@ vm.runInContext('applyCursor()', cursorState);
 assert.equal(installs, 2, 'changing tools updates the native cursor');
 console.log('Native cursor regressions passed: bounded centered cursors for all ink tools; camera updates reuse the cursor.');
 
-const { smoothPenPoints } = await import('../src/stroke.js');
+const { smoothPenPoints } = await import('../client/src/stroke.js');
 const sparse = [[0, 0, .5], [20, 10, .5], [40, 20, .5]];
 const dense = [];
 for (let i = 0; i < sparse.length - 1; i++) {
@@ -373,7 +373,7 @@ vm.runInContext('paintLiveNow(); scheduleLive(); scheduleLive()', live);
 assert.equal(inkFrames.size, 1, 'peer and selection redraws still coalesce');
 console.log('Ink latency regressions passed: mouse, stylus, and touch paint synchronously at three zoom levels; predictions stay preview-only.');
 
-const { dotPattern } = await import('../src/grid.js');
+const { dotPattern } = await import('../client/src/grid.js');
 for (const zoom of [.05, .06, .13, .5, 1, 2, 8]) {
   const pattern = dotPattern(zoom);
   assert.ok(pattern.step >= 14 && pattern.step <= 28);

@@ -1,5 +1,5 @@
-# Runs one Python code card. Shared by the local runner (lib/exec.mjs) and the
-# in-browser Pyodide runner (src/py-worker.js), so both behave the same:
+# Runs one Python code card. Shared by the local runner (server/exec.mjs) and the
+# in-browser Pyodide runner (client/src/py-worker.js), so both behave the same:
 #   - the value of a trailing expression is shown, like a notebook cell
 #   - tracebacks only mention the card's own lines
 #   - matplotlib figures are returned as PNG images
