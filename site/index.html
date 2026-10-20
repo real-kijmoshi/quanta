@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quanta — A space to think</title>
 <meta name="description" content="A space to think. Sketch, solve, and run code together on a whiteboard you control. Quanta is open source and runs on your machine.">
-<meta name="theme-color" content="#f8f9f3">
+<meta name="theme-color" content="#252824">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,201 +15,348 @@
 <meta property="og:type" content="website">
 <style>
 :root {
-  --ink: #252824; --muted: #697064; --line: #dfe3d6; --bg: #f8f9f3; --card: #fff;
-  --citron: #e4ed87; --citron-hover: #d5e26c; --blue: #535c24; --blue-dark: #424b1c; --wash: #f0f3d9; --code-bg: #252824; --code-ink: #e8eaee;
-  --mono: ui-monospace, "DM Mono", SFMono-Regular, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #f0f2e9; --muted: #acb2a3; --line: #373d31; --bg: #1c201a; --card: #252a22; --wash: #333c25; --blue: #e4ed87; --blue-dark: #e4ed87; }
+  --ink: #252824; --ink-2: #2f332d; --paper: #f8f9f3; --wash: #f0f3d9; --citron: #e4ed87; --citron-2: #d5e26c; --olive: #535c24;
+  --muted: #697064; --line: #dfe3d6; --card: #fff;
+  --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 Manrope, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
-::selection { background: var(--citron); color: #252824; }
-:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
-a { color: var(--blue-dark); }
-.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
-nav { display: flex; align-items: center; gap: 24px; padding: 26px 0; border-bottom: 1px solid var(--line); }
-nav .brand { font-weight: 800; font-size: 25px; letter-spacing: -.055em; color: var(--ink); text-decoration: none; margin-right: auto; display: flex; gap: 10px; align-items: center; }
-.brand img { display: block; width: 36px; height: 36px; }
-nav a:not(.brand) { color: var(--muted); text-decoration: none; font-size: 15px; }
-nav a:not(.brand):hover { color: var(--ink); }
-.hero { padding: 64px 0 24px; text-align: center; }
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 11px/1.5 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 24px; }
-.eyebrow::before { content: ""; width: 6px; height: 6px; background: var(--blue); border-radius: 50%; }
-h1 { font-size: clamp(54px, 8.4vw, 98px); line-height: 1.05; letter-spacing: -.065em; font-weight: 700; margin: 0 auto 28px; max-width: 12em; }
-h1 span { position: relative; display: inline-block; z-index: 0; }
-h1 span::after { content: ""; position: absolute; left: -.02em; right: -.04em; bottom: .05em; height: .2em; background: var(--citron); z-index: -1; transform: rotate(-2deg); border-radius: 2px; }
-.hero p.lead { font-size: 17px; line-height: 1.8; color: var(--muted); max-width: 36em; margin: 0 auto 28px; }
-.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.btn { display: inline-block; padding: 11px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--card); }
-.btn { transition: background-color .15s, border-color .15s; }
-.btn.primary { background: var(--citron); border-color: #d5de79; color: #252824; font-weight: 800; }
-.btn.primary:hover { background: var(--citron-hover); }
-.btn:not(.primary):hover { background: var(--wash); }
-.hero-details { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 22px; margin: 20px 0 0; color: var(--muted); font-size: 11px; }
-.hero-details span::before { content: "✓"; margin-right: 6px; color: var(--blue); }
-.board { margin: 44px auto 0; max-width: 860px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
-  background-image: radial-gradient(#dfe3d6 1px, transparent 1px); background-size: 20px 20px; box-shadow: 0 18px 50px rgba(24,26,30,.08); overflow: hidden; background-color: #fcfdf9; text-align: left; }
-.board-topbar { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid #e0e3d7; background: #fff; color: #697064; font-size: 11px; }
-.board-topbar img { width: 24px; height: 24px; }
-.board-topbar strong { color: #252824; font-size: 12px; font-weight: 700; }
-.board-topbar .board-live { margin-left: auto; color: #535c24; background: #f0f3d9; border-radius: 20px; padding: 3px 9px; font-size: 10px; }
-.board svg { display: block; width: 100%; height: auto; }
-section { padding: 56px 0 8px; }
-h2 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 8px; }
-.sub { color: var(--muted); margin: 0 0 28px; max-width: 40em; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
-.card::before { content: ""; display: block; width: 24px; height: 4px; border-radius: 2px; background: var(--citron); margin-bottom: 18px; }
-.card h3 { margin: 0 0 6px; font-size: 17px; }
-.card p { margin: 0; color: var(--muted); font-size: 15px; }
-.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.tabs button { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
-.tabs button[aria-selected="true"] { background: var(--wash); border-color: var(--blue); color: var(--blue-dark); font-weight: 600; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+::selection { background: var(--citron); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--olive); outline-offset: 3px; }
+a { color: var(--olive); }
+code { font-family: var(--mono); font-size: .9em; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- hero (dark ink) ---------- */
+.hero-band { background: var(--ink); color: #f0f2e9; position: relative; overflow: hidden; }
+.hero-band::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(228,237,135,.16) 1px, transparent 1px); background-size: 24px 24px; mask-image: linear-gradient(#000 40%, transparent); -webkit-mask-image: linear-gradient(#000 40%, transparent); }
+nav { position: relative; display: flex; align-items: center; gap: 28px; padding: 24px 0; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 800; font-size: 24px; letter-spacing: -.055em; color: #fff; text-decoration: none; }
+.brand img { width: 34px; height: 34px; display: block; }
+nav a:not(.brand):not(.nav-cta) { color: #b9bfae; text-decoration: none; font-size: 15px; font-weight: 500; }
+nav a:not(.brand):not(.nav-cta):hover { color: #fff; }
+.nav-cta { font-size: 14px; font-weight: 700; color: var(--ink); background: var(--citron); padding: 8px 16px; border-radius: 999px; text-decoration: none; }
+.nav-cta:hover { background: var(--citron-2); }
+.hero { position: relative; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 56px 0 96px; }
+.hero > * { min-width: 0; }
+.eyebrow { font: 500 12px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--citron); margin: 0 0 22px; }
+h1 { font-size: clamp(52px, 7vw, 92px); line-height: 1; letter-spacing: -.065em; font-weight: 800; margin: 0 0 26px; }
+h1 em { font-style: normal; color: var(--citron); position: relative; white-space: nowrap; }
+h1 em svg { position: absolute; left: -2%; bottom: -.16em; width: 104%; height: .3em; overflow: visible; }
+h1 em path { stroke: var(--citron); stroke-width: 5; fill: none; stroke-linecap: round; stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1.1s .5s ease-out forwards; }
+.lead { font-size: 18px; line-height: 1.75; color: #b9bfae; max-width: 30em; margin: 0 0 32px; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { display: inline-block; padding: 13px 22px; border-radius: 12px; font-weight: 700; text-decoration: none; transition: background-color .15s, transform .15s; }
+.btn.primary { background: var(--citron); color: var(--ink); }
+.btn.primary:hover { background: var(--citron-2); transform: translateY(-1px); }
+.btn.ghost { color: #f0f2e9; border: 1px solid #4a5044; }
+.btn.ghost:hover { background: var(--ink-2); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 26px 0 0; padding: 0; list-style: none; font: 12px var(--mono); color: #8d9484; }
+.facts li::before { content: "◆"; color: var(--citron); margin-right: 8px; font-size: 8px; vertical-align: 2px; }
+
+/* demo board */
+.demo { position: relative; background: #fcfdf9; color: var(--ink); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06); transform: rotate(1.2deg); overflow: hidden; }
+.demo-bar { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: #fff; border-bottom: 1px solid #e0e3d7; font-size: 12px; color: var(--muted); }
+.demo-bar img { width: 22px; height: 22px; }
+.demo-bar strong { color: var(--ink); font-size: 13px; }
+.demo-bar .live { margin-left: auto; background: var(--wash); color: var(--olive); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.demo svg { display: block; width: 100%; height: auto; background-image: radial-gradient(#dfe3d6 1px, transparent 1px); background-size: 20px 20px; }
+.ink-line { stroke-dasharray: 700; stroke-dashoffset: 700; animation: draw 2.2s .9s ease-in-out forwards; }
+.ink-line.b { animation-delay: 1.8s; }
+.cursor { animation: float 5s ease-in-out infinite; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes float { 50% { transform: translate(14px, -10px); } }
+
+/* ---------- sections ---------- */
+section { padding: 96px 0 0; scroll-margin-top: 16px; }
+.kicker { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--olive); margin: 0 0 14px; }
+h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.1; letter-spacing: -.045em; font-weight: 800; margin: 0 0 14px; max-width: 18em; }
+.sub { color: var(--muted); font-size: 17px; max-width: 38em; margin: 0 0 40px; }
+
+/* bento */
+.bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px; overflow: hidden; position: relative; }
+.tile h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.03em; }
+.tile p { margin: 0; color: var(--muted); font-size: 15px; }
+.t-a { grid-column: span 4; background: var(--ink); border-color: var(--ink); color: #f0f2e9; }
+.t-a p { color: #b9bfae; max-width: 26em; }
+.t-b { grid-column: span 2; background: var(--citron); border-color: var(--citron); }
+.t-b p { color: #3d4420; }
+.t-c, .t-d, .t-e { grid-column: span 2; }
+.t-f { grid-column: span 3; }
+.t-g { grid-column: span 3; background: var(--wash); border-color: #e1e7b8; }
+.t-a svg { display: block; margin-top: 22px; width: 100%; height: 90px; }
+.mathline { font: 500 15px/1.9 var(--mono); margin-top: 18px; padding: 12px 14px; background: rgba(255,255,255,.55); border-radius: 10px; color: var(--ink); }
+.mathline b { color: var(--olive); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+.chips span { font: 12px var(--mono); padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.t-g .chips span { background: #fff; border-color: #e1e7b8; }
+
+/* install */
+.install { background: var(--ink); color: #f0f2e9; border-radius: 28px; padding: 44px; margin-top: 0; }
+.install h2 { color: #fff; }
+.install .sub { color: #b9bfae; }
+.install .sub a { color: var(--citron); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tabs button { font: 600 14px var(--sans); padding: 8px 16px; border-radius: 999px; border: 1px solid #4a5044; background: transparent; color: #b9bfae; cursor: pointer; }
+.tabs button:hover { color: #fff; }
+.tabs button[aria-selected="true"] { background: var(--citron); border-color: var(--citron); color: var(--ink); }
 .panel[hidden] { display: none; }
-.code { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 16px 84px 16px 18px; font: 14px/1.6 var(--mono); overflow-x: auto; white-space: pre; }
-.code button { position: absolute; top: 10px; right: 10px; font: 12px system-ui; padding: 5px 10px; border-radius: 6px; border: 1px solid #3a3f48; background: #272b33; color: #d6d9de; cursor: pointer; }
-.note { color: var(--muted); font-size: 14px; margin: 10px 0 0; }
-table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
-tr:last-child td { border-bottom: 0; }
-td:first-child { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
-footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+.code { position: relative; background: #1a1d18; border: 1px solid #3a4034; color: #e8eaee; border-radius: 14px; padding: 18px 90px 18px 20px; font: 14px/1.7 var(--mono); overflow-x: auto; white-space: pre; }
+.code button { position: absolute; top: 12px; right: 12px; font: 600 12px var(--sans); padding: 6px 12px; border-radius: 8px; border: 1px solid #4a5044; background: #2a2e27; color: #d6d9ce; cursor: pointer; }
+.code button:hover { background: #343930; }
+.note { color: #9aa190; font-size: 14px; margin: 12px 0 0; }
+.note a { color: var(--citron); }
+.note code { color: #d6d9ce; }
+
+/* cli + steps */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.cmds { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 8px 8px; }
+.cmd { display: grid; grid-template-columns: minmax(0, 15em) 1fr; gap: 16px; padding: 14px 16px; border-radius: 12px; font-size: 15px; }
+.cmd:nth-child(odd) { background: var(--paper); }
+.cmd code { color: var(--olive); font-weight: 500; overflow-wrap: anywhere; }
+.cmd span { color: var(--muted); }
+.cli-note { color: var(--muted); font-size: 14px; margin: 14px 4px 0; }
+.team { background: var(--wash); border: 1px solid #e1e7b8; border-radius: 20px; padding: 32px; }
+.team h3 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.035em; }
+.team p { color: #4d5433; margin: 0 0 18px; }
+.team .code { background: var(--ink); border-color: var(--ink); }
+.team .note { color: #5f6644; }
+.team .note a { color: var(--olive); }
+
+/* faq */
+.faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; }
+summary { font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font: 500 20px/1 var(--mono); color: var(--olive); }
+details[open] summary::after { content: "–"; }
+details p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+
+/* closing */
+.closing { margin-top: 96px; background: var(--citron); border-radius: 28px; padding: 64px 32px; text-align: center; }
+.closing h2 { margin: 0 auto 12px; max-width: 14em; }
+.closing p { margin: 0 auto 28px; max-width: 30em; color: #3d4420; }
+.closing .btn.primary { background: var(--ink); color: var(--citron); }
+.closing .btn.primary:hover { background: #000; }
+.closing .btn.ghost { color: var(--ink); border-color: rgba(37,40,36,.35); }
+.closing .btn.ghost:hover { background: rgba(255,255,255,.35); }
+.closing .cta { justify-content: center; }
+
+footer { margin-top: 72px; border-top: 1px solid var(--line); padding: 28px 0 44px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
 footer a { color: var(--muted); }
+footer a:hover { color: var(--ink); }
 .footer-brand { margin-right: auto; }
 .footer-brand strong { display: block; color: var(--ink); font-size: 18px; letter-spacing: -.04em; }
 .footer-brand small { display: block; margin-top: 4px; }
-code { font-family: var(--mono); font-size: .92em; }
-section[id] { scroll-margin-top: 24px; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding-bottom: 72px; }
+  .demo { transform: none; }
+  .bento > * { grid-column: span 6 !important; }
+  .split, .faq { grid-template-columns: 1fr; }
+}
 @media (max-width: 600px) {
-  nav { flex-wrap: wrap; gap: 12px 18px; padding: 20px 0; }
-  nav .brand { flex-basis: 100%; }
-  nav a:not(.brand) { font-size: 12px; }
-  .hero { padding-top: 40px; }
-  .eyebrow { font-size: 9px; letter-spacing: .03em; }
-  .hero p.lead { font-size: 15px; }
-  .board { margin-top: 32px; }
-  .board-topbar { padding: 10px; }
-  .board-topbar > span:not(.board-live) { display: none; }
-  section { padding-top: 40px; }
-  h2 { font-size: 26px; }
-  .grid { grid-template-columns: 1fr; }
-  td:first-child { white-space: normal; overflow-wrap: anywhere; }
-  th, td { padding: 10px; font-size: 13px; }
+  .wrap { padding: 0 16px; }
+  nav { flex-wrap: wrap; gap: 10px 18px; }
+  nav a:not(.brand):not(.nav-cta) { font-size: 13px; }
+  .nav-cta { display: none; }
+  .brand { flex-basis: 100%; }
+  section { padding-top: 64px; }
+  .install { padding: 28px 18px; border-radius: 22px; }
+  .cmd { grid-template-columns: 1fr; gap: 2px; }
+  .closing { padding: 44px 20px; border-radius: 22px; margin-top: 64px; }
   .footer-brand { flex-basis: 100%; }
 }
-@media (prefers-color-scheme: dark) { h1 span::after { background: #596328; } }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn { transition: none; }
+  h1 em path, .ink-line { animation: none; stroke-dashoffset: 0; }
+  .cursor { animation: none; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <nav aria-label="Main navigation">
-    <a class="brand" href="#top" aria-label="Quanta home"><img src="favicon.svg" width="36" height="36" alt="">Quanta</a>
-    <a href="#features">Features</a>
-    <a href="#install">Install</a>
-    <a href="#cli">CLI</a>
-    <a href="#host">Self-host</a>
-    <a href="https://github.com/real-kijmoshi/quanta">GitHub</a>
-  </nav>
+<div class="hero-band">
+  <div class="wrap">
+    <nav aria-label="Main navigation">
+      <a class="brand" href="#top" aria-label="Quanta home"><img src="favicon.svg" width="34" height="34" alt="">Quanta</a>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#cli">CLI</a>
+      <a href="#team">Team</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="https://github.com/real-kijmoshi/quanta">GitHub</a>
+    </nav>
 
-  <header class="hero" id="top">
-    <p class="eyebrow">A whiteboard for maths, physics &amp; code</p>
-    <h1>A space to <span>think.</span></h1>
-    <p class="lead">Sketch a thought. Solve an equation. See where it takes you. Bring handwriting, maths, and runnable code together on one shared canvas.</p>
-    <div class="cta">
-      <a class="btn primary" href="#install">Install Quanta</a>
-      <a class="btn" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
-    </div>
-    <div class="hero-details"><span>Open source</span><span>Runs on your machine</span><span>Better together</span></div>
-    <div class="board" role="img" aria-label="Illustration of a board with a math card, a plot and a code card">
-      <div class="board-topbar" aria-hidden="true"><img src="favicon.svg" width="24" height="24" alt=""><strong>Free fall, fresh ideas</strong><span>/ Physics notebook</span><span class="board-live">Thinking together</span></div>
-      <svg viewBox="0 0 860 420" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, sans-serif">
-        <rect x="40" y="40" width="250" height="150" rx="10" fill="#ffe79a"/>
-        <text x="60" y="76" font-size="15" font-weight="700" fill="#202225">Free fall</text>
-        <text x="60" y="104" font-size="14" fill="#202225">h = 20 m,  g = 9.81</text>
-        <text x="60" y="130" font-size="14" fill="#202225">t = sqrt(2h / g)</text>
-        <text x="60" y="160" font-size="16" font-weight="700" fill="#2f9e6b">= 2.02 s</text>
-        <rect x="330" y="40" width="250" height="190" rx="10" fill="#fff" stroke="#c9ccc6"/>
-        <path d="M350 190 L560 190 M350 70 L350 190" stroke="#9aa0a6" stroke-width="1.5" fill="none"/>
-        <path d="M350 150 C390 60 420 60 450 150 S520 240 560 120" stroke="#5a67eb" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <text x="360" y="214" font-size="13" fill="#6d737b">y = sin(a x)</text>
-        <rect x="620" y="40" width="200" height="190" rx="10" fill="#1d2026"/>
-        <text x="636" y="72" font-size="13" font-family="monospace" fill="#8a95ff">import numpy as np</text>
-        <text x="636" y="96" font-size="13" font-family="monospace" fill="#e8eaee">x = np.linspace(0, 1)</text>
-        <text x="636" y="120" font-size="13" font-family="monospace" fill="#e8eaee">np.trapz(x**2, x)</text>
-        <text x="636" y="156" font-size="13" font-family="monospace" fill="#6ad4a0">0.33340</text>
-        <path d="M290 115 C310 115 310 135 330 135" stroke="#5a67eb" stroke-width="2.5" fill="none"/>
-        <path d="M580 135 C600 135 600 135 620 135" stroke="#5a67eb" stroke-width="2.5" fill="none"/>
-        <path d="M70 290 c30 -40 60 40 90 0 s60 -40 90 0 s60 40 90 0 s60 -40 90 0" stroke="#202225" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M70 340 l300 0" stroke="#c8372d" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
-        <circle cx="640" cy="320" r="46" fill="none" stroke="#2f9e6b" stroke-width="3"/>
-        <text x="700" y="330" font-size="14" fill="#6d737b">snaps to a clean circle</text>
-      </svg>
-    </div>
-  </header>
+    <header class="hero" id="top">
+      <div>
+        <p class="eyebrow">Whiteboard · notebook · scratchpad</p>
+        <h1>A space to <em>think.<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 12 C 40 2, 80 18, 120 8 S 180 6, 196 10"/></svg></em></h1>
+        <p class="lead">Sketch a thought. Solve an equation. Run the code. Handwriting, typeset maths, plots and Python live on one shared canvas, on a server you own.</p>
+        <div class="cta">
+          <a class="btn primary" href="#install">Install Quanta</a>
+          <a class="btn ghost" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
+        </div>
+        <ul class="facts"><li>Open source · MIT</li><li>Runs on your machine</li><li>Boards are plain JSON</li></ul>
+      </div>
 
+      <div class="demo" role="img" aria-label="Illustration of a Quanta board with a math card, a plot, a code card and a collaborator's cursor">
+        <div class="demo-bar" aria-hidden="true"><img src="favicon.svg" width="22" height="22" alt=""><strong>Free fall, fresh ideas</strong><span>/ Physics</span><span class="live">2 thinking together</span></div>
+        <svg viewBox="0 0 560 420" xmlns="http://www.w3.org/2000/svg" font-family="Manrope, system-ui, sans-serif">
+          <rect x="24" y="24" width="190" height="124" rx="12" fill="#ffe79a"/>
+          <text x="42" y="54" font-size="14" font-weight="800" fill="#252824">Free fall</text>
+          <text x="42" y="80" font-size="13" font-family="DM Mono, monospace" fill="#252824">h = 20 m,  g = 9.81</text>
+          <text x="42" y="102" font-size="13" font-family="DM Mono, monospace" fill="#252824">t = sqrt(2h / g)</text>
+          <text x="42" y="130" font-size="16" font-weight="800" fill="#2f7d57">= 2.02 s</text>
+
+          <rect x="236" y="24" width="300" height="168" rx="12" fill="#fff" stroke="#d6d9ce"/>
+          <path d="M256 164 H520 M256 164 V46" stroke="#a7ad9c" stroke-width="1.5" fill="none"/>
+          <path d="M256 128 C300 40 330 40 364 128 S440 216 520 80" stroke="#535c24" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <text x="262" y="184" font-size="12" font-family="DM Mono, monospace" fill="#697064">y = sin(a x)   a = 2</text>
+
+          <rect x="24" y="214" width="250" height="124" rx="12" fill="#252824"/>
+          <text x="42" y="246" font-size="12" font-family="DM Mono, monospace" fill="#e4ed87">import numpy as np</text>
+          <text x="42" y="268" font-size="12" font-family="DM Mono, monospace" fill="#e8eaee">x = np.linspace(0, 1)</text>
+          <text x="42" y="290" font-size="12" font-family="DM Mono, monospace" fill="#e8eaee">np.trapz(x**2, x)</text>
+          <text x="42" y="320" font-size="13" font-family="DM Mono, monospace" fill="#8fd9ac">0.33340</text>
+
+          <path class="ink-line" d="M300 268 c28 -40 56 40 84 0 s56 -40 84 0 s46 30 62 0" stroke="#252824" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path class="ink-line b" d="M300 318 l210 0" stroke="#c8372d" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".7"/>
+          <circle cx="410" cy="376" r="26" fill="none" stroke="#2f7d57" stroke-width="3"/>
+          <text x="446" y="381" font-size="12" fill="#697064">snaps clean</text>
+          <path d="M214 86 C226 86 226 110 236 110" stroke="#535c24" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+          <g class="cursor">
+            <path d="M470 238 l0 22 l6 -6 l5 12 l5 -2 l-5 -12 l8 0 z" fill="#e4ed87" stroke="#252824" stroke-width="1.5" stroke-linejoin="round"/>
+            <rect x="492" y="254" width="46" height="20" rx="10" fill="#252824"/>
+            <text x="515" y="268" font-size="11" font-weight="700" fill="#e4ed87" text-anchor="middle">Mira</text>
+          </g>
+        </svg>
+      </div>
+    </header>
+  </div>
+</div>
+
+<main class="wrap">
   <section id="features">
-    <h2>Built for thinking out loud</h2>
-    <p class="sub">Follow an idea from the first scribble to the working solution. Your notebook, whiteboard, and scratchpad share the same space.</p>
-    <div class="grid">
-      <div class="card"><h3>Handwriting that behaves</h3><p>Pressure-aware pen, brush and marker, precise eraser, palm rejection, and shape snapping when you hold still.</p></div>
-      <div class="card"><h3>Maths and plots</h3><p>Math cards evaluate and typeset each line. Plot cards draw functions, parametric curves and points, with sliders for variables.</p></div>
-      <div class="card"><h3>Runnable code</h3><p>JavaScript in a worker, Python on the host or in the browser via Pyodide with numpy, sympy and matplotlib.</p></div>
-      <div class="card"><h3>Live collaboration</h3><p>Shared folders with invitation links, live cursors and ink, offline edits that merge when you reconnect.</p></div>
-      <div class="card"><h3>Notebooks and PDFs</h3><p>A4 pages, paper styles, PDF import and annotation, search, flashcards and printing.</p></div>
-      <div class="card"><h3>AI and MCP</h3><p>Use Claude, Ollama, OpenRouter or Codex to read and edit boards, or connect any MCP client to <code>/mcp</code>.</p></div>
+    <p class="kicker">What's inside</p>
+    <h2>From first scribble to working solution</h2>
+    <p class="sub">Your notebook, whiteboard and scratchpad share the same space, so an idea never has to change tools to keep going.</p>
+    <div class="bento">
+      <div class="tile t-a">
+        <h3>Handwriting that behaves</h3>
+        <p>Pressure-aware pen, brush and marker, a precise eraser, palm rejection, and shape snapping when you hold still.</p>
+        <svg viewBox="0 0 600 90" aria-hidden="true"><path d="M10 50 C 60 -10, 110 100, 170 40 S 270 -10, 330 45 S 440 95, 500 35 S 570 30, 590 45" stroke="#e4ed87" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="560" cy="14" r="6" fill="#e4ed87"/></svg>
+      </div>
+      <div class="tile t-b">
+        <h3>Maths &amp; plots</h3>
+        <p>Cards evaluate and typeset every line, then plot it with sliders.</p>
+        <div class="mathline">f(x) = x^2<br>integrate(f, 0, 1)<br><b>= 0.3333</b></div>
+      </div>
+      <div class="tile t-c">
+        <h3>Runnable code</h3>
+        <p>JavaScript in a worker. Python on the host, or in the browser through Pyodide.</p>
+        <div class="chips"><span>numpy</span><span>sympy</span><span>matplotlib</span></div>
+      </div>
+      <div class="tile t-d">
+        <h3>Live collaboration</h3>
+        <p>Shared folders with revocable invitation links, live cursors and ink, and offline edits that merge on reconnect.</p>
+      </div>
+      <div class="tile t-e">
+        <h3>Notebooks &amp; PDFs</h3>
+        <p>A4 pages in seven paper styles, PDF import you can write on, search, flashcards and printing.</p>
+      </div>
+      <div class="tile t-f">
+        <h3>AI that edits the board</h3>
+        <p>Ask Claude, Ollama, OpenRouter, LM Studio or Codex to read and change cards. Every provider uses the same validated tools.</p>
+        <div class="chips"><span>Ollama</span><span>Anthropic</span><span>OpenRouter</span><span>LM Studio</span><span>Claude Code</span><span>Codex</span></div>
+      </div>
+      <div class="tile t-g">
+        <h3>MCP, built in</h3>
+        <p>Point any MCP client at <code>/mcp</code> to list, read and edit boards. Changes appear live in open tabs, and an agent can never do more than a person at the canvas.</p>
+        <div class="chips"><span>Streamable HTTP</span><span>WebMCP tools</span></div>
+      </div>
     </div>
   </section>
 
   <section id="install">
-    <h2>Install</h2>
-    <p class="sub">Needs <a href="https://nodejs.org">Node.js 22</a> or newer. Downloads are checked against a published SHA-256 before anything is installed.</p>
-    <div class="tabs" role="tablist" aria-label="Install method">
-      <button role="tab" aria-selected="true" data-tab="unix">macOS / Linux</button>
-      <button role="tab" aria-selected="false" data-tab="win">Windows</button>
-      <button role="tab" aria-selected="false" data-tab="docker">Docker</button>
-      <button role="tab" aria-selected="false" data-tab="npm">npm</button>
-      <button role="tab" aria-selected="false" data-tab="src">From source</button>
-    </div>
-    <div class="panel" id="unix"><div class="code" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh</div>
-      <p class="note">Installs to <code>~/.quanta</code> and links <code>quanta</code> into <code>~/.local/bin</code>. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.sh">install.sh</a>.</p></div>
-    <div class="panel" id="win" hidden><div class="code" data-copy>irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1 | iex</div>
-      <p class="note">Run in PowerShell. Installs to <code>%USERPROFILE%\.quanta</code> and adds <code>quanta</code> to your PATH. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.ps1">install.ps1</a>.</p></div>
-    <div class="panel" id="docker" hidden><div class="code" data-copy>docker run -d --name quanta -p 127.0.0.1:4173:4173 -v quanta-data:/data \
+    <div class="install">
+      <p class="kicker" style="color:var(--citron)">Get started</p>
+      <h2>Up and running in a minute</h2>
+      <p class="sub">Needs <a href="https://nodejs.org">Node.js 22</a> or newer. Downloads are checked against a published SHA-256 before anything is installed.</p>
+      <div class="tabs" role="tablist" aria-label="Install method">
+        <button role="tab" aria-selected="true" data-tab="unix">macOS / Linux</button>
+        <button role="tab" aria-selected="false" data-tab="win">Windows</button>
+        <button role="tab" aria-selected="false" data-tab="docker">Docker</button>
+        <button role="tab" aria-selected="false" data-tab="npm">npm</button>
+        <button role="tab" aria-selected="false" data-tab="src">From source</button>
+      </div>
+      <div class="panel" id="unix"><div class="code" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh</div>
+        <p class="note">Installs to <code>~/.quanta</code> and links <code>quanta</code> into <code>~/.local/bin</code>. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.sh">install.sh</a>.</p></div>
+      <div class="panel" id="win" hidden><div class="code" data-copy>irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1 | iex</div>
+        <p class="note">Run in PowerShell. Installs to <code>%USERPROFILE%\.quanta</code> and adds <code>quanta</code> to your PATH. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.ps1">install.ps1</a>.</p></div>
+      <div class="panel" id="docker" hidden><div class="code" data-copy>docker run -d --name quanta -p 127.0.0.1:4173:4173 -v quanta-data:/data \
   -e QUANTA_AUTH=1 -e QUANTA_PUBLIC_URL=http://localhost:4173 \
   -e QUANTA_ADMIN_EMAIL=you@example.com -e QUANTA_ADMIN_PASSWORD=choose-a-long-password \
   ghcr.io/real-kijmoshi/quanta:latest</div>
-      <p class="note">Containers run in account mode: open <code>http://localhost:4173</code> and sign in with that email and password. For an HTTPS team server on a real domain, see Run it for a team below.</p></div>
-    <div class="panel" id="npm" hidden><div class="code" data-copy>npm install -g https://github.com/real-kijmoshi/quanta/releases/latest/download/quanta.tgz</div></div>
-    <div class="panel" id="src" hidden><div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git
+        <p class="note">Containers run in account mode: open <code>http://localhost:4173</code> and sign in with that email and password. For an HTTPS team server on a real domain, see Run it for a team below.</p></div>
+      <div class="panel" id="npm" hidden><div class="code" data-copy>npm install -g https://github.com/real-kijmoshi/quanta/releases/latest/download/quanta.tgz</div></div>
+      <div class="panel" id="src" hidden><div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git
 cd quanta
 npm ci --ignore-scripts
 npm start</div></div>
+      <p class="note">Then run <code>quanta start --open</code>. Updating is re-running the installer; your boards are never touched.</p>
+    </div>
   </section>
 
   <section id="cli">
+    <p class="kicker">Command line</p>
     <h2>The <code>quanta</code> command</h2>
     <p class="sub">One entry point for running, sharing and looking after your workspace.</p>
-    <table>
-      <tr><td>quanta start --open</td><td>Run locally and open your browser</td></tr>
-      <tr><td>quanta share</td><td>Let other devices on your network join (needs a folder invitation)</td></tr>
-      <tr><td>quanta tunnel</td><td>Share over the internet with a Cloudflare quick tunnel</td></tr>
-      <tr><td>quanta backup</td><td>Save a verified copy of your boards</td></tr>
-      <tr><td>quanta doctor</td><td>Check Node.js, data folder and optional tools</td></tr>
-      <tr><td>quanta --port 8080 --data ~/boards</td><td>Choose the port and where boards are stored</td></tr>
-    </table>
-    <p class="note">Your boards are plain JSON in <code>~/.quanta/data</code>, so updating never touches them. Re-run the installer to update.</p>
+    <div class="cmds">
+      <div class="cmd"><code>quanta start --open</code><span>Run locally and open your browser</span></div>
+      <div class="cmd"><code>quanta share</code><span>Let other devices on your network join (needs a folder invitation)</span></div>
+      <div class="cmd"><code>quanta tunnel</code><span>Share over the internet with a Cloudflare quick tunnel</span></div>
+      <div class="cmd"><code>quanta backup</code><span>Save a verified copy of your boards</span></div>
+      <div class="cmd"><code>quanta doctor</code><span>Check Node.js, data folder and optional tools</span></div>
+      <div class="cmd"><code>quanta --port 8080 --data ~/boards</code><span>Choose the port and where boards are stored</span></div>
+    </div>
+    <p class="cli-note">Your boards are plain JSON in <code>~/.quanta/data</code>, so updating never touches them.</p>
   </section>
 
-  <section id="host">
-    <h2>Run it for a team</h2>
-    <p class="sub">On a fresh Debian or Ubuntu server with a domain pointed at it, one command sets up Docker, HTTPS and an owner account.</p>
-    <div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git && cd quanta
+  <section id="team">
+    <div class="team">
+      <p class="kicker">Always on</p>
+      <h3>Run it for a team</h3>
+      <p>On a fresh Debian or Ubuntu server with a domain pointed at it, one command sets up Docker, HTTPS and an owner account.</p>
+      <div class="code" data-copy>git clone https://github.com/real-kijmoshi/quanta.git && cd quanta
 sudo ./deploy/install.sh board.example.com you@example.com</div>
-    <p class="note">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
+      <p class="note" style="margin-top:14px">Accounts, per-folder invitations, backups and password recovery are covered in the <a href="https://github.com/real-kijmoshi/quanta/blob/main/docs/SELF_HOSTING.md">self-hosting guide</a>.</p>
+    </div>
   </section>
+
+  <section id="faq">
+    <p class="kicker">Questions</p>
+    <h2>Good to know</h2>
+    <div class="faq" style="margin-top:32px">
+      <details><summary>Do I need an account or internet?</summary><p>No. Local mode has no accounts and works offline. Only cloud AI providers, the Cloudflare tunnel and on-demand Pyodide packages need a connection.</p></details>
+      <details><summary>Where are my boards stored?</summary><p>As plain JSON in <code>~/.quanta/data</code>. Run <code>quanta backup</code> for a verified copy.</p></details>
+      <details><summary>Is it safe to run other people's code?</summary><p>Guests run Python in their own browser via Pyodide, and JavaScript in a browser worker. Host Python, AI and MCP are owner-only.</p></details>
+      <details><summary>Does it work on an iPad?</summary><p>Yes. Pressure, barrel-button erase and palm rejection work where the browser exposes them, and the optional Notes beta is built for PC and iPad.</p></details>
+    </div>
+  </section>
+
+  <div class="closing">
+    <h2>Give your ideas room.</h2>
+    <p>Free, open source and yours to keep. Install it, open a board, and start thinking.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install Quanta</a>
+      <a class="btn ghost" href="https://github.com/real-kijmoshi/quanta">View on GitHub</a>
+    </div>
+  </div>
 
   <footer>
     <span class="footer-brand"><strong>Quanta</strong>A space to think.<small>Open source &middot; MIT licensed</small></span>
@@ -218,7 +365,7 @@ sudo ./deploy/install.sh board.example.com you@example.com</div>
     <a href="https://github.com/real-kijmoshi/quanta/issues">Issues</a>
     <a href="https://github.com/real-kijmoshi/quanta/blob/main/SECURITY.md">Security</a>
   </footer>
-</div>
+</main>
 <script>
 const tabs = document.querySelectorAll('[data-tab]');
 tabs.forEach(tab => tab.addEventListener('click', () => {
