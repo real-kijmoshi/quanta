@@ -98,3 +98,13 @@ body.booting #app { visibility: hidden; }
 @media (max-width: 1000px) { .app { grid-template-columns: 230px minmax(0, 1fr); } .save-status { display: none; } #boardLinksBtn .pill-label { display: none; } .account-art { padding: 26px; } .account-art-notes > div { width: 125px; height: 130px; font-size: 15px; padding: 20px 16px; } }
 @media (max-width: 760px) { .app, .app.sidebar-hidden { grid-template-columns: minmax(0, 1fr); } .topbar { min-height: 58px; padding: 8px; } .side-head { padding: 20px 18px 14px; } .topbar .board-name { width: 100px; font-size: 12px; } #overviewBtn, #boardLinksBtn { display: none; } .topbar .pill-btn.accent { padding: 9px 13px; } .folder-dialog { padding: 20px; } .invite-form { flex-direction: column; } .invite-form .solid-btn { padding: 12px; } .share-destination { flex-direction: column; align-items: stretch; } .account-screen { grid-template-columns: 1fr; } .account-art { display: none; } .account-card { width: min(390px, calc(100% - 48px)); } .account-card > .brand { margin-bottom: 46px; } }
 @media print { .account-screen, .workspace-settings, .settings-dialog { display: none !important; } }
+
+/* Your assistants (Workspace settings) */
+.assistant-settings { display: grid; gap: 10px; margin-top: 4px; }
+.assistant-settings h3, .assistant-settings p { margin: 0; }
+.assistant-row { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line, rgba(128, 128, 128, .25)); }
+.assistant-key { display: flex; gap: 8px; }
+.assistant-key input { flex: 1; min-width: 0; }
+.assistant-token { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
+.assistant-reveal { display: grid; gap: 6px; padding: 10px; border-radius: 8px; background: rgba(128, 128, 128, .12); }
+.assistant-reveal code { display: block; overflow-wrap: anywhere; font-size: 12px; user-select: all; }
