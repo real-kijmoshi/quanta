@@ -6,6 +6,10 @@
 <title>Quanta — A space to think</title>
 <meta name="description" content="A space to think. Sketch, solve, and run code together on a whiteboard you control. Quanta is open source and runs on your machine.">
 <meta name="theme-color" content="#252824">
+<link rel="canonical" href="https://real-kijmoshi.github.io/quanta/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Quanta — A space to think">
+<meta name="twitter:description" content="Sketch, solve, and run code together on a whiteboard you control. Open source. On your machine.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,6 +43,8 @@ nav a:not(.brand):not(.nav-cta) { color: #b9bfae; text-decoration: none; font-si
 nav a:not(.brand):not(.nav-cta):hover { color: #fff; }
 .nav-cta { font-size: 14px; font-weight: 700; color: var(--ink); background: var(--citron); padding: 8px 16px; border-radius: 999px; text-decoration: none; }
 .nav-cta:hover { background: var(--citron-2); }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 20; padding: 8px 14px; border-radius: 8px; background: var(--citron); color: var(--ink); font-weight: 700; text-decoration: none; }
+.skip:focus { top: 12px; }
 .hero { position: relative; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 56px 0 96px; }
 .hero > * { min-width: 0; }
 .eyebrow { font: 500 12px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--citron); margin: 0 0 22px; }
@@ -179,6 +185,7 @@ footer a:hover { color: var(--ink); }
 </style>
 </head>
 <body>
+<a class="skip" href="#features">Skip to content</a>
 <div class="hero-band">
   <div class="wrap">
     <nav aria-label="Main navigation">
@@ -288,11 +295,11 @@ footer a:hover { color: var(--ink); }
       <h2>Up and running in a minute</h2>
       <p class="sub">Needs <a href="https://nodejs.org">Node.js 22</a> or newer. Downloads are checked against a published SHA-256 before anything is installed.</p>
       <div class="tabs" role="tablist" aria-label="Install method">
-        <button role="tab" aria-selected="true" data-tab="unix">macOS / Linux</button>
-        <button role="tab" aria-selected="false" data-tab="win">Windows</button>
-        <button role="tab" aria-selected="false" data-tab="docker">Docker</button>
-        <button role="tab" aria-selected="false" data-tab="npm">npm</button>
-        <button role="tab" aria-selected="false" data-tab="src">From source</button>
+        <button role="tab" aria-selected="true" aria-controls="unix" data-tab="unix">macOS / Linux</button>
+        <button role="tab" aria-selected="false" aria-controls="win" tabindex="-1" data-tab="win">Windows</button>
+        <button role="tab" aria-selected="false" aria-controls="docker" tabindex="-1" data-tab="docker">Docker</button>
+        <button role="tab" aria-selected="false" aria-controls="npm" tabindex="-1" data-tab="npm">npm</button>
+        <button role="tab" aria-selected="false" aria-controls="src" tabindex="-1" data-tab="src">From source</button>
       </div>
       <div class="panel" id="unix"><div class="code" data-copy>curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh</div>
         <p class="note">Installs to <code>~/.quanta</code> and links <code>quanta</code> into <code>~/.local/bin</code>. Read the script first: <a href="https://github.com/real-kijmoshi/quanta/blob/main/install/install.sh">install.sh</a>.</p></div>
@@ -367,14 +374,24 @@ sudo ./deploy/install.sh board.example.com you@example.com</div>
   </footer>
 </main>
 <script>
-const tabs = document.querySelectorAll('[data-tab]');
-tabs.forEach(tab => tab.addEventListener('click', () => {
-  tabs.forEach(t => {
-    const on = t === tab;
-    t.setAttribute('aria-selected', on);
-    document.getElementById(t.dataset.tab).hidden = !on;
+const tabs = [...document.querySelectorAll('[data-tab]')];
+const select = tab => tabs.forEach(t => {
+  const on = t === tab;
+  t.setAttribute('aria-selected', on);
+  t.tabIndex = on ? 0 : -1;
+  document.getElementById(t.dataset.tab).hidden = !on;
+});
+tabs.forEach((tab, i) => {
+  tab.addEventListener('click', () => select(tab));
+  tab.addEventListener('keydown', e => {
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const target = tabs[(next + tabs.length) % tabs.length];
+    select(target);
+    target.focus();
   });
-}));
+});
 document.querySelectorAll('[data-copy]').forEach(box => {
   const button = document.createElement('button');
   button.type = 'button';
