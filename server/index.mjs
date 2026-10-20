@@ -38,13 +38,16 @@ const VENDOR = {
 
 function lanUrls() {
   if (host !== "0.0.0.0" && host !== "::") return [];
-  const urls = [];
-  for (const list of Object.values(networkInterfaces())) {
+  const found = [];
+  for (const [name, list] of Object.entries(networkInterfaces())) {
     for (const address of list ?? []) {
-      if (address.family === "IPv4" && !address.internal) urls.push(`http://${address.address}:${port}`);
+      if (address.family === "IPv4" && !address.internal) found.push({ name, ip: address.address });
     }
   }
-  return urls;
+  // Home Wi-Fi first; link-local, VM and container adapters last.
+  const rank = ({ name, ip }) => (/^169\.254\./.test(ip) ? 8 : 0) + (/vbox|virtualbox|vmware|vethernet|wsl|docker|hyper-v|br-|veth/i.test(name) ? 4 : 0)
+    + (/^192\.168\.56\./.test(ip) ? 3 : 0) + (/^172\./.test(ip) ? 2 : /^10\./.test(ip) ? 1 : 0);
+  return found.sort((a, b) => rank(a) - rank(b)).map(({ ip }) => `http://${ip}:${port}`);
 }
 
 let runtimes = { javascript: true };

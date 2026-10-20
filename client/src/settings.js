@@ -5,11 +5,14 @@ import { inkSettings, setInk } from "./ink.js";
 import { toggleStickyTool } from "./canvas.js";
 import { account, accountSection } from "./account.js";
 import { assistantSettings } from "./assistants.js";
+import { notesEnabled, setNotesEnabled } from "./notes-preferences.js";
+import { resetToolbarLayout, setToolbarLayout, toolbarLayout, toolInfo } from "./toolbar.js";
 
 const DOCKS = [
   ["bottom", "Bottom"],
-  ["left", "Left side"],
-  ["right", "Right side"],
+  ["top", "Top"],
+  ["left", "Left"],
+  ["right", "Right"],
 ];
 
 export function applyToolbarLayout() {
@@ -66,6 +69,11 @@ function row(title, hint, control) {
   return el("div", { class: "settings-row" }, [el("div", { class: "settings-row-text" }, [el("strong", { text: title }), hint ? el("small", { text: hint }) : null]), control]);
 }
 
+function beta(node) {
+  node.querySelector("strong").append(el("span", { class: "beta-tag", text: "BETA" }));
+  return node;
+}
+
 function switchControl(value, onChange, label) {
   const input = el("input", { type: "checkbox", role: "switch", class: "settings-switch", "aria-label": label });
   input.checked = Boolean(value);
@@ -105,17 +113,79 @@ function generalSection() {
 function canvasSection() {
   const preview = el("div", { class: "dock-preview", dataset: { dock: prefs("toolbarDock", "bottom") }, "aria-hidden": "true" }, [el("i")]);
   return [
+    el("p", { class: "settings-group", text: "Layout" }),
+    beta(row("Notebook mode", "A GoodNotes-style layout: page thumbnails down the side, a notebook ribbon, paper and focus mode. Saved on this device.",
+      switchControl(notesEnabled(), (on) => setNotesEnabled(on), "Notebook mode"))),
     el("p", { class: "settings-group", text: "Toolbar" }),
-    row("Position", "Dock the pen and tools bar along the bottom or down one side of the canvas.", el("div", { class: "dock-choice" }, [
+    row("Position", "Dock the tools along the top or bottom, or down one side. Pen options follow them.", el("div", { class: "dock-choice" }, [
       choice(DOCKS, prefs("toolbarDock", "bottom"), (dock) => { setPrefs("toolbarDock", dock); preview.dataset.dock = dock; applyToolbarLayout(); }, "Toolbar position"),
       preview,
     ])),
     row("Compact", "Icons only, without labels.", switchControl(prefs("compactTools", false), (on) => { setPrefs("compactTools", on); applyToolbarLayout(); }, "Compact toolbar")),
     row("Keep the tool", "Stay on the current tool after placing a card instead of returning to Select.", switchControl(app.stickyTool, (on) => toggleStickyTool(on), "Keep the current tool")),
+    el("p", { class: "settings-group", text: "Tools on the bar" }),
+    toolEditor(),
     el("p", { class: "settings-group", text: "Pen" }),
     row("Finger draws", "Off: fingers pan and only a stylus draws (palm rejection).", switchControl(inkSettings.fingerDraws, (fingerDraws) => setInk({ fingerDraws }), "Finger draws")),
     row("Snap shapes", "Draw a shape and hold still to straighten it.", switchControl(inkSettings.snap, (snap) => setInk({ snap }), "Snap shapes")),
   ];
+}
+
+// Drag rows (or use the arrows) to reorder; switch a tool off to move it into
+// the toolbar's "More" menu. Changes apply to the bar immediately.
+function toolEditor() {
+  const list = el("div", { class: "tool-editor", role: "list" });
+  const foot = el("div", { class: "tool-editor-foot" }, [
+    el("span", { text: "Tip: right-click the toolbar to come back here." }),
+    el("button", { class: "ghost-btn", type: "button", text: "Reset", onclick: () => { resetToolbarLayout(); paint(); } }),
+  ]);
+  let dragging = null;
+  const commit = (order, hidden) => { setToolbarLayout({ order, hidden }); paint(); };
+  const paint = () => {
+    const { order, hidden } = toolbarLayout();
+    list.replaceChildren(...order.map((id, index) => {
+      const info = toolInfo(id);
+      const shown = !hidden.has(id);
+      const move = (delta) => {
+        const next = [...order];
+        next.splice(index + delta, 0, next.splice(index, 1)[0]);
+        commit(next, hidden);
+        list.querySelector(`[data-tool="${id}"] .tool-move[data-delta="${delta}"]`)?.focus();
+      };
+      const item = el("div", { class: `tool-editor-row${shown ? "" : " off"}`, role: "listitem", draggable: "true", dataset: { tool: id } }, [
+        el("span", { class: "tool-grip", text: "⋮⋮", "aria-hidden": "true" }),
+        el("span", { class: "more-icon", html: info.svg }),
+        el("span", { class: "tool-editor-name", text: info.label }),
+        info.key ? el("kbd", { text: info.key }) : null,
+        el("span", { class: "tool-editor-place", text: shown ? "On bar" : "In More" }),
+        switchControl(shown, (on) => { const next = new Set(hidden); on ? next.delete(id) : next.add(id); commit(order, next); }, `Show ${info.label} on the toolbar`),
+        el("button", { class: "tool-move", type: "button", text: "▲", title: "Move up", "aria-label": `Move ${info.label} up`, dataset: { delta: "-1" }, disabled: index === 0 ? true : null, onclick: () => move(-1) }),
+        el("button", { class: "tool-move", type: "button", text: "▼", title: "Move down", "aria-label": `Move ${info.label} down`, dataset: { delta: "1" }, disabled: index === order.length - 1 ? true : null, onclick: () => move(1) }),
+      ]);
+      item.addEventListener("dragstart", (event) => { dragging = id; item.classList.add("dragging"); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", id); });
+      item.addEventListener("dragend", () => { dragging = null; paint(); });
+      item.addEventListener("dragover", (event) => {
+        if (!dragging || dragging === id) return;
+        event.preventDefault();
+        const after = event.offsetY > item.offsetHeight / 2;
+        item.classList.toggle("drop-after", after);
+        item.classList.toggle("drop-before", !after);
+      });
+      item.addEventListener("dragleave", () => item.classList.remove("drop-before", "drop-after"));
+      item.addEventListener("drop", (event) => {
+        event.preventDefault();
+        if (!dragging || dragging === id) return;
+        const after = item.classList.contains("drop-after");
+        const next = order.filter((tool) => tool !== dragging);
+        next.splice(next.indexOf(id) + (after ? 1 : 0), 0, dragging);
+        dragging = null;
+        commit(next, hidden);
+      });
+      return item;
+    }));
+  };
+  paint();
+  return el("div", {}, [list, foot]);
 }
 
 function workspaceSection() {
