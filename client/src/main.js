@@ -13,6 +13,8 @@ import { mountWorkspace } from "./workspace.js";
 import { mountFolders } from "./folders.js";
 import { ensureAccount, mountAccount, showNoFolders } from "./account.js";
 import { mountNotes } from "./notes.js";
+import { mountSettings } from "./settings.js";
+import { mountSwitcher } from "./switcher.js";
 
 async function boot() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -35,6 +37,8 @@ async function boot() {
   mountFolders();
   mountAccount();
   mountNotes();
+  mountSettings();
+  mountSwitcher();
   mountPresent();
 
   on("board:opened", (doc) => {
@@ -60,7 +64,7 @@ async function boot() {
   setMode("select");
 
   if (state.serverless) {
-    toast("Local-only mode: run `npm start` for board files, Python, and sharing", "warn");
+    toast("Local-only mode: run `quanta` in a terminal for board files, Python, and sharing", "warn");
   }
   // Warm up KaTeX so typeset math is ready by the time you look at it.
   ensureKatex();

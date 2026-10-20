@@ -26,6 +26,7 @@ const DEFAULT_SIZE = {
   image: { w: 320, h: 240 },
   arrow: { w: 180, h: 2 },
   comment: { w: 30, h: 30 },
+  portal: { w: 180, h: 180 },
 };
 
 export const board = () => state.board;

@@ -202,82 +202,18 @@ function obj(type, x, y, w, h, text = "", props = {}) {
   return { id: uid(type.slice(0, 2)), type, x, y, w, h, z: type === "frame" ? -1000 : 1, text, props, author: "", createdAt: now, updatedAt: now };
 }
 
+// Templates are empty paper: nothing to delete before you start writing.
+const notebookPages = (paper, count = 3) =>
+  Array.from({ length: count }, (_, i) => obj("frame", 0, i * (PAGE.h + GAP), PAGE.w, PAGE.h, `Page ${i + 1}`, { page: true, paper }));
+
 export const TEMPLATES = [
-  { id: "blank", name: "Blank board", hint: "Infinite canvas, dotted", build: () => ({ objects: [], background: "dots" }) },
-  {
-    id: "sprint", name: "Sprint planning", hint: "Align on a goal and map the work ahead",
-    build: () => ({ background: "dots", objects: [
-      obj("text", 0, -100, 1000, 80, "# A clear plan. A shared direction.\nSet a sprint goal, break down the work, and agree on what done looks like."),
-      ...["Backlog", "This sprint", "In progress", "Done"].map((title, i) => obj("frame", i * 340, 30, 310, 650, title)),
-      obj("note", 20, 100, 270, 170, "## Start with the goal\nWhat outcome matters most this sprint?", { color: "yellow" }),
-      obj("note", 360, 100, 270, 170, "## Define the work\n- [ ] Agree on scope\n- [ ] Assign an owner\n- [ ] Write acceptance criteria", { color: "blue" }),
-      obj("note", 700, 100, 270, 170, "## Make progress visible\nMove cards here when work begins.\nCall out blockers early.", { color: "pink" }),
-      obj("note", 1040, 100, 270, 170, "## Celebrate the outcome\nMove finished work here.\nShare what you learned.", { color: "green" }),
-    ] }),
-  },
-  {
-    id: "retro", name: "Team retrospective", hint: "Reflect together and leave with a next step",
-    build: () => ({ background: "dots", objects: [
-      obj("text", 0, -100, 1000, 80, "# Better, together.\nTake a few quiet minutes to reflect, then discuss the themes as a team."),
-      ...["What went well", "What could improve", "What we will try"].map((title, i) => obj("frame", i * 400, 30, 370, 620, title)),
-      obj("note", 25, 105, 320, 200, "## Keep doing\nWhat helped us do our best work?\nWhat are we proud of?", { color: "green" }),
-      obj("note", 425, 105, 320, 200, "## Make space for honesty\nWhat slowed us down?\nWhere did we need more support?", { color: "pink" }),
-      obj("note", 825, 105, 320, 200, "## One small experiment\n- [ ] Choose an action\n- [ ] Name an owner\n- [ ] Pick a date to check in", { color: "yellow" }),
-    ] }),
-  },
-  {
-    id: "notebook",
-    name: "Notebook",
-    hint: "Ruled A4 pages for handwriting",
-    build: () => ({
-      background: "blank",
-      objects: [0, 1, 2].map((i) => obj("frame", 0, i * (PAGE.h + GAP), PAGE.w, PAGE.h, `Page ${i + 1}`, { page: true, paper: "ruled" })),
-    }),
-  },
-  {
-    id: "math",
-    name: "Math notebook",
-    hint: "Graph-paper pages, a calculator, and a plot",
-    build: () => ({
-      background: "blank",
-      objects: [
-        obj("frame", 0, 0, PAGE.w, PAGE.h, "Page 1", { page: true, paper: "graph" }),
-        obj("frame", 0, PAGE.h + GAP, PAGE.w, PAGE.h, "Page 2", { page: true, paper: "graph" }),
-        obj("math", PAGE.w + 80, 0, 420, 220, "# scratch calculations\na = 3\nb = 4\nc = sqrt(a^2 + b^2)"),
-        obj("plot", PAGE.w + 80, 260, 420, 320, "k = 1\nf(x) = x^2 - k\ng(x) = 2x\nx: -4..4"),
-      ],
-    }),
-  },
-  {
-    id: "physics",
-    name: "Physics problem",
-    hint: "Given → diagram → solution → check",
-    build: () => ({
-      background: "grid",
-      objects: [
-        obj("frame", 0, 0, 1400, 860, "Problem"),
-        obj("note", 40, 60, 300, 230, "## Given\n- $m = 2\\,\\mathrm{kg}$\n- $v_0 = 12\\,\\mathrm{m/s}$\n- $\\theta = 35^\\circ$\n\n## Find\nRange and max height", { color: "blue" }),
-        obj("frame", 380, 60, 520, 380, "Diagram", { paper: "grid" }),
-        obj("math", 940, 60, 420, 300, "# projectile\nv0 = 12\ntheta = rad(35)\nt_f = 2 v0 sin(theta) / g\nR = v0^2 sin(2 theta) / g\nh_max = (v0 sin(theta))^2 / (2 g)"),
-        obj("plot", 380, 480, 520, 340, "v0 = 12\nth = 35\ny(x) = x tan(rad(th)) - g x^2 / (2 (v0 cos(rad(th)))^2)\nx: 0..16\ny: 0..5"),
-        obj("note", 940, 400, 420, 200, "## Check\n- [ ] Units consistent\n- [ ] Limit $\\theta \\to 0$ gives $R \\to 0$\n- [ ] $\\theta = 45^\\circ$ maximises range", { color: "green" }),
-      ],
-    }),
-  },
-  {
-    id: "code",
-    name: "Coding session",
-    hint: "JavaScript and Python cards side by side",
-    build: () => ({
-      background: "dots",
-      objects: [
-        obj("note", 0, 0, 280, 200, "## Task\nWrite it in JS, port it to Python, compare the output.\n\n- [ ] JS version\n- [ ] Python version", { color: "yellow" }),
-        obj("code", 320, 0, 520, 300, "// JavaScript runs in your browser\nfunction fib(n) {\n  let [a, b] = [0, 1];\n  for (let i = 0; i < n; i++) [a, b] = [b, a + b];\n  return a;\n}\nArray.from({ length: 12 }, (_, i) => fib(i));", { lang: "javascript" }),
-        obj("code", 880, 0, 520, 300, "# Python runs on the host machine, or in your browser\ndef fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a\n\n[fib(i) for i in range(12)]", { lang: "python" }),
-        obj("code", 880, 340, 520, 380, "# matplotlib figures appear right in the card\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nt = np.linspace(0, 4 * np.pi, 400)\nplt.plot(t, np.sin(t) * np.exp(-t / 6))\nplt.title('damped oscillation')\nplt.show()", { lang: "python" }),
-      ],
-    }),
-  },
+  { id: "blank", name: "Blank board", hint: "Infinite canvas", build: () => ({ objects: [], background: "dots" }) },
+  { id: "notebook", name: "Notebook", hint: "Ruled pages", build: () => ({ background: "blank", objects: notebookPages("ruled") }) },
+  { id: "math", name: "Math notebook", hint: "Graph-paper pages", build: () => ({ background: "blank", objects: notebookPages("graph") }) },
+  { id: "physics", name: "Physics notebook", hint: "Grid pages", build: () => ({ background: "blank", objects: notebookPages("grid") }) },
+  { id: "dots", name: "Dotted notebook", hint: "Dot-grid pages", build: () => ({ background: "blank", objects: notebookPages("dots") }) },
+  { id: "cornell", name: "Lecture notes", hint: "Cornell pages", build: () => ({ background: "blank", objects: notebookPages("cornell") }) },
+  { id: "code", name: "Code scratchpad", hint: "One empty Python card", build: () => ({ background: "dots", objects: [obj("code", 0, 0, 560, 320, "", { lang: "python" })] }) },
 ];
 
 export function templateDoc(id) {

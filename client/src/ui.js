@@ -83,6 +83,7 @@ const TOOL_KEYS = {
   y: "plot",
   c: "code",
   k: "comment",
+  o: "portal",
 };
 
 let clipboard = [];
@@ -203,7 +204,7 @@ function mountSidebar() {
   });
 }
 
-async function switchBoard(id) {
+export async function switchBoard(id) {
   if (id === state.board?.id) return;
   await flushSave();
   await openBoard(id);
@@ -913,9 +914,9 @@ function openShare() {
           ...links.map(row),
         ]
       : [
-          el("p", { html: "This server only accepts connections from this computer. To invite people on your network, stop it and run:" }),
-          el("pre", { class: "share-cmd", text: "npm run share" }),
-          el("p", { class: "hint", text: "Then send them the address it prints. Over the internet, put it behind a tunnel such as Tailscale or cloudflared." }),
+          el("p", { html: "This server only accepts connections from this computer. To invite people, restart it in a terminal with one of:" }),
+          el("pre", { class: "share-cmd", text: "quanta restart --tunnel   # over the internet\nquanta restart --share    # on your network" }),
+          el("p", { class: "hint", text: "Then send them the address it prints. Make the tunnel your default with: quanta config mode tunnel" }),
         ]),
     el("div", { class: "share-section" }, [
       el("strong", { text: peers.length ? `On this board now (${peers.length + 1})` : "Only you are here right now" }),
@@ -1191,25 +1192,60 @@ const viewCenter = () => {
   return screenToWorld(box.left + box.width / 2, box.top + box.height / 2);
 };
 
+// Ordered by how often they are needed; `keys` shows the shortcut in the palette.
 const COMMANDS = [
-  { id: "notes-tools", title: "Notes tools on this board", run: () => emit("notes:tools") },
-  { id: "recognize-text", title: "Recognize handwriting or scan text (OCR)", run: () => emit("notes:recognize") },
-  { id: "board-audio", title: "Audio recordings and transcripts", run: () => emit("notes:audio") },
-  { id: "study-cards", title: "Study flashcards on this board", run: () => emit("notes:study") },
-  { id: "team", title: "People: follow a collaborator", run: () => togglePanel("teamPanel") },
-  { id: "overview", title: "Board overview: find a card or frame", run: () => togglePanel("overviewPanel") },
-  { id: "star-board", title: "Star or unstar this board", run: () => $("#favoriteBoardBtn").click() },
-  { id: "recover-board", title: "Recently deleted boards", run: () => openRecovery() },
-  { id: "new-board", title: "New board…", run: () => openTemplates() },
-  { id: "add-page", title: "Add a notebook page", run: () => addPage(pagePaper) },
-  { id: "import-pdf", title: "Import PDF to annotate", run: () => $("#pdfInput").click() },
-  { id: "insert-image", title: "Insert image", run: () => $("#imageInput").click() },
-  { id: "print", title: "Print / save pages as PDF", run: () => printPages() },
-  { id: "share", title: "Share this board", run: () => openShare() },
-  { id: "pages", title: "Show pages", run: () => openPanel("pagesPanel") },
-  { id: "export-json", title: "Export board as JSON", run: () => download(`${slug(state.board.name)}.quanta.json`, JSON.stringify(state.board, null, 2)) },
+  { id: "switch-board", icon: "⇄", title: "Switch board", keys: "Ctrl B", run: () => emit("switcher:open") },
+  { id: "new-board", icon: "＋", title: "New board…", keys: "Ctrl ⇧ N", run: () => openTemplates() },
+  { id: "add-portal", icon: "◎", title: "Add a portal to another board", keys: "O", run: () => createObjectAt("portal", viewCenter()) },
+  { id: "settings", icon: "⚙", title: "Settings", keys: "Ctrl ,", run: () => emit("settings:open") },
+  { id: "add-page", icon: "▯", title: "Add a notebook page", run: () => addPage(pagePaper) },
+  { id: "insert-image", icon: "▨", title: "Insert image", run: () => $("#imageInput").click() },
+  { id: "import-pdf", icon: "⎙", title: "Import PDF to annotate", run: () => $("#pdfInput").click() },
+  { id: "share", icon: "↗", title: "Share this board", run: () => openShare() },
+  { id: "copy-link", icon: "⧉", title: "Copy link to this board", run: () => copyBoardLink(state.board.id) },
+  { id: "pages", icon: "▤", title: "Show pages", keys: "⇧ G", run: () => openPanel("pagesPanel") },
+  { id: "overview", icon: "☰", title: "Board overview: find a card or frame", run: () => togglePanel("overviewPanel") },
+  { id: "fit", icon: "⤢", title: "Fit board to screen", keys: "⇧ 1", run: fitBoard },
+  { id: "present", icon: "▶", title: "Start presentation", keys: "⇧ P", run: () => startPresentation() },
+  { id: "comments", icon: "✎", title: "Open comments", keys: "⇧ C", run: () => openPanel("commentsPanel") },
+  { id: "assistant", icon: "✦", title: "Open assistant", keys: "⇧ A", run: () => openPanel("aiPanel") },
+  { id: "star-board", icon: "☆", title: "Star or unstar this board", run: () => $("#favoriteBoardBtn").click() },
+  { id: "print", icon: "⎙", title: "Print / save pages as PDF", keys: "Ctrl P", run: () => printPages() },
+  { id: "python-card", icon: "λ", title: "Add a Python card", run: () => createObjectAt("code", viewCenter(), { lang: "python", text: "# Python — Ctrl+Enter to run\nimport math\nmath.sqrt(2)" }) },
+  { id: "js-card", icon: "λ", title: "Add a JavaScript card", run: () => createObjectAt("code", viewCenter(), { lang: "javascript" }) },
+  {
+    id: "run-selected",
+    icon: "▶",
+    title: "Run selected code cards",
+    keys: "Ctrl ↵",
+    run: () => {
+      const ids = [...app.selection].filter((id) => object(id)?.type === "code");
+      if (!ids.length) return toast("Select a code card first");
+      for (const id of ids) runCodeObject(id);
+    },
+  },
+  {
+    id: "run-all",
+    icon: "▶",
+    title: "Run every code card on this board",
+    run: () => {
+      const ids = objectList().filter((o) => o.type === "code").map((o) => o.id);
+      for (const id of ids) runCodeObject(id);
+      toast(ids.length ? `Running ${ids.length} card${ids.length === 1 ? "" : "s"}` : "No code cards here");
+    },
+  },
+  { id: "recognize-text", icon: "Aa", title: "Recognize handwriting or scan text (OCR)", run: () => emit("notes:recognize") },
+  { id: "board-audio", icon: "♪", title: "Audio recordings and transcripts", run: () => emit("notes:audio") },
+  { id: "study-cards", icon: "◫", title: "Study flashcards on this board", run: () => emit("notes:study") },
+  { id: "notes-tools", icon: "✐", title: "Notes tools on this board", run: () => emit("notes:tools") },
+  { id: "team", icon: "◉", title: "People: follow a collaborator", run: () => togglePanel("teamPanel") },
+  { id: "select-all", icon: "⬚", title: "Select everything", keys: "Ctrl A", run: selectAll },
+  { id: "rename-me", icon: "☺", title: "Change my name", run: () => openNameSheet() },
+  { id: "help", icon: "?", title: "Show shortcuts", keys: "?", run: () => toggleOverlay("helpOverlay") },
+  { id: "export-json", icon: "⇩", title: "Export board as JSON", run: () => download(`${slug(state.board.name)}.quanta.json`, JSON.stringify(state.board, null, 2)) },
   {
     id: "copy-markdown",
+    icon: "⧉",
     title: "Copy board as Markdown",
     run: async () => {
       const text = await fetch(`/api/boards/${state.board.id}/markdown`).then((r) => r.text()).catch(() => null);
@@ -1217,10 +1253,10 @@ const COMMANDS = [
       toast(ok ? "Board copied as Markdown" : "Could not copy — is the server running?", ok ? "" : "bad");
     },
   },
-  { id: "import-json", title: "Import a board file", run: () => $("#importInput").click() },
-  { id: "copy-link", title: "Copy link to this board", run: () => copyBoardLink(state.board.id) },
+  { id: "import-json", icon: "⇧", title: "Import a board file", run: () => $("#importInput").click() },
   {
     id: "duplicate-board",
+    icon: "⧉",
     title: "Duplicate this board",
     run: async () => {
       const copy = await importBoard(`${state.board.name} copy`, state.board);
@@ -1229,8 +1265,10 @@ const COMMANDS = [
       toast("Board duplicated");
     },
   },
+  { id: "recover-board", icon: "↺", title: "Recently deleted boards", run: () => openRecovery() },
   {
     id: "clear-ink",
+    icon: "⌫",
     title: "Erase all ink",
     run: () => {
       const count = clearAllInk();
@@ -1239,6 +1277,7 @@ const COMMANDS = [
   },
   {
     id: "delete-board",
+    icon: "✕",
     title: "Delete this board",
     run: () =>
       confirmSheet(`Delete “${state.board.name}”?`, "The board moves to Recently deleted boards. You can restore it from the board menu.", async () => {
@@ -1248,34 +1287,7 @@ const COMMANDS = [
         toast("Board deleted");
       }),
   },
-  { id: "fit", title: "Fit board to screen", run: fitBoard },
-  { id: "present", title: "Start presentation", run: () => startPresentation() },
-  { id: "comments", title: "Open comments", run: () => openPanel("commentsPanel") },
-  { id: "assistant", title: "Open assistant", run: () => openPanel("aiPanel") },
-  { id: "help", title: "Show shortcuts", run: () => toggleOverlay("helpOverlay") },
-  { id: "select-all", title: "Select everything", run: selectAll },
-  { id: "rename-me", title: "Change my name", run: () => openNameSheet() },
-  { id: "python-card", title: "Add a Python card", run: () => createObjectAt("code", viewCenter(), { lang: "python", text: "# Python — Ctrl+Enter to run\nimport math\nmath.sqrt(2)" }) },
-  { id: "js-card", title: "Add a JavaScript card", run: () => createObjectAt("code", viewCenter(), { lang: "javascript" }) },
-  {
-    id: "run-selected",
-    title: "Run selected code cards",
-    run: () => {
-      const ids = [...app.selection].filter((id) => object(id)?.type === "code");
-      if (!ids.length) return toast("Select a code card first");
-      for (const id of ids) runCodeObject(id);
-    },
-  },
-  {
-    id: "run-all",
-    title: "Run every code card on this board",
-    run: () => {
-      const ids = objectList().filter((o) => o.type === "code").map((o) => o.id);
-      for (const id of ids) runCodeObject(id);
-      toast(ids.length ? `Running ${ids.length} card${ids.length === 1 ? "" : "s"}` : "No code cards here");
-    },
-  },
-  ...["dots", "grid", "graph", "lines", "blank"].map((bg) => ({ id: `bg-${bg}`, title: `Background: ${bg}`, run: () => setBoardSettings({ background: bg }) })),
+  ...["dots", "grid", "graph", "lines", "blank"].map((bg) => ({ id: `bg-${bg}`, icon: "░", title: `Background: ${bg}`, run: () => setBoardSettings({ background: bg }) })),
 ];
 
 export function runCommand(id) {
@@ -1287,75 +1299,90 @@ function mountPalette() {
   const overlay = $("#palette");
   const input = $("#paletteInput");
   const list = $("#paletteList");
+  let items = [];
+  let active = 0;
 
   const close = () => {
     overlay.hidden = true;
     input.value = "";
   };
+  const has = (text, words) => {
+    const lower = text.toLowerCase();
+    return words.every((word) => lower.includes(word));
+  };
+  // Only the two affected rows change, so arrowing and hovering stay instant.
+  const setActive = (index) => {
+    list.querySelector(".palette-item.active")?.classList.remove("active");
+    active = index;
+    const node = list.querySelector(`[data-index="${index}"]`);
+    node?.classList.add("active");
+    node?.scrollIntoView({ block: "nearest" });
+  };
+  const run = (item) => {
+    if (!item) return;
+    close();
+    item.run();
+  };
 
   const render = () => {
-    const query = input.value.trim().toLowerCase();
-    const commands = COMMANDS.filter((c) => c.title.toLowerCase().includes(query)).map((c) => ({
-      label: c.title,
-      hint: "command",
-      run: () => {
-        close();
-        c.run();
-      },
-    }));
+    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const recent = prefs("recentBoards", []);
+    const rank = (id) => { const i = recent.indexOf(id); return i < 0 ? Infinity : i; };
     const boards = state.workspace.boards
-      .filter((b) => b.name.toLowerCase().includes(query))
-      .slice(0, 6)
-      .map((b) => ({
-        label: b.name,
-        hint: "board",
-        run: () => {
-          close();
-          switchBoard(b.id);
-        },
-      }));
-    const frames = pages()
-      .filter((f) => (f.text || "").toLowerCase().includes(query))
-      .slice(0, 6)
-      .map((f) => ({
-        label: f.text || "Frame",
-        hint: f.props?.page ? "page" : "frame",
-        run: () => {
-          close();
-          goToPage(f);
-        },
-      }));
-    const tools = Object.entries(TOOL_KEYS)
-      .filter(([key, tool]) => tool.includes(query) || key === query)
-      .map(([key, tool]) => ({
-        label: `${tool[0].toUpperCase()}${tool.slice(1)} tool`,
-        hint: key.toUpperCase(),
-        run: () => {
-          close();
-          setMode(tool);
-        },
-      }));
-    const items = [...commands, ...frames, ...boards, ...tools].slice(0, 14);
-    list.replaceChildren(
-      ...items.map((item, index) =>
-        el("button", { class: `palette-item${index === 0 ? " active" : ""}`, onclick: item.run }, [el("span", { text: item.label }), el("em", { text: item.hint })]),
-      ),
-    );
+      .filter((b) => b.id !== state.board?.id && has(b.name, words))
+      .toSorted((a, b) => rank(a.id) - rank(b.id) || (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .slice(0, words.length ? 8 : 4)
+      .map((b) => ({ icon: "▤", label: b.name, hint: relativeTime(b.updatedAt), run: () => switchBoard(b.id) }));
+    const commands = COMMANDS.filter((c) => has(c.title, words))
+      .slice(0, words.length ? 12 : 10)
+      .map((c) => ({ icon: c.icon, label: c.title, keys: c.keys, run: c.run }));
+    const frames = words.length
+      ? pages().filter((f) => has(f.text || "", words)).slice(0, 6).map((f) => ({ icon: "▯", label: f.text || "Frame", hint: f.props?.page ? "page" : "frame", run: () => goToPage(f) }))
+      : [];
+    const tools = words.length
+      ? Object.entries(TOOL_KEYS).filter(([, tool]) => has(`${tool} tool`, words)).map(([key, tool]) => ({ icon: "✎", label: `${tool[0].toUpperCase()}${tool.slice(1)} tool`, keys: key.toUpperCase(), run: () => setMode(tool) }))
+      : [];
+    const sections = words.length
+      ? [["Actions", commands], ["Boards", boards], ["Pages", frames], ["Tools", tools]]
+      : [["Recent boards", boards], ["Actions", commands]];
+    items = [];
+    const children = [];
+    for (const [heading, group] of sections) {
+      if (!group.length) continue;
+      children.push(el("div", { class: "palette-group", text: heading }));
+      for (const item of group) {
+        children.push(el("button", { class: "palette-item", type: "button", dataset: { index: String(items.length) } }, [
+          el("span", { class: "palette-icon", text: item.icon ?? "›" }),
+          el("span", { class: "palette-label", text: item.label }),
+          item.keys ? el("kbd", { text: item.keys }) : el("small", { text: item.hint ?? "" }),
+        ]));
+        items.push(item);
+      }
+    }
+    if (!items.length) children.push(el("p", { class: "palette-empty", text: `Nothing matches “${input.value.trim()}”.` }));
+    list.replaceChildren(...children);
+    setActive(0);
   };
 
   input.addEventListener("input", render);
   input.addEventListener("keydown", (event) => {
     event.stopPropagation();
-    const items = $$(".palette-item");
-    const activeIndex = items.findIndex((item) => item.classList.contains("active"));
     if (event.key === "Escape") close();
-    else if (event.key === "Enter") items[Math.max(0, activeIndex)]?.click();
-    else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    else if (event.key === "Enter") {
       event.preventDefault();
-      const next = (activeIndex + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
-      items.forEach((item, index) => item.classList.toggle("active", index === next));
-      items[next]?.scrollIntoView({ block: "nearest" });
+      run(items[active]);
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (items.length) setActive((active + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length);
     }
+  });
+  list.addEventListener("pointermove", (event) => {
+    const row = event.target.closest("[data-index]");
+    if (row && Number(row.dataset.index) !== active) setActive(Number(row.dataset.index));
+  });
+  list.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-index]");
+    if (row) run(items[Number(row.dataset.index)]);
   });
   overlay.addEventListener("pointerdown", (event) => {
     if (event.target === overlay) close();
@@ -1376,7 +1403,7 @@ const SHORTCUTS = [
   ["P  M  E  L", "Pen, marker, eraser, lasso"],
   ["Draw, then hold", "Snap to a line, circle, rectangle, triangle, or arrow"],
   ["Pen barrel button", "Erase while held"],
-  ["N  T  R  A  G", "Note, text, shape, arrow, frame"],
+  ["N  T  R  A  G  O", "Note, text, shape, arrow, frame, portal"],
   ["F  Y  C  K", "Math, plot, code, comment"],
   ["Double-click", "Edit a card"],
   ["Enter / Esc", "Edit the selected card / stop editing"],
@@ -1388,6 +1415,9 @@ const SHORTCUTS = [
   ["Ctrl+Z / Ctrl+Shift+Z", "Undo / redo (only your own changes)"],
   ["Shift+1 / 1", "Fit board / zoom to 100%"],
   ["Ctrl+K", "Command palette"],
+  ["Ctrl+B", "Switch board · tap B again to cycle, release Ctrl to open"],
+  ["O", "Portal to another board · double-click it to go"],
+  ["Ctrl+,", "Settings"],
   ["Shift+G / P / C / A", "Pages, present, comments, assistant"],
   ["Ctrl+Shift+N", "New board"],
   ["?", "This list"],
@@ -1505,6 +1535,16 @@ function mountKeys() {
     if (mod && event.key.toLowerCase() === "k") {
       event.preventDefault();
       emit("palette:open");
+      return;
+    }
+    if (mod && !event.shiftKey && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      emit("switcher:open", { hold: true });
+      return;
+    }
+    if (mod && event.key === ",") {
+      event.preventDefault();
+      emit("settings:open");
       return;
     }
     if (mod && event.shiftKey && event.key.toLowerCase() === "n") {
