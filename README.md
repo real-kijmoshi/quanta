@@ -1,16 +1,16 @@
 <div align="center">
 
-<img src="site/favicon.svg" alt="Quanta" width="72" height="72">
+<img src="docs/assets/banner.svg" alt="Quanta: handwriting, typeset maths, plots, and runnable code on one canvas" width="100%">
 
-# Quanta
+<br>
 
-**A space to think.** Sketch, solve, and run code together on a whiteboard you control.
+[![Release](https://img.shields.io/github/v/release/real-kijmoshi/quanta?style=flat-square&color=e4ed87&labelColor=252824)](https://github.com/real-kijmoshi/quanta/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-e4ed87?style=flat-square&labelColor=252824)](LICENSE)
+[![Node.js 22+](https://img.shields.io/badge/node-%E2%89%A522-e4ed87?style=flat-square&labelColor=252824)](https://nodejs.org)
+[![Self-hosted](https://img.shields.io/badge/self--hosted-yes-e4ed87?style=flat-square&labelColor=252824)](docs/SELF_HOSTING.md)
+[![MCP](https://img.shields.io/badge/MCP-server-e4ed87?style=flat-square&labelColor=252824)](#mcp-and-webmcp)
 
-[![Release](https://img.shields.io/github/v/release/real-kijmoshi/quanta)](https://github.com/real-kijmoshi/quanta/releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Node.js 22+](https://img.shields.io/badge/node-%E2%89%A522-339933)
-
-[Website](https://real-kijmoshi.github.io/quanta/) · [Releases](https://github.com/real-kijmoshi/quanta/releases) · [Self-hosting](docs/SELF_HOSTING.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+**[Website](https://real-kijmoshi.github.io/quanta/)** · **[Download](https://github.com/real-kijmoshi/quanta/releases/latest)** · **[Self-hosting](docs/SELF_HOSTING.md)** · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)**
 
 </div>
 
@@ -221,6 +221,70 @@ Slow SSE viewers are disconnected once pending output exceeds 1 MiB and recover 
 Open `http://127.0.0.1:4173/diagnostics/canvas-profile.html` and click **Run profile**, keeping the tab in the foreground until it finishes. It uses an in-memory 2,000-stroke board, so saved boards are untouched, and reports pan frame intervals, CPU submission times, and stroke submissions. **Run live ink at 5% zoom** exercises the real live preview with coalesced samples and reports raster surface size, cleared area, idle frame intervals, and input-to-next-frame intervals.
 
 Frame intervals depend on browser scheduling and other activity, and CPU timings exclude deferred GPU rasterization. Runs flagged with scheduling interruptions are unsuitable for latency comparisons.
+
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (you and your guests)"]
+        UI["Canvas, cards, ink"]
+        PY["Pyodide / JS workers"]
+        WM["WebMCP tools"]
+    end
+    subgraph Host["One Node process"]
+        API["HTTP + live events (SSE)"]
+        ST[("Boards as JSON in data/")]
+        AI["AI providers"]
+        MCP["MCP server /mcp"]
+    end
+    UI <--> API
+    API <--> ST
+    AI --> API
+    MCP --> API
+    WM --> UI
+    Agents["Any MCP client"] --> MCP
+    AI --> Models["Ollama, Anthropic, OpenRouter, LM Studio, Claude Code, Codex"]
+```
+
+The server stores each board as a plain JSON file and streams changes to open tabs. Browsers do the rendering, maths, and guest code execution, so the host stays light. The AI assistant and MCP clients go through the same validated board tools, so an agent can never do more than a person at the canvas.
+
+## FAQ
+
+<details>
+<summary><b>Do I need an account or an internet connection?</b></summary>
+
+No. Local mode has no accounts and works offline. Only AI providers that call a cloud API, the Cloudflare tunnel, and on-demand Pyodide packages need a connection. Hosted mode adds accounts for team servers.
+</details>
+
+<details>
+<summary><b>Where are my boards stored, and how do I back them up?</b></summary>
+
+As plain JSON files in `~/.quanta/data` (or `./data` from a clone, or `QUANTA_DATA`). Run `quanta backup [dir]` for a verified copy and `quanta backup --verify <dir>` to check one. See [local release and recovery](docs/LOCAL_RELEASE.md).
+</details>
+
+<details>
+<summary><b>Is it safe to run other people's code?</b></summary>
+
+Guests run Python in their own browser via Pyodide, and JavaScript in a browser worker. Host Python, AI, and MCP are owner-only.
+</details>
+
+<details>
+<summary><b>Can I use it on an iPad or with a stylus?</b></summary>
+
+Yes. Pressure, coalesced and predicted pointer events, barrel-button erase, and palm rejection are supported where the browser exposes them. The optional Notes beta is built for PC and iPad.
+</details>
+
+<details>
+<summary><b>Can my own AI agent edit a board?</b></summary>
+
+Yes. Point any MCP client at `http://localhost:4173/mcp`, or use the Assistant panel with a provider of your choice. Changes appear live in open tabs.
+</details>
+
+<details>
+<summary><b>Something broke. Where do I start?</b></summary>
+
+Run `quanta doctor`, then check [local release and recovery](docs/LOCAL_RELEASE.md). If it's still broken, [open an issue](https://github.com/real-kijmoshi/quanta/issues/new/choose).
+</details>
 
 ## Contributing and security
 

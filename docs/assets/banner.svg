@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="t">
+  <title id="t">Quanta: handwriting, typeset maths, plots, and runnable code on one canvas</title>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#3b3f38"/>
+    </pattern>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" rx="24" fill="#252824"/>
+  <rect width="1200" height="420" rx="24" fill="url(#dots)"/>
+
+  <!-- title -->
+  <g font-family="'Segoe UI',Helvetica,Arial,sans-serif">
+    <path d="M60 128c13 0 8-30 21-30s5 30 15 30c5 0 8-8 10-16" fill="none" stroke="#e4ed87" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="127" cy="98" r="4.5" fill="#e4ed87"/>
+    <text x="60" y="215" font-size="84" font-weight="700" fill="#f8f9f3" letter-spacing="-2">Quanta</text>
+    <text x="62" y="262" font-size="28" fill="#e4ed87">A space to think.</text>
+    <text x="62" y="302" font-size="19" fill="#a9b09f">Sketch, solve, and run code together</text>
+    <text x="62" y="328" font-size="19" fill="#a9b09f">on a whiteboard you control.</text>
+  </g>
+
+  <!-- math card -->
+  <g filter="url(#sh)" transform="rotate(-2 700 120)">
+    <rect x="560" y="50" width="250" height="130" rx="12" fill="#f8f9f3"/>
+    <text x="580" y="84" font-family="'Segoe UI',sans-serif" font-size="12" font-weight="700" fill="#697064">MATH</text>
+    <text x="580" y="118" font-family="Cambria,'Times New Roman',serif" font-size="22" font-style="italic" fill="#252824">f(x) = x² − 2</text>
+    <text x="580" y="148" font-family="Cambria,'Times New Roman',serif" font-size="22" font-style="italic" fill="#252824">solve(f, 1) = <tspan fill="#535c24" font-weight="700">1.4142</tspan></text>
+  </g>
+
+  <!-- plot card -->
+  <g filter="url(#sh)" transform="rotate(1.5 950 150)">
+    <rect x="840" y="60" width="300" height="190" rx="12" fill="#f8f9f3"/>
+    <text x="860" y="92" font-family="'Segoe UI',sans-serif" font-size="12" font-weight="700" fill="#697064">PLOT</text>
+    <line x1="860" y1="170" x2="1120" y2="170" stroke="#dfe3d6" stroke-width="2"/>
+    <line x1="990" y1="105" x2="990" y2="235" stroke="#dfe3d6" stroke-width="2"/>
+    <path d="M862 170 C 890 100, 915 100, 940 170 S 990 240, 1015 170 S 1070 100, 1118 170" fill="none" stroke="#535c24" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="860" y="222" width="110" height="6" rx="3" fill="#dfe3d6"/>
+    <rect x="860" y="222" width="68" height="6" rx="3" fill="#e4ed87"/>
+    <circle cx="928" cy="225" r="7" fill="#535c24"/>
+  </g>
+
+  <!-- code card -->
+  <g filter="url(#sh)" transform="rotate(-1 800 320)">
+    <rect x="600" y="230" width="300" height="130" rx="12" fill="#1a1c19" stroke="#3b3f38"/>
+    <text x="620" y="258" font-family="'Segoe UI',sans-serif" font-size="12" font-weight="700" fill="#e4ed87">PYTHON</text>
+    <g font-family="Consolas,'Courier New',monospace" font-size="15">
+      <text x="620" y="288" fill="#e8eaee"><tspan fill="#e4ed87">import</tspan> numpy <tspan fill="#e4ed87">as</tspan> np</text>
+      <text x="620" y="312" fill="#e8eaee">np.linspace(0, 1, 5)</text>
+      <text x="620" y="338" fill="#a9b09f">[0. 0.25 0.5 0.75 1.]</text>
+    </g>
+  </g>
+
+  <!-- handwriting -->
+  <path d="M930 300 q20 -45 40 -5 t40 -5 t40 -5 t40 -5" fill="none" stroke="#e4ed87" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+  <path d="M935 330 l95 0" fill="none" stroke="#e4ed87" stroke-width="5" stroke-linecap="round" opacity=".5"/>
+  <path d="M560 205 C 540 215, 520 260, 590 292" fill="none" stroke="#e4ed87" stroke-width="2.5" stroke-dasharray="2 8" stroke-linecap="round"/>
+</svg>

@@ -8,7 +8,7 @@ hosting, AI providers, and protocols where they help someone use the product.
 
 ## Identity
 
-The Q mark pairs a circular thought with a pen-like finishing stroke. Use
+The ink mark combines a flowing drawn curve with a single floating point. Use
 `client/favicon.svg` for the app and `site/favicon.svg` for the independently deployed
 website. Keep these files identical. Preserve the mark's proportions and leave
 at least one quarter of its width clear around it.
