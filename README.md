@@ -1,6 +1,5 @@
 # Quanta
 
-[![CI](https://github.com/real-kijmoshi/quanta/actions/workflows/ci.yml/badge.svg)](https://github.com/real-kijmoshi/quanta/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/real-kijmoshi/quanta)](https://github.com/real-kijmoshi/quanta/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
