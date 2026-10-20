@@ -933,6 +933,31 @@ function openShare() {
 // ----------------------------------------------------------------- templates
 
 function mountTemplates() {
+  const dialog = $("#templateOverlay");
+  const close = $("#templateClose");
+  const status = $("#templateStatus");
+  const error = $("#templateError");
+  let pending = false;
+  let created = null;
+  let previousFocus = null;
+  let openedBoard = false;
+  const dismiss = () => { if (!pending) dialog.close(); };
+  close.addEventListener("click", dismiss);
+  dialog.addEventListener("cancel", (event) => { if (pending) event.preventDefault(); });
+  dialog.addEventListener("close", () => {
+    if (!openedBoard && previousFocus?.isConnected) previousFocus.focus();
+  });
+  // Native modality makes the board inert; stop bubbling shortcuts and paste
+  // events as document handlers can otherwise still change the board.
+  dialog.addEventListener("keydown", (event) => event.stopPropagation());
+  dialog.addEventListener("paste", (event) => event.stopPropagation());
+  dialog.addEventListener("click", (event) => { if (event.target === dialog) dismiss(); });
+  dialog.addEventListener("template:open", () => {
+    previousFocus = document.activeElement;
+    openedBoard = false;
+    dialog.showModal();
+    $("#templateGrid button").focus();
+  });
   $("#templateGrid").replaceChildren(
     ...TEMPLATES.map((template) =>
       el("button", { class: "template-card", dataset: { template: template.id } }, [
@@ -944,21 +969,56 @@ function mountTemplates() {
   );
   $("#templateGrid").addEventListener("click", async (event) => {
     const card = event.target.closest("[data-template]");
-    if (!card) return;
-    $("#templateOverlay").hidden = true;
+    if (!card || pending) return;
     const template = TEMPLATES.find((t) => t.id === card.dataset.template);
-    const board = await createBoard(template.id === "blank" ? "Untitled board" : template.name, state.workspace.access?.folderId ?? null, templateDoc(template.id));
-    await switchBoard(board.id);
-    fitBoard();
-    if (template.id === "blank") {
-      $("#boardName").focus();
-      $("#boardName").select();
+    if (!template) return;
+    pending = true;
+    dialog.setAttribute("aria-busy", "true");
+    error.hidden = true;
+    status.textContent = "Creating and opening your board…";
+    close.disabled = true;
+    for (const button of $$("#templateGrid button")) button.disabled = true;
+    dialog.focus();
+    try {
+      // If opening failed after creation, retry that board rather than creating
+      // a second copy when the same template is selected again.
+      if (created?.template !== template.id) {
+        created = null;
+        const board = await createBoard(template.id === "blank" ? "Untitled board" : template.name, state.workspace.access?.folderId ?? null, templateDoc(template.id));
+        created = { template: template.id, board };
+      }
+      await switchBoard(created.board.id);
+      if (state.board?.id !== created.board.id) throw new Error("The new board is not available yet.");
+      fitBoard();
+      created = null;
+      openedBoard = true;
+      dialog.close();
+      if (template.id === "blank") {
+        $("#boardName").focus();
+        $("#boardName").select();
+      }
+    } catch (cause) {
+      error.textContent = `${created ? "Could not open the board. Select the same template to retry." : "Could not create the board. Select a template to retry."} ${cause?.message ?? "Please try again."}`;
+      error.hidden = false;
+    } finally {
+      pending = false;
+      dialog.removeAttribute("aria-busy");
+      status.textContent = "";
+      close.disabled = false;
+      for (const button of $$("#templateGrid button")) button.disabled = false;
+      if (dialog.open) card.closest("button")?.focus();
     }
   });
 }
 
 function openTemplates() {
-  $("#templateOverlay").hidden = false;
+  const dialog = $("#templateOverlay");
+  if (dialog.open) return;
+  stopEdit();
+  closeMenus();
+  app.spacePan = false;
+  document.body.classList.remove("space-pan");
+  dialog.dispatchEvent(new Event("template:open"));
 }
 
 // ------------------------------------------------------------------- comments
@@ -1358,6 +1418,7 @@ function mountClipboard() {
     app.pointer = { x: event.clientX, y: event.clientY };
   });
   document.addEventListener("paste", async (event) => {
+    if (document.querySelector("dialog[open]")) return;
     if (event.target.matches("input, textarea")) return;
     const items = [...(event.clipboardData?.items ?? [])];
     const files = items.filter((item) => item.kind === "file").map((item) => item.getAsFile()).filter(Boolean);
@@ -1431,6 +1492,7 @@ function mountDrop() {
 
 function mountKeys() {
   document.addEventListener("keydown", (event) => {
+    if (document.querySelector("dialog[open]")) return;
     const typing = event.target.matches("input, textarea, select, [contenteditable='true']");
     const mod = event.ctrlKey || event.metaKey;
 

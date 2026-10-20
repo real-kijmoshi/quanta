@@ -883,6 +883,10 @@ code { font-family: var(--mono); font-size: .92em; background: #fff; padding: 1p
 .sheet-box.narrow { width: min(420px, calc(100vw - 40px)); }
 .recovery-dialog { position: fixed; margin: auto; border: 1px solid var(--line); max-height: 80vh; overflow: auto; }
 .recovery-dialog::backdrop { background: rgba(28, 30, 34, .3); }
+.template-dialog { margin: auto; padding: 0; border: 0; max-width: none; max-height: none; overflow: visible; background: transparent; color: var(--ink); }
+.template-dialog::backdrop { background: rgba(28, 30, 34, .3); backdrop-filter: blur(2px); }
+.template-dialog [role="status"]:empty { display: none; }
+.template-dialog [role="alert"] { color: var(--red); }
 .recovery-list { margin-top: 18px; }
 .recovery-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .recovery-row p { margin-top: 4px; color: var(--muted); font-size: 12px; }

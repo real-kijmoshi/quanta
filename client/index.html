@@ -269,12 +269,14 @@
     </section>
   </div>
 
-  <div class="overlay sheet" id="templateOverlay" hidden>
+  <dialog class="template-dialog" id="templateOverlay" aria-labelledby="templateTitle" aria-describedby="templateStatus" tabindex="-1">
     <section class="sheet-box wide">
-      <header><h2>New board</h2><button class="panel-close" data-close="templateOverlay" aria-label="Close">×</button></header>
+      <header><h2 id="templateTitle">New board</h2><button class="panel-close" id="templateClose" aria-label="Close">×</button></header>
       <div class="template-grid" id="templateGrid"></div>
+      <p id="templateStatus" role="status" aria-live="polite"></p>
+      <p id="templateError" role="alert" hidden></p>
     </section>
-  </div>
+  </dialog>
 
   <div class="overlay sheet" id="nameOverlay" hidden>
     <section class="sheet-box narrow">
