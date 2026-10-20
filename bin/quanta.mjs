@@ -30,6 +30,7 @@ Defaults:
   config mode <m>         local | share | tunnel  (what plain \`quanta\` starts)
   config open <on|off>    Open the browser on start
   config port <n>         Default port
+  config autoupdate <on|off>  Install new releases when Quanta starts (default on)
 
 More:
   update [--check]        Install the latest release (keeps your boards; restarts a running workspace)
@@ -117,7 +118,7 @@ const runFile = join(home, "run.json");
 const logFile = join(home, "quanta.log");
 
 const readJson = file => { try { return JSON.parse(readFileSync(file, "utf8")); } catch { return null; } };
-const config = { mode: "local", open: true, ...readJson(configFile) };
+const config = { mode: "local", open: true, autoUpdate: true, ...readJson(configFile) };
 
 const env = { ...process.env, QUANTA_HOME: home };
 if (opts.data) env.QUANTA_DATA = resolve(opts.data);
@@ -305,6 +306,29 @@ async function update() {
   }
 }
 
+// Before starting, install a newer release if there is one. Skipped while a
+// workspace is already running, so nobody is disconnected (and a tunnel keeps
+// its address); the check is cached and gives up quickly when offline.
+async function autoUpdate() {
+  if (process.env.QUANTA_SKIP_UPDATE || config.autoUpdate === false || inCheckout || running()) return;
+  const cacheFile = join(home, "update-check.json");
+  let cached = readJson(cacheFile);
+  if (!cached?.latest || Date.now() - cached.at > 6 * 3600e3) {
+    try {
+      const latest = await Promise.race([latestVersion(), sleep(3000).then(() => { throw new Error("timed out"); })]);
+      cached = { at: Date.now(), latest };
+      writeFileSync(cacheFile, JSON.stringify(cached));
+    } catch { return; }
+  }
+  if (!newer(cached.latest, pkg.version)) return;
+  console.log(`Updating Quanta ${pkg.version} → ${cached.latest} (turn this off with: quanta config autoupdate off)`);
+  const self = fileURLToPath(import.meta.url);
+  const code = await runChild(process.execPath, [self, "update"], { cwd: tmpdir(), env: { ...process.env, QUANTA_NO_UI: "1" } });
+  if (code !== 0) { console.error("The update failed; starting the installed version."); return; }
+  // Continue with the freshly installed code.
+  process.exit(await runChild(process.execPath, [self, ...process.argv.slice(2)], { cwd: process.cwd(), env: { ...process.env, QUANTA_SKIP_UPDATE: "1" } }));
+}
+
 mkdirSync(home, { recursive: true });
 
 // In a real terminal, plain `quanta` (and `quanta ui`) opens the dashboard.
@@ -325,6 +349,7 @@ switch (command) {
     await dashboard(false);
     break;
   case "start":
+    if (!opts.foreground) await autoUpdate();
     if (!opts.foreground && interactive) await dashboard(true);
     else if (opts.foreground) {
       startForeground();
@@ -375,12 +400,15 @@ switch (command) {
     } else if (key === "open") {
       if (!["on", "off", "true", "false"].includes(value)) fail("usage: quanta config open on|off");
       next.open = value === "on" || value === "true";
+    } else if (key === "autoupdate") {
+      if (!["on", "off", "true", "false"].includes(value)) fail("usage: quanta config autoupdate on|off");
+      next.autoUpdate = value === "on" || value === "true";
     } else if (key === "port") {
       if (!/^\d+$/.test(value ?? "") || +value < 1 || +value > 65535) fail("usage: quanta config port <1-65535>");
       next.port = +value;
-    } else fail(`unknown setting "${key}" (mode, open, port)`);
+    } else fail(`unknown setting "${key}" (mode, open, port, autoupdate)`);
     writeFileSync(configFile, JSON.stringify(next, null, 2));
-    console.log(`Saved: ${key} = ${next[key]}`);
+    console.log(`Saved: ${key} = ${key === "autoupdate" ? (next.autoUpdate ? "on" : "off") : next[key]}`);
     break;
   }
   case "update":

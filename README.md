@@ -70,7 +70,7 @@ Update with `quanta update`; your boards are not touched.
 | `quanta [--tunnel|--share] [--port N] [--data DIR]` | Start in the background and open the terminal dashboard: live status and links, switch local/share/tunnel with ←→, copy the link, logs, settings and updates. Quitting leaves Quanta running |
 | `quanta ui` | Open the dashboard without starting anything (`--no-ui` prints the links and exits instead) |
 | `quanta stop` / `restart` / `status` / `logs [-f]` / `open` | Manage the background workspace from scripts |
-| `quanta update [--check]` | Install the latest release; boards are kept and a running workspace restarts |
+| `quanta update [--check]` | Install the latest release; boards are kept and a running workspace restarts. Plain `quanta` also updates itself on start (`quanta config autoupdate off` to stop that) |
 | `quanta config mode tunnel` | Make the tunnel (or `share`, `local`) the default for plain `quanta` |
 | `quanta --foreground` | Run attached to the terminal; Ctrl+C stops it |
 | `quanta setup` | Interactive Linux server setup with accounts and HTTPS |

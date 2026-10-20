@@ -34,6 +34,7 @@ import {
   duplicateObjects,
   flushSave,
   importBoard,
+  loadWorkspace,
   moveBoard,
   object,
   objectList,
@@ -872,53 +873,102 @@ function mountShare() {
 }
 
 function boardLink(id, base = location.origin) {
-  return `${base}${location.pathname}?board=${id}`;
+  return `${new URL(base).origin}${location.pathname}?board=${id}`;
+}
+
+const onLocalhost = () => /^(localhost|127\.|\[::1\])/.test(location.hostname);
+
+// Where other people reach this server: the tunnel, then the network, then
+// whatever address this page was opened on.
+export function shareBase() {
+  if (!onLocalhost()) return location.origin;
+  return healthInfo?.tunnelUrl ?? healthInfo?.lan?.[0] ?? null;
 }
 
 async function copyBoardLink(id) {
-  const lan = healthInfo?.lan?.[0];
-  const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
-  const url = boardLink(id, local && lan ? lan : location.origin);
+  const url = boardLink(id, shareBase() ?? location.origin);
   toast((await copyText(url)) ? "Link copied" : url);
 }
 
-function openShare() {
+// One step from "I want my friend on this board" to a working link: the board
+// goes into a shared folder if it is not in one, and the invitation opens it.
+async function createInviteLink(person, onlyThisBoard) {
+  let folderId = state.board.folderId;
+  // An invitation opens a whole folder; to share one board out of a busy
+  // folder, it moves into a subfolder of its own (it stays where it was).
+  if (!folderId || onlyThisBoard) {
+    const folder = await createFolder(state.board.name, folderId ?? null);
+    await moveBoard(state.board.id, folder.id);
+    folderId = folder.id;
+  }
+  const invite = await api(`/api/folders/${folderId}/invitations`, { method: "POST", body: { name: person || "Guest" } });
+  await loadWorkspace();
+  return `${boardLink(state.board.id, shareBase())}#${new URLSearchParams({ invite: invite.token })}`;
+}
+
+async function openShare() {
   const folder = state.workspace.folders.find((f) => f.id === state.board?.folderId);
-  if (folder && state.workspace.access?.owner !== false) return shareFolder(folder);
+  const owner = state.workspace.access?.owner !== false;
+  const folderName = () => state.workspace.folders.find((f) => f.id === state.board.folderId)?.name ?? state.board.name;
+  // Refresh: the tunnel may have started after this page loaded.
+  healthInfo = await fetch("/health", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : healthInfo)).catch(() => healthInfo);
+  if (healthInfo?.hosted && folder && owner) return shareFolder(folder);
   const body = $("#shareBody");
-  const destination = el("select", { class: "folder-input", "aria-label": "Folder to share" }, [
-    ...state.workspace.folders.map((item) => el("option", { value: item.id, text: item.name })),
-    el("option", { value: "", text: "Create a new shared folder" }),
-  ]);
-  const organize = state.workspace.access?.owner !== false ? el("button", { class: "solid-btn", text: "Move to folder & invite", onclick: async () => {
-    try {
-      const created = state.workspace.folders.find((item) => item.id === destination.value) ?? await createFolder(state.board.name);
-      await moveBoard(state.board.id, created.id);
-      $("#shareOverlay").hidden = true;
-      await shareFolder(created);
-    } catch (error) { toast(error.message, "bad"); }
-  } }) : null;
-  const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
-  const lan = healthInfo?.lan ?? [];
-  const links = local ? lan.map((base) => boardLink(state.board.id, base)) : [boardLink(state.board.id)];
-  const row = (url) =>
+  const base = shareBase();
+  const row = (url, label = "Copy") =>
     el("div", { class: "share-link" }, [
       el("input", { value: url, readonly: true, onclick: (event) => event.target.select() }),
-      el("button", { class: "solid-btn", text: "Copy", onclick: async () => toast((await copyText(url)) ? "Link copied" : url) }),
+      el("button", { class: "solid-btn", text: label, onclick: async () => toast((await copyText(url)) ? "Link copied" : url) }),
     ]);
   const peers = [...app.peers.values()];
+  const parts = [];
+  if (!base) {
+    parts.push(
+      el("p", { html: "This server only accepts connections from this computer. To invite people, restart it in a terminal with one of:" }),
+      el("pre", { class: "share-cmd", text: "quanta restart --tunnel   # over the internet\nquanta restart --share    # on your network" }),
+      el("p", { class: "hint", text: "Or run quanta and switch the mode with ← →. Make the tunnel your default with: quanta config mode tunnel" }),
+    );
+  } else if (owner && !healthInfo?.hosted) {
+    const name = el("input", { class: "folder-input", placeholder: "Their name (optional)", maxlength: 80, "aria-label": "Who is this invitation for" });
+    const crowded = () => {
+      const id = state.board.folderId;
+      return Boolean(id) && (state.workspace.boards.some((b) => b.folderId === id && b.id !== state.board.id) || state.workspace.folders.some((f) => f.parentId === id));
+    };
+    const only = el("input", { type: "checkbox", checked: true });
+    const scope = el("label", { class: "notes-checkbox", hidden: !crowded() }, [only, el("span", { text: `Only this board (otherwise everything in “${folder?.name ?? ""}”)` })]);
+    const result = el("div", { class: "invite-result", "aria-live": "polite" });
+    const make = el("button", { class: "solid-btn", type: "submit", text: "Create invite link" });
+    const form = el("form", { class: "invite-form" }, [name, make]);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      make.disabled = true;
+      try {
+        const link = await createInviteLink(name.value.trim(), crowded() && only.checked);
+        scope.hidden = true;
+        const copied = await copyText(link);
+        result.replaceChildren(row(link, "Copy again"), el("p", { class: "hint", text: `${copied ? "Copied. " : ""}Send it to them: it opens this board, and they can edit everything in “${folderName()}”. Revoke it any time from Manage access.` }));
+        name.value = "";
+        manage.hidden = false;
+      } catch (error) { toast(error.message, "bad"); }
+      finally { make.disabled = false; }
+    });
+    const manage = el("button", { class: "ghost-btn", type: "button", text: "Manage access…", hidden: !folder, onclick: () => {
+      const current = state.workspace.folders.find((f) => f.id === state.board.folderId);
+      if (!current) return;
+      $("#shareOverlay").hidden = true;
+      shareFolder(current);
+    } });
+    parts.push(
+      el("p", { text: healthInfo?.tunnelUrl ? `Invite someone over the internet (${new URL(healthInfo.tunnelUrl).host}). They edit live with you: cursors, ink as you write, and selections.` : "Invite someone on your network. They edit live with you: cursors, ink as you write, and selections." }),
+      form, scope, result,
+      el("p", { class: "hint", text: crowded() ? "Sharing only this board moves it into its own folder inside the current one." : folder ? `Invitations give access to the folder “${folder.name}”.` : "This board moves into its own shared folder so only it is shared." }),
+      manage,
+    );
+  } else {
+    parts.push(el("p", { text: "Anyone already invited to this folder can open this link:" }), row(boardLink(state.board.id, base)));
+  }
   body.replaceChildren(
-    ...(organize ? [el("p", { text: "Choose a folder for this board, then invite your teammates. Everyone in the folder can edit together." }), el("div", { class: "share-destination" }, [destination, organize])] : []),
-    ...(links.length
-      ? [
-          el("p", { text: "People with a folder invitation can open this link and edit live — they'll see your cursor, ink as you write it, and what you select." }),
-          ...links.map(row),
-        ]
-      : [
-          el("p", { html: "This server only accepts connections from this computer. To invite people, restart it in a terminal with one of:" }),
-          el("pre", { class: "share-cmd", text: "quanta restart --tunnel   # over the internet\nquanta restart --share    # on your network" }),
-          el("p", { class: "hint", text: "Then send them the address it prints. Make the tunnel your default with: quanta config mode tunnel" }),
-        ]),
+    ...parts,
     el("div", { class: "share-section" }, [
       el("strong", { text: peers.length ? `On this board now (${peers.length + 1})` : "Only you are here right now" }),
       el("div", { class: "share-people" }, [
@@ -926,7 +976,7 @@ function openShare() {
         ...peers.map((peer) => el("span", { class: "person", style: `--peer:${peer.color}` }, [el("i", { text: initials(peer.name) }), el("span", { text: peer.name })])),
       ]),
     ]),
-    el("p", { class: "hint", text: state.workspace.access?.owner === false ? "Your invitation gives access to this folder and its subfolders." : "Move this board into a folder, then share the folder to invite people. Each invitation can be revoked separately." }),
+    ...(owner ? [] : [el("p", { class: "hint", text: "Your invitation gives access to this folder and its subfolders." })]),
     ...(state.workspace.access?.owner === false ? [el("button", { class: "ghost-btn", text: "Leave shared folder", onclick: async () => { await api("/api/access", { method: "DELETE" }); location.reload(); } })] : []),
   );
   $("#shareOverlay").hidden = false;

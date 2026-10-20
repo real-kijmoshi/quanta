@@ -83,13 +83,13 @@ const onOutput = data => {
     const ownerUrl = `${publicUrl}/#owner=${ownerToken}`;
     console.log(`\nPublic URL: ${publicUrl}`);
     console.log(`Owner URL:  ${ownerUrl}`);
-    console.log("\nOpen the Owner URL to manage the workspace from another device. Share only the Public URL; invitees still need a folder invitation.\n");
+    console.log("\nOpen the Owner URL to manage the workspace from another device. To let a friend in, open a board and use Share → Create invite link; the bare Public URL only shows a private page.\n");
     recordLinks({ publicUrl, ownerUrl });
     // 2. Start the server, allowing exactly this tunnel hostname and recognizing
     //    the private owner link so the operator keeps owner access through the tunnel.
     const server = spawn(process.execPath, [fileURLToPath(new URL("../server/index.mjs", import.meta.url)), "--share"], {
       stdio: "inherit",
-      env: { ...process.env, QUANTA_ALLOWED_HOSTS: hostname, QUANTA_OWNER_TOKEN: ownerToken },
+      env: { ...process.env, QUANTA_ALLOWED_HOSTS: hostname, QUANTA_OWNER_TOKEN: ownerToken, QUANTA_TUNNEL_URL: publicUrl },
     });
     const stop = () => { server.kill(); tunnel.kill(); process.exit(0); };
     server.on("exit", code => { tunnel.kill(); process.exit(code ?? 0); });

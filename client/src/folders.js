@@ -87,7 +87,7 @@ export async function shareFolder(folder) {
   box.append(el("div", { class: "share-folder-summary" }, [el("span", { class: "share-folder-icon", text: "↗", "aria-hidden": "true" }), el("div", {}, [el("strong", { text: folder.name }), el("p", { text: "Shared access to this folder and everything inside" })]), el("span", { class: "status-badge", text: "Can edit" })]));
   box.append(el("p", { text: account.enabled ? "Invite a teammate by email. Copy their invitation and send it to them to join with a personal account." : "Give each teammate their own invitation link. You can remove their access at any time." }));
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-  const base = el("input", { class: "folder-input", "aria-label": "Server address", value: local && healthInfo?.lan?.length ? healthInfo.lan[0] : location.origin, type: "url", required: true });
+  const base = el("input", { class: "folder-input", "aria-label": "Server address", value: local ? healthInfo?.tunnelUrl ?? healthInfo?.lan?.[0] ?? location.origin : location.origin, type: "url", required: true });
   const connection = el("details", { class: "hosting-details" }, [el("summary", { text: "Connection settings" }), el("label", { class: "folder-label", text: "Server address" }), base]);
   if (!account.enabled) box.append(connection);
   else base.value = account.publicUrl;

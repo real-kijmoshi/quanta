@@ -176,8 +176,7 @@ export async function runTui(ctx) {
     const info = state.info;
     if (!info) return;
     state.mode = info.mode;
-    if (info.publicUrl && copy(info.publicUrl)) flash("Running. Public link copied to the clipboard");
-    else flash(`Running in ${info.mode} mode`);
+    flash(info.mode === "local" ? "Running on this computer" : `Running in ${info.mode} mode. Invite people from a board: Share → Create invite link`);
     if (firstStart && ctx.open) openBrowser(`http://localhost:${info.port}`);
     firstStart = false;
   }
@@ -190,7 +189,7 @@ export async function runTui(ctx) {
   const shareLink = () => state.info?.publicUrl ?? state.health?.lan?.[0] ?? `http://localhost:${state.info?.port}`;
   function copyLink() {
     copy(shareLink());
-    flash(`Copied ${shareLink()}`);
+    flash(`Copied ${shareLink()}. Guests also need an invite: Share → Create invite link`, "info");
   }
 
   const UPDATE_CACHE = join(home, "update-check.json");
@@ -247,7 +246,7 @@ export async function runTui(ctx) {
     else if (info.mode !== state.mode) items.push({ label: `Switch to ${state.mode} mode`, hint: "restarts; people reconnect", key: "enter", act: () => restart(state.mode) });
     if (info) {
       items.push({ label: "Open in browser", key: "o", act: () => { openBrowser(`http://localhost:${info.port}`); flash("Opened in your browser", "info"); } });
-      items.push({ label: info.publicUrl ? "Copy public link" : state.health?.lan?.length ? "Copy network link" : "Copy link", key: "c", act: copyLink });
+      items.push({ label: info.publicUrl ? "Copy public address" : state.health?.lan?.length ? "Copy network address" : "Copy address", key: "c", act: copyLink });
       items.push({ label: "Restart", key: "r", act: () => restart(info.mode) });
       items.push({ label: "Stop", key: "s", act: stopIt });
     }
@@ -264,10 +263,11 @@ export async function runTui(ctx) {
 
   // ------------------------------------------------------------ settings
   const settingsRows = () => {
-    const saved = { mode: "local", open: true, port: 4173, ...readJson(configFile) };
+    const saved = { mode: "local", open: true, port: 4173, autoUpdate: true, ...readJson(configFile) };
     return [
       { label: "Start mode", value: chip(saved.mode), note: "what plain quanta starts", change: dir => save({ mode: MODES[(MODES.indexOf(saved.mode) + dir + MODES.length) % MODES.length] }) },
       { label: "Open browser", value: saved.open ? c.green("on") : c.gray("off"), note: "when Quanta starts", change: () => save({ open: !saved.open }) },
+      { label: "Auto-update", value: saved.autoUpdate ? c.green("on") : c.gray("off"), note: "install new releases when Quanta starts", change: () => save({ autoUpdate: !saved.autoUpdate }) },
       { label: "Port", value: state.edit !== null ? `${state.edit}${citron("▏")}` : String(saved.port), note: state.edit !== null ? "type a port, enter saves, esc cancels" : "used on the next start", edit: () => { state.edit = ""; render(); } },
       { label: "Back", back: true },
     ];
@@ -305,6 +305,7 @@ export async function runTui(ctx) {
       for (const url of (health?.lan ?? []).slice(0, 2)) lines.push(`  ${c.gray("Network")}  ${c.ul(url)}   ${c.gray("same Wi-Fi")}`);
       if (info.publicUrl) lines.push(`  ${c.gray("Public ")}  ${c.ul(citron(info.publicUrl))}   ${c.gray("share this")}`);
       if (info.ownerUrl) lines.push(`  ${c.gray("Owner  ")}  ${c.ul(info.ownerUrl)}   ${c.yellow("keep private")}`);
+      if (info.mode !== "local") lines.push(`  ${c.gray("Invite ")}  ${c.gray("the address alone shows a private page: open a board → Share → Create invite link")}`);
     } else {
       lines.push(`  ${c.gray("○")} ${c.bold("Stopped")}   ${c.gray("your boards are saved")}`);
     }
