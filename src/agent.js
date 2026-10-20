@@ -32,6 +32,7 @@ export async function mountAgent() {
     renderAiState();
   });
   $("#aiRefresh").addEventListener("click", refreshConnections);
+  document.addEventListener("quanta:assistants-changed", refreshConnections);
 
   $("#aiSend").addEventListener("click", send);
   $("#aiInput").addEventListener("keydown", (event) => {

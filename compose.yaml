@@ -8,6 +8,7 @@ services:
       QUANTA_PUBLIC_URL: https://${QUANTA_DOMAIN:?Set QUANTA_DOMAIN in .env}
       QUANTA_ADMIN_EMAIL: ${QUANTA_ADMIN_EMAIL:?Set QUANTA_ADMIN_EMAIL in .env}
       QUANTA_ADMIN_PASSWORD: ${QUANTA_ADMIN_PASSWORD:?Set QUANTA_ADMIN_PASSWORD in .env}
+      QUANTA_SECRET: ${QUANTA_SECRET:-}
     volumes:
       - quanta_data:/data
       - quanta_backups:/backups

@@ -1,6 +1,7 @@
 import { el, setIdentity, setPrefs, toast } from "./core.js";
 import { api, flushSave, state } from "./doc.js";
 import { notesSetting } from "./notes-preferences.js";
+import { assistantSettings } from "./assistants.js";
 
 export let account = { enabled: false, user: null };
 
@@ -105,7 +106,7 @@ export function workspaceSettings() {
       try { await flushSave(); if (["offline", "error"].includes(state.status)) throw new Error("Reconnect and save your changes first."); await api("/api/auth/password", { method: "POST", body: { currentPassword: current.value, password: next.value } }); location.reload(); }
       catch (issue) { error.textContent = issue.message; save.disabled = false; }
     };
-    box.append(el("h3", { text: "Change password" }), form, el("button", { class: "folder-action danger", text: "Sign out", onclick: () => signOut().catch((issue) => toast(issue.message, "bad")) }));
+    box.append(assistantSettings(), el("h3", { text: "Change password" }), form, el("button", { class: "folder-action danger", text: "Sign out", onclick: () => signOut().catch((issue) => toast(issue.message, "bad")) }));
   } else {
     box.append(el("h3", { text: "Give your team a permanent home" }), el("p", { text: "Run Quanta on your own server so your boards stay available when your computer is off. Everyone signs in to their own account." }), el("div", { class: "hosting-features" }, [el("span", { text: "✓ Personal accounts" }), el("span", { text: "✓ Private folders" }), el("span", { text: "✓ Live collaboration" }), el("span", { text: "✓ Persistent storage" })]));
     const details = el("details", { class: "hosting-details" }, [el("summary", { text: "Set up on a VPS" }), el("ol", {}, [el("li", { text: "Point a domain to your VPS and install Docker Compose." }), el("li", { text: "Copy this project to the server. Copy .env.example to .env and set your domain, owner email, and a strong password." }), el("li", { text: "Start the hosted service with the command below, then sign in at your domain." })]), el("pre", { class: "share-cmd", text: "docker compose up -d --build" }), el("p", { class: "hint", text: "Full instructions, backups, and account recovery: docs/SELF_HOSTING.md in the project. Your local boards can be migrated; keep a backup first." })]);

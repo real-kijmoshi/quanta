@@ -62,6 +62,31 @@ in a parent or another folder continues to grant access through that membership.
 The owner manages folders, invitations, and deletion; members can create and edit
 boards within their folders. Read-only roles and multiple owners are not included.
 
+## Let everyone use their own assistant
+
+Every signed-in person can connect their own AI in **Workspace settings → Your assistants**.
+Nothing is configured on the server for this, and members never use the owner's keys.
+
+- **Their own API key** (OpenAI, Anthropic or OpenRouter) powers the assistant panel. The key is
+  checked with the provider when saved, encrypted with AES-256-GCM, and used only for that
+  person's requests, which can touch only boards in their folders. A ChatGPT or Claude *chat
+  subscription* is not an API key and cannot be used here; the provider bills API usage
+  separately.
+- **Their own assistant over MCP.** Creating a connection gives a personal token. Paste
+  `https://YOUR_DOMAIN/mcp` and `Authorization: Bearer <token>` into Claude Code, Cursor, Codex or
+  any client that accepts headers. Clients that cannot send headers (ChatGPT and Claude custom
+  connectors) can use `https://YOUR_DOMAIN/mcp/<token>` instead. The assistant then runs on the
+  person's own subscription and sees only the folders they can open. Tokens are shown once, stored
+  only as hashes, and can be revoked immediately. Treat the connector URL like a password.
+
+Keys are encrypted with a random key in `connections.key` next to `connections.json` in the data
+volume, which protects against accidental exposure of the JSON file but not against someone who
+copies the whole volume. To keep the key elsewhere, set `QUANTA_SECRET` in `.env` before people
+connect keys; changing it later disconnects saved keys (people re-enter them). Local models and
+terminal assistants (Ollama, Codex, Claude Code) stay unavailable on a hosted server because they
+would share the server's login. Server-wide `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or
+`OPENROUTER_API_KEY` values, if you add them to the service environment, are for the owner only.
+
 ## Data and backups
 
 `quanta_data` holds boards, images, account password hashes, membership records,

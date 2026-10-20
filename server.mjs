@@ -14,7 +14,9 @@ import { accessFor, invitationAccess, ownerTokenMatches, visibleWorkspace, canBo
 import { createMcpServer } from "./lib/mcp.mjs";
 import { detectRuntimes, runCode } from "./lib/exec.mjs";
 import * as ai from "./lib/ai.mjs";
-import { hosted, publicUrl, initAuth, handleAuth, currentUser, invitationMembers } from "./lib/auth.mjs";
+import { hosted, publicUrl, initAuth, handleAuth, currentUser, invitationMembers, accessForUserId } from "./lib/auth.mjs";
+import * as connections from "./lib/connections.mjs";
+import { fetchModels } from "./lib/providers.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url)).replace(/[\\/]+$/, "");
 const port = Number(process.env.PORT ?? 4173);
@@ -110,6 +112,16 @@ function isLocalAssistant(req) {
     const hostname = new URL(`http://${req.headers.host}`).hostname;
     return ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
   } catch { return false; }
+}
+
+// Hosted members run the assistant on their own keys; the operator's server keys stay owner-only.
+const assistantAllowed = (access) => access.owner || (hosted && Boolean(access.userId));
+const assistantContext = (req, access) => ({
+  local: isLocalAssistant(req),
+  credentials: hosted ? { keys: connections.userCredentials(access.userId), shared: access.owner } : {},
+});
+function requireAccount(access) {
+  if (!hosted || !access.userId) throw Object.assign(new Error("Assistant connections need a signed-in account"), { status: 403 });
 }
 
 // ---------------------------------------------------------------- live sync
@@ -267,7 +279,7 @@ async function handleApi(req, res, url) {
     return json(res, 200, {
       ok: true,
       runtimes: visible,
-      ai: access.owner ? ai.status({ local: isLocalAssistant(req) }) : { available: false, providers: [] },
+      ai: assistantAllowed(access) ? ai.status({ local: isLocalAssistant(req), ...assistantContext(req, access).credentials }) : { available: false, providers: [] },
       mcp: "/mcp",
       clients: clients.size,
       lan: lanUrls(),
@@ -438,22 +450,54 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/ai/providers" && method === "GET") {
-    if (!access.owner) return json(res, 200, { available: false, providers: [] });
+    if (!assistantAllowed(access)) return json(res, 200, { available: false, providers: [] });
     if (url.searchParams.has("refresh") && isLocalAssistant(req)) await ai.refreshProviders();
-    return json(res, 200, ai.status({ local: isLocalAssistant(req) }));
+    return json(res, 200, ai.status({ local: isLocalAssistant(req), ...assistantContext(req, access).credentials }));
+  }
+
+  if (pathname === "/api/connections" || pathname.startsWith("/api/connections/")) {
+    requireAccount(access);
+    const [, , kind, id] = segments;
+    if (!kind && method === "GET") return json(res, 200, { ...connections.listConnections(access.userId), mcpUrl: `${publicUrl}/mcp` });
+    if (kind === "providers" && id && method === "PUT") {
+      const body = await readBody(req, 4096);
+      if (!connections.BYO_PROVIDERS.includes(id)) return json(res, 400, { error: "Unknown provider" });
+      if (typeof body.key !== "string") return json(res, 400, { error: "Paste the full API key" });
+      let models;
+      try { models = await fetchModels(id, body.key.trim()); }
+      catch (error) { return json(res, 400, { error: /\((401|403)\)|authentication|invalid|permission|incorrect/i.test(error.message) ? "That provider rejected this key. Check it and try again." : "Could not reach the provider to check this key. Try again shortly." }); }
+      await connections.saveProviderKey(access.userId, id, body.key, models);
+      return json(res, 200, connections.listConnections(access.userId));
+    }
+    if (kind === "providers" && id && method === "DELETE") {
+      await connections.removeProviderKey(access.userId, id);
+      return json(res, 200, connections.listConnections(access.userId));
+    }
+    if (kind === "tokens" && !id && method === "POST") {
+      const body = await readBody(req, 1024);
+      const created = await connections.createToken(access.userId, body.name);
+      // The token is shown once; only its hash is stored.
+      return json(res, 200, { created, ...connections.listConnections(access.userId), mcpUrl: `${publicUrl}/mcp` });
+    }
+    if (kind === "tokens" && id && method === "DELETE") {
+      await connections.revokeToken(access.userId, id);
+      return json(res, 200, connections.listConnections(access.userId));
+    }
+    return json(res, 404, { error: `No route for ${method} ${pathname}` });
   }
 
   if (pathname === "/api/ai" && method === "POST") {
-    requireOwner(access);
+    if (!assistantAllowed(access)) throw Object.assign(new Error("Sign in to use the assistant"), { status: 403 });
     // A browser on another origin must never drive a logged-in local CLI.
     if (req.headers.origin && req.headers.origin !== (hosted ? new URL(publicUrl).origin : url.origin)) return json(res, 403, { error: "Assistant requests must come from this app" });
     const body = await readBody(req, 1024 * 1024);
+    requireBoard(index, access, body.boardId);
     const controller = new AbortController();
     res.on("close", () => controller.abort());
     res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" });
     const write = (payload) => { if (!res.destroyed) res.write(`${JSON.stringify(payload)}\n`); };
     try {
-      await ai.chat({ boardId: body.boardId, messages: body.messages ?? [], provider: body.provider, model: body.model, local: isLocalAssistant(req), signal: controller.signal, write });
+      await ai.chat({ boardId: body.boardId, messages: body.messages ?? [], provider: body.provider, model: body.model, ...assistantContext(req, access), signal: controller.signal, write });
     } catch (error) {
       write({ type: "error", error: error.message });
     }
@@ -524,8 +568,26 @@ const httpServer = createServer(async (req, res) => {
   let url;
   try {
     url = checkRequest(req, { host, port });
-    if (url.pathname === "/mcp") {
-      requireOwner(accessFor(req, await store.listWorkspace()));
+    if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
+      const index = await store.listWorkspace();
+      // A personal token (Authorization header, or /mcp/<token> for connectors that cannot
+      // send headers) acts as its account and sees only that account's folders.
+      const bearer = /^Bearer (\S+)$/i.exec(req.headers.authorization ?? "")?.[1];
+      const presented = bearer ?? /^\/mcp\/([^/]+)$/.exec(url.pathname)?.[1];
+      let mcpAccess;
+      if (presented) {
+        const userId = hosted ? connections.userForToken(presented) : null;
+        if (!userId) {
+          res.setHeader("www-authenticate", "Bearer");
+          throw Object.assign(new Error("This MCP connection is invalid or was revoked"), { status: 401 });
+        }
+        mcpAccess = accessForUserId(userId, index);
+      } else if (url.pathname !== "/mcp") {
+        throw Object.assign(new Error("Not found"), { status: 404 });
+      } else {
+        requireOwner(accessFor(req, index));
+        mcpAccess = { owner: true };
+      }
       if (req.headers.origin) res.setHeader("access-control-allow-origin", req.headers.origin);
       if (req.method === "OPTIONS") {
         res.writeHead(204, {
@@ -537,7 +599,7 @@ const httpServer = createServer(async (req, res) => {
         return;
       }
       res.setHeader("access-control-expose-headers", "mcp-session-id");
-      const server = createMcpServer();
+      const server = createMcpServer(mcpAccess);
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         transport.close();
@@ -572,6 +634,7 @@ httpServer.keepAliveTimeout = 5000;
 
 const index = await store.init();
 await initAuth();
+if (hosted) await connections.initConnections();
 liveIndex = index;
 runtimes = await detectRuntimes();
 await ai.refreshProviders();
