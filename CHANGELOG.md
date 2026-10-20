@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- `quanta` now starts in the background and opens your browser; `--tunnel` adds a public link and downloads cloudflared when missing. New `stop`, `restart`, `status`, `logs`, `open` and `config` commands (`quanta config mode tunnel` makes the tunnel the default).
+- Ctrl+B board switcher: every board, most recent first, with a live preview.
+- Portals: a card that teleports you to another board and lands you on the way back.
+- One Settings dialog (Ctrl+,) replaces the workspace sheet; the pen and tools bar can dock on the left or right, with a compact mode. The separate Notes layout is retired.
+- Faster, grouped command palette with shortcut hints.
+- Templates are clean paper: ruled, graph, grid, dotted, Cornell, and a code scratchpad.
+- Website: working copy buttons and an install tab picked for your device.
+
 ## 0.9.1
 
 - Add an interactive server onboarding wizard and update team server setup instructions.
