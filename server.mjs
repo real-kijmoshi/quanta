@@ -10,9 +10,11 @@ import { checkRequest, responseHeaders } from "./lib/http-policy.mjs";
 import { validateJson } from "./lib/validation.mjs";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import * as store from "./lib/store.mjs";
+import { accessFor, invitationAccess, ownerTokenMatches, visibleWorkspace, canBoard, requireBoard, requireFolder, requireOwner } from "./lib/folder-access.mjs";
 import { createMcpServer } from "./lib/mcp.mjs";
 import { detectRuntimes, runCode } from "./lib/exec.mjs";
 import * as ai from "./lib/ai.mjs";
+import { hosted, publicUrl, initAuth, handleAuth, currentUser, invitationMembers } from "./lib/auth.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url)).replace(/[\\/]+$/, "");
 const port = Number(process.env.PORT ?? 4173);
@@ -24,6 +26,10 @@ const remoteRun = process.env.QUANTA_REMOTE_RUN === "1";
 const VENDOR = {
   katex: join(root, "node_modules", "katex", "dist"),
   pdfjs: join(root, "node_modules", "pdfjs-dist", "build"),
+  transformers: join(root, "node_modules", "@huggingface", "transformers", "dist"),
+  onnx: join(root, "node_modules", "onnxruntime-web", "dist"),
+  tesseract: join(root, "node_modules", "tesseract.js", "dist"),
+  "tesseract-core": join(root, "node_modules", "tesseract.js-core"),
 };
 
 function lanUrls() {
@@ -44,6 +50,7 @@ const MIME = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
+  ".wasm": "application/wasm",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
@@ -55,6 +62,11 @@ const MIME = {
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".pdf": "application/pdf",
+  ".webm": "audio/webm",
+  ".m4a": "audio/mp4",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".mp3": "audio/mpeg",
   ".py": "text/plain; charset=utf-8",
 };
 
@@ -92,6 +104,7 @@ function isLoopback(req) {
 }
 
 function isLocalAssistant(req) {
+  if (hosted) return false;
   if (!isLoopback(req)) return false;
   try {
     const hostname = new URL(`http://${req.headers.host}`).hostname;
@@ -103,9 +116,18 @@ function isLocalAssistant(req) {
 
 const clients = new Set();
 const presence = new Map();
+let liveIndex = null;
+const pendingAssets = new Map();
 
 function send(client, payload) {
   try {
+    // Reconnect a lagging viewer instead of retaining an unbounded SSE queue.
+    // The client reloads the board snapshot when its stream reconnects.
+    if (client.res.writableLength > 1024 * 1024) {
+      client.res.destroy();
+      clients.delete(client);
+      return;
+    }
     client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
   } catch {
     clients.delete(client);
@@ -114,6 +136,24 @@ function send(client, payload) {
 
 function broadcast(payload, { boardId, except } = {}) {
   for (const client of clients) {
+    let access;
+    try { access = accessFor(client.req, liveIndex); }
+    catch {
+      send(client, { type: "access-revoked" });
+      client.res.end();
+      clients.delete(client);
+      presence.delete(client.id);
+      continue;
+    }
+    if (boardId && !canBoard(liveIndex, access, boardId)) continue;
+    if (payload.type === "workspace") {
+      send(client, { type: "workspace", workspace: visibleWorkspace(liveIndex, access) });
+      if (client.boardId && !canBoard(liveIndex, access, client.boardId)) {
+        send(client, { type: "board-deleted", id: client.boardId });
+        client.res.end();
+      }
+      continue;
+    }
     if (boardId && client.boardId !== boardId) continue;
     if (except && client.id === except) continue;
     send(client, payload);
@@ -140,13 +180,16 @@ store.events.on("ops", ({ boardId, ops, rev, origin }) => {
   broadcast({ type: "ops", boardId, ops, rev }, { boardId, except: origin });
 });
 store.events.on("meta", (meta) => broadcast({ type: "meta", ...meta }, { boardId: meta.boardId }));
-store.events.on("board-deleted", ({ id }) => broadcast({ type: "board-deleted", id }));
-store.events.on("workspace", (index) => broadcast({ type: "workspace", workspace: index }));
+store.events.on("board-deleted", ({ id }) => broadcast({ type: "board-deleted", id }, { boardId: id }));
+store.events.on("workspace", (index) => { liveIndex = index; broadcast({ type: "workspace" }); });
 
 function openEventStream(req, res, url) {
+  // Deliver presence immediately instead of waiting for TCP packet coalescing.
+  req.socket.setNoDelay(true);
   const id = url.searchParams.get("client") || store.uid("c");
   const client = {
     id,
+    req,
     res,
     boardId: url.searchParams.get("board") ?? null,
   };
@@ -160,14 +203,21 @@ function openEventStream(req, res, url) {
   send(client, { type: "hello", clientId: id, peers: presenceFor(client.boardId, id) });
   const ping = setInterval(() => {
     try {
+      const access = accessFor(req, liveIndex);
+      if (client.boardId) requireBoard(liveIndex, access, client.boardId);
       res.write(": ping\n\n");
     } catch {
       clearInterval(ping);
+      send(client, { type: "access-revoked" });
+      res.end();
+      clients.delete(client);
     }
   }, 25000);
   req.on("close", () => {
     clearInterval(ping);
     clients.delete(client);
+    // Closing an old stream during a board switch must not remove its replacement.
+    if ([...clients].some((other) => other.id === id)) return;
     const peer = presence.get(id);
     presence.delete(id);
     if (peer) broadcast({ type: "presence-left", id }, { boardId: peer.boardId });
@@ -180,44 +230,79 @@ async function handleApi(req, res, url) {
   const { pathname } = url;
   const method = req.method ?? "GET";
   const segments = pathname.split("/").filter(Boolean); // ["api", ...]
+  const index = await store.listWorkspace();
+  if (pathname.startsWith("/api/auth/")) {
+    const result = await handleAuth(req, res, url, index, readBody, json);
+    if (req.method === "POST") broadcast({ type: "workspace" });
+    return result;
+  }
+  if (hosted && pathname === "/health" && method === "GET" && !currentUser(req)) return json(res, 200, { ok: true });
+  if (pathname === "/api/access" && method === "POST") {
+    if (hosted) return json(res, 401, { error: "Sign in to accept this invitation" });
+    const body = await readBody(req, 2048);
+    const secure = req.socket.encrypted || req.headers["x-forwarded-proto"] === "https";
+    if (body.owner !== undefined) {
+      if (!ownerTokenMatches(body.owner)) return json(res, 403, { error: "This owner link is invalid or has expired" });
+      res.setHeader("set-cookie", `quanta_owner=${body.owner}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${secure ? "; Secure" : ""}`);
+      return json(res, 200, { owner: true });
+    }
+    const access = invitationAccess(index, body.token);
+    res.setHeader("set-cookie", `quanta_folder=${body.token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${secure ? "; Secure" : ""}`);
+    return json(res, 200, access);
+  }
+  if (pathname === "/api/access" && method === "DELETE") {
+    res.setHeader("set-cookie", [
+      "quanta_folder=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
+      "quanta_owner=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
+    ]);
+    return json(res, 200, { ok: true });
+  }
+  const access = accessFor(req, index);
 
   if (pathname === "/health" || pathname === "/api/health") {
     // Python runs as a process on this machine, so only this machine (or an
     // explicitly trusted LAN) may use it; everyone else runs Python in-browser.
-    const local = isLoopback(req) || remoteRun;
+    const local = !hosted && access.owner && (isLoopback(req) || remoteRun);
     const visible = Object.fromEntries(Object.entries(runtimes).map(([lang, ok]) => [lang, ok && (lang === "javascript" || local)]));
     return json(res, 200, {
       ok: true,
       runtimes: visible,
-      ai: ai.status({ local: isLocalAssistant(req) }),
+      ai: access.owner ? ai.status({ local: isLocalAssistant(req) }) : { available: false, providers: [] },
       mcp: "/mcp",
       clients: clients.size,
       lan: lanUrls(),
       shared: host === "0.0.0.0" || host === "::",
+      hosted,
+      publicUrl: hosted ? publicUrl : null,
     });
   }
 
   if (pathname === "/api/events" && method === "GET") {
+    if (url.searchParams.get("board")) requireBoard(index, access, url.searchParams.get("board"));
     openEventStream(req, res, url);
     return true;
   }
 
   if (pathname === "/api/workspace" && method === "GET") {
-    return json(res, 200, await store.listWorkspace());
+    return json(res, 200, visibleWorkspace(index, access));
   }
-  if (pathname === "/api/trash" && method === "GET") return json(res, 200, { boards: await store.deletedBoards() });
+  if (pathname === "/api/trash" && method === "GET") {
+    requireOwner(access);
+    return json(res, 200, { boards: await store.deletedBoards() });
+  }
 
   if (pathname === "/api/presence" && method === "POST") {
     const body = await readBody(req, 512 * 1024);
+    requireBoard(index, access, body.boardId);
     const id = String(body.clientId ?? "");
     if (!id) return json(res, 400, { error: "clientId required" });
     const previous = presence.get(id);
     const peer = {
       boardId: body.boardId ?? null,
-      name: String(body.name ?? "Someone").slice(0, 40),
+      name: String(access.owner ? body.name ?? "Someone" : access.name).slice(0, 40),
       color: String(body.color ?? "#5a67eb").slice(0, 24),
-      x: Number(body.x) || 0,
-      y: Number(body.y) || 0,
+      x: Number.isFinite(body.x) ? body.x : previous?.x ?? 0,
+      y: Number.isFinite(body.y) ? body.y : previous?.y ?? 0,
       view: body.view && typeof body.view === "object" ? body.view : previous?.view ?? null,
       sel: Array.isArray(body.sel) ? body.sel.slice(0, 200) : previous?.sel ?? [],
       editing: body.editing ?? null,
@@ -234,23 +319,51 @@ async function handleApi(req, res, url) {
     const type = req.headers["content-type"] ?? "";
     const buffer = await readRaw(req, 40 * 1024 * 1024);
     try {
-      return json(res, 200, await store.saveAsset(buffer, type));
+      const asset = await store.saveAsset(buffer, type);
+      if (!access.owner) {
+        const key = `${access.userId ?? access.invitationId}:${asset.url}`;
+        pendingAssets.set(key, Date.now());
+        if (pendingAssets.size > 2000) pendingAssets.delete(pendingAssets.keys().next().value);
+      }
+      return json(res, 200, asset);
     } catch (error) {
       return json(res, 415, { error: error.message });
     }
   }
 
   if (pathname === "/api/search" && method === "GET") {
-    return json(res, 200, { hits: await store.searchBoards(url.searchParams.get("q") ?? "") });
+    const ids = new Set(visibleWorkspace(index, access).boards.map((b) => b.id));
+    return json(res, 200, { hits: await store.searchBoards(url.searchParams.get("q") ?? "", 40, ids) });
   }
 
   if (pathname === "/api/folders" && method === "POST") {
+    requireOwner(access);
     const body = await readBody(req, 8 * 1024);
-    return json(res, 200, await store.createFolder(body.name));
+    return json(res, 200, await store.createFolder(body.name, body.parentId ?? null));
   }
 
   if (segments[0] === "api" && segments[1] === "folders" && segments[2]) {
+    requireOwner(access);
     const id = segments[2];
+    if (segments[3] === "invitations") {
+      const folder = index.folders.find((f) => f.id === id);
+      if (!folder) return json(res, 404, { error: "Folder not found" });
+      if (method === "GET") return json(res, 200, { invitations: hosted ? invitationMembers(folder) : (folder.invitations ?? []).map(({ hash, ...invite }) => invite) });
+      if (method === "POST") {
+        const body = await readBody(req, 2048);
+        if (hosted) {
+          const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+          if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(res, 400, { error: "Enter the email address of the person you want to invite" });
+          return json(res, 200, await store.createInvitation(id, body.name || email, { email, expiresAt: Date.now() + 7 * 86400000 }));
+        }
+        return json(res, 200, await store.createInvitation(id, body.name));
+      }
+      if (method === "DELETE" && segments[4]) {
+        await store.revokeInvitation(id, segments[4]);
+        return json(res, 200, { ok: true });
+      }
+      return false;
+    }
     if (method === "PATCH") return json(res, 200, (await store.patchFolder(id, await readBody(req, 8 * 1024))) ?? {});
     if (method === "DELETE") {
       await store.deleteFolder(id);
@@ -260,6 +373,8 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/boards" && method === "POST") {
     const body = await readBody(req);
+    body.folderId ??= access.owner ? null : access.folderId;
+    requireFolder(index, access, body.folderId);
     const board = await store.createBoard({ name: body.name, folderId: body.folderId ?? null, doc: body.doc });
     return json(res, 200, board);
   }
@@ -267,8 +382,16 @@ async function handleApi(req, res, url) {
   if (segments[0] === "api" && segments[1] === "boards" && segments[2]) {
     const id = segments[2];
     if (segments[3] === "restore" && method === "POST") {
+      requireOwner(access);
       const restored = await store.restoreBoard(id);
       return restored ? json(res, 200, restored) : json(res, 404, { error: "Deleted board not found" });
+    }
+    requireBoard(index, access, id);
+    if (segments[3] === "links" && ["POST", "DELETE"].includes(method)) {
+      const { targetId } = await readBody(req, 2048);
+      requireBoard(index, access, targetId);
+      await store.setBoardLink(id, targetId, method === "POST");
+      return json(res, 200, { ok: true });
     }
     if (segments[3] === "markdown" && method === "GET") {
       const doc = await store.getBoard(id);
@@ -292,16 +415,21 @@ async function handleApi(req, res, url) {
       return saved ? json(res, 200, { rev: saved.rev }) : json(res, 404, { error: "Board not found" });
     }
     if (method === "PATCH") {
-      const saved = await store.patchBoard(id, await readBody(req, 16 * 1024));
+      const patch = await readBody(req, 16 * 1024);
+      if ("folderId" in patch) requireFolder(index, access, patch.folderId);
+      const saved = await store.patchBoard(id, patch);
       return saved ? json(res, 200, saved) : json(res, 404, { error: "Board not found" });
     }
     if (method === "DELETE") {
+      requireOwner(access);
       await store.deleteBoard(id);
       return json(res, 200, { ok: true });
     }
   }
 
   if (pathname === "/api/run" && method === "POST") {
+    requireOwner(access);
+    if (hosted) return json(res, 403, { error: "Hosted code cards run in your browser" });
     if (!isLoopback(req) && !remoteRun) return json(res, 403, { error: "Code execution is limited to this machine" });
     const body = await readBody(req, 1024 * 1024);
     const lang = String(body.lang ?? "");
@@ -310,13 +438,15 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/ai/providers" && method === "GET") {
+    if (!access.owner) return json(res, 200, { available: false, providers: [] });
     if (url.searchParams.has("refresh") && isLocalAssistant(req)) await ai.refreshProviders();
     return json(res, 200, ai.status({ local: isLocalAssistant(req) }));
   }
 
   if (pathname === "/api/ai" && method === "POST") {
+    requireOwner(access);
     // A browser on another origin must never drive a logged-in local CLI.
-    if (req.headers.origin && req.headers.origin !== url.origin) return json(res, 403, { error: "Assistant requests must come from this app" });
+    if (req.headers.origin && req.headers.origin !== (hosted ? new URL(publicUrl).origin : url.origin)) return json(res, 403, { error: "Assistant requests must come from this app" });
     const body = await readBody(req, 1024 * 1024);
     const controller = new AbortController();
     res.on("close", () => controller.abort());
@@ -334,7 +464,7 @@ async function handleApi(req, res, url) {
   return false;
 }
 
-const PRIVATE = /^(data|backups|artifacts|node_modules|lib|scripts|\.git)([/\\]|$)|(^|[/\\])\.[^/\\]+|^(server\.mjs|package(-lock)?\.json)$/;
+const PRIVATE = /^(data|backups|artifacts|node_modules|lib|scripts|deploy|docs|\.git)([/\\]|$)|(^|[/\\])\.[^/\\]+|^(server\.mjs|package(-lock)?\.json|Dockerfile|compose\.yaml)$/;
 
 async function serveStatic(req, res, url) {
   const requested = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
@@ -348,13 +478,23 @@ async function serveStatic(req, res, url) {
     rel = rest.join(sep);
     // Vendor URLs are stable across upgrades, so they must be revalidated.
   } else if (head === "assets") {
+    // Uploaded SVG/PDF documents must never run script with workspace cookies
+    // when opened directly. Image embedding still works with a sandboxed origin.
+    res.setHeader("content-security-policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'");
+    const index = await store.listWorkspace();
+    const access = accessFor(req, index);
+    if (!access.owner) {
+      const docs = await Promise.all(visibleWorkspace(index, access).boards.map((b) => store.getBoard(b.id)));
+      const uploadedAt = pendingAssets.get(`${access.userId ?? access.invitationId}:/assets/${sub}`) ?? 0;
+      if (Date.now() - uploadedAt > 3600000 && !docs.some((doc) => JSON.stringify(doc).includes(`/assets/${sub}`))) throw Object.assign(new Error("Asset access denied"), { status: 403 });
+    }
     if (!store.assetPath(sub) || rest.length) {
       res.writeHead(404).end("Not Found");
       return;
     }
     base = store.assetsDir;
     rel = sub;
-    immutable = true;
+    immutable = false;
   } else if (PRIVATE.test(safe)) {
     res.writeHead(404).end("Not Found");
     return;
@@ -370,7 +510,7 @@ async function serveStatic(req, res, url) {
     const body = await readFile(file);
     res.writeHead(200, {
       "content-type": MIME[extname(file)] ?? "application/octet-stream",
-      "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+      "cache-control": head === "assets" ? "private, no-store" : immutable ? "public, max-age=31536000, immutable" : "no-cache",
     });
     res.end(req.method === "HEAD" ? undefined : body);
   } catch {
@@ -385,6 +525,7 @@ const httpServer = createServer(async (req, res) => {
   try {
     url = checkRequest(req, { host, port });
     if (url.pathname === "/mcp") {
+      requireOwner(accessFor(req, await store.listWorkspace()));
       if (req.headers.origin) res.setHeader("access-control-allow-origin", req.headers.origin);
       if (req.method === "OPTIONS") {
         res.writeHead(204, {
@@ -430,6 +571,8 @@ httpServer.requestTimeout = 30000;
 httpServer.keepAliveTimeout = 5000;
 
 const index = await store.init();
+await initAuth();
+liveIndex = index;
 runtimes = await detectRuntimes();
 await ai.refreshProviders();
 
@@ -453,13 +596,14 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 httpServer.listen(port, host, () => {
-  const aiState = ai.status();
+  const aiState = ai.status({ local: !hosted });
   console.log(`Quanta        http://${host === "0.0.0.0" ? "localhost" : host}:${port}`);
   console.log(`Boards        ${index.boards.length} in ${process.env.QUANTA_DATA ?? "./data"}`);
   console.log(`Code cards    ${Object.entries(runtimes).filter(([, ok]) => ok).map(([lang]) => lang).join(", ")}`);
   console.log(`Assistant     ${aiState.available ? `${aiState.provider} / ${aiState.model || "CLI default"}` : "off (open Assistant for provider setup)"}`);
   console.log(`MCP endpoint  http://localhost:${port}/mcp`);
   for (const lan of lanUrls()) console.log(`Share on LAN  ${lan}`);
-  if (lanUrls().length) console.log("Anyone on this network can open and edit these boards.");
+  if (hosted) console.log(`Hosted        ${publicUrl} (account sign-in required)`);
+  else if (lanUrls().length) console.log("Share a folder invitation to give people access. Manage the workspace through localhost.");
   else console.log("Collaborate over your network with: npm run share");
 });

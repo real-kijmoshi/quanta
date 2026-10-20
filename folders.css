@@ -1,0 +1,58 @@
+/* Folder hierarchy, invitations, and board relationships. */
+.workspace-nav { flex-wrap: wrap; }
+.workspace-nav svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px; }
+.folder-row { padding: 0 3px 0 0; gap: 0; min-height: 35px; border-radius: 7px; }
+.folder-open { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; padding: 9px 5px; text-align: left; font: inherit; }
+.folder-open strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-symbol { font-size: 17px; color: var(--muted); line-height: 1; }
+.folder-row.is-shared .folder-symbol { color: var(--blue-dark); }
+.folder-toggle { width: 9px; flex-shrink: 0; }
+.folder-count { font-size: 9px; margin-left: auto; }
+.folder-more { color: var(--muted); width: 25px; height: 28px; border-radius: 4px; font-size: 18px; }
+.folder-more:hover, .folder-more:focus-visible { background: var(--line-soft); }
+.folder-row.drop { outline: 1px solid var(--blue); background: var(--blue-wash); }
+.folder-children { margin-left: 11px; padding-left: 7px; }
+.folder-children .folder-children { margin-left: 7px; padding-left: 5px; }
+.folder-empty { padding: 9px 10px; color: var(--muted); font-size: 10px; text-align: left; }
+.folder-empty:hover { color: var(--blue-dark); }
+.folder-dialog { position: fixed; margin: auto; width: min(520px, calc(100vw - 32px)); max-height: 85dvh; border: 1px solid var(--line); }
+.folder-dialog::backdrop { background: #1c1e2255; backdrop-filter: blur(3px); }
+.folder-dialog h3, .board-links-body h3 { font-size: 12px; margin: 22px 0 12px; }
+.folder-dialog > p { margin-bottom: 16px; }
+.folder-form { display: grid; gap: 9px; }
+.folder-form label, .folder-label { display: block; font-size: 11px; font-weight: 700; }
+.folder-label { margin: 18px 0 8px; }
+.folder-input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 11px 12px; background: var(--white); font-size: 12px; }
+.folder-form .solid-btn { margin-top: 12px; justify-self: end; }
+.folder-action { display: block; width: 100%; padding: 13px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); font-size: 12px; border-radius: 6px; }
+.folder-action:hover { background: var(--blue-wash); }
+.folder-action.danger { color: var(--red); margin-top: 10px; }
+.invite-form { display: flex; gap: 8px; margin: 18px 0 12px; }
+.invite-form .solid-btn { flex-shrink: 0; font-size: 11px; }
+.invite-result:empty { display: none; }
+.invite-result { background: var(--blue-wash); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.invite-result > strong { display: block; font-size: 12px; margin-bottom: 8px; }
+.invite-result .share-link { margin: 0; }
+.invite-result .hint { margin: 9px 0 0; }
+.folder-member { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.member-initial { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--blue-dark); background: var(--blue-wash); font-size: 13px; font-weight: 700; }
+.member-name { flex: 1; min-width: 0; }
+.member-name strong, .linked-board strong, .link-candidate strong { display: block; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.member-name small, .linked-board small, .link-candidate small { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
+.board-links-body { overflow-y: auto; padding: 20px; }
+.linked-board { display: flex; align-items: center; margin: 10px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.linked-board-open { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 14px 10px; text-align: left; }
+.linked-board-open > span:last-child { min-width: 0; }
+.link-glyph { display: grid; place-items: center; width: 30px; height: 34px; border-radius: 5px; background: var(--blue-wash); color: var(--blue-dark); font-size: 17px; }
+.link-candidate { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 13px 5px; border-bottom: 1px solid var(--line-soft); text-align: left; }
+.link-candidate:hover { background: var(--blue-wash); }
+.link-candidate > span:first-child { min-width: 0; }
+.link-candidate > span:last-child { font-size: 20px; color: var(--blue); }
+.board-folder-location { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
+.board-folder-location:hover { color: var(--blue-dark); }
+.access-screen { max-width: 430px; margin: 18vh auto; padding: 30px; }
+.access-screen h1 { font-size: 28px; margin-top: 25px; }
+.access-screen p { font-size: 14px; line-height: 1.7; margin: 16px 0 24px; color: var(--muted); }
+@media (max-width: 1100px) { .board-folder-location { display: none; } }
+@media (max-width: 760px) { .invite-form { flex-direction: column; } #boardLinksBtn { padding: 7px 9px; } .folder-dialog { padding: 20px; } }
+@media print { #linksPanel, .folder-dialog { display: none !important; } }

@@ -64,9 +64,11 @@ export function debounce(fn, ms) {
   return wrapped;
 }
 
+export const storageKey = (key) => `quanta:${globalThis.quantaAccountId ? `account:${globalThis.quantaAccountId}:` : ""}${key}`;
+
 export function prefs(key, fallback = null) {
   try {
-    const raw = localStorage.getItem(`quanta:${key}`);
+    const raw = localStorage.getItem(storageKey(key));
     return raw === null ? fallback : JSON.parse(raw);
   } catch {
     return fallback;
@@ -75,7 +77,7 @@ export function prefs(key, fallback = null) {
 
 export function setPrefs(key, value) {
   try {
-    localStorage.setItem(`quanta:${key}`, JSON.stringify(value));
+    localStorage.setItem(storageKey(key), JSON.stringify(value));
   } catch {
     /* private mode */
   }
@@ -86,10 +88,12 @@ export const PEER_COLORS = ["#5a67eb", "#e5533d", "#d08a00", "#1f9d60", "#a24bd6
 export function identity() {
   if (app.me) return app.me;
   const saved = prefs("identity");
-  app.me = saved ?? {
+  app.me = {
+    ...saved,
+    // A profile is shared across tabs; a live connection must never be.
     id: uid("c"),
-    name: "You",
-    color: PEER_COLORS[Math.floor(Math.random() * PEER_COLORS.length)],
+    name: saved?.name ?? "You",
+    color: saved?.color ?? PEER_COLORS[Math.floor(Math.random() * PEER_COLORS.length)],
   };
   setPrefs("identity", app.me);
   return app.me;

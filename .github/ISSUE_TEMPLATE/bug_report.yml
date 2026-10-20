@@ -1,0 +1,37 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Quanta version
+      description: Output of `quanta --version`
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options: [quanta CLI, npm start from source, Docker / self-hosted, other]
+  - type: input
+    id: env
+    attributes:
+      label: OS and browser
+      placeholder: Windows 11, Chrome 130
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove tokens, invitation links, and passwords first.

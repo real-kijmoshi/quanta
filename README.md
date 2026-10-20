@@ -1,6 +1,55 @@
 # Quanta
 
+[![CI](https://github.com/real-kijmoshi/quanta/actions/workflows/ci.yml/badge.svg)](https://github.com/real-kijmoshi/quanta/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/real-kijmoshi/quanta)](https://github.com/real-kijmoshi/quanta/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**[Website](https://real-kijmoshi.github.io/quanta/)** · **[Releases](https://github.com/real-kijmoshi/quanta/releases)** · **[Self-hosting](docs/SELF_HOSTING.md)**
+
+## Install
+
+Requires [Node.js 22+](https://nodejs.org). Installers verify a SHA-256 checksum before installing.
+
+```sh
+# macOS / Linux
+curl -fsSL https://github.com/real-kijmoshi/quanta/releases/latest/download/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1 | iex
+```
+
+```sh
+quanta start --open     # http://localhost:4173, boards in ~/.quanta/data
+quanta --help
+```
+
+Other options: `npm install -g <release>/quanta.tgz`, the Docker image `ghcr.io/real-kijmoshi/quanta` (runs in account mode; see the [self-hosting guide](docs/SELF_HOSTING.md)), or run from a clone with `npm start` (below). Updating is re-running the installer; your boards are not touched.
+
+| Command | Purpose |
+|---|---|
+| `quanta start [--open] [--port N] [--data DIR]` | Run locally |
+| `quanta share` | Allow other devices on your network (invitation required) |
+| `quanta tunnel` | Share over the internet via Cloudflare quick tunnel |
+| `quanta backup [dir]` / `backup --verify <dir>` | Verified backups |
+| `quanta reset-password <email>` | Hosted mode account recovery |
+| `quanta doctor` | Diagnose the install |
+
+---
+
 A local whiteboard and notebook for maths, physics, and code. Boards are plain JSON files in `data/`; one Node process owns the workspace. See [local release and recovery](docs/LOCAL_RELEASE.md) for backup, restore, and operating limits.
+
+## Always-on hosting and accounts
+
+Run a permanent team workspace on a VPS with Docker Compose and HTTPS. Hosted mode
+adds personal accounts, persistent sessions, email-bound folder invitations, and
+membership across multiple folders. Local mode remains available with `npm start`.
+
+See **[Self-hosting guide](docs/SELF_HOSTING.md)** for deployment, migration, backups,
+and password recovery. Open **Workspace settings** in the sidebar for setup steps.
+On a configured VPS, start with `docker compose up -d --build` after creating `.env`
+from `.env.example`. Invitations are copied and sent manually; the app does not send email.
 
 ## Run
 
@@ -8,9 +57,10 @@ A local whiteboard and notebook for maths, physics, and code. Boards are plain J
 npm ci --ignore-scripts  # Node.js 22+
 npm start          # just you:            http://localhost:4173
 npm run share      # everyone on your LAN: prints http://<your-ip>:4173
+npm run tunnel     # over the internet:   prints an owner link and a public URL
 ```
 
-Open the printed address in any modern browser (desktop, iPad, Android tablet). On first visit you pick a display name and colour.
+Open localhost on the host computer to manage your workspace. Invite other devices with a folder invitation from the folder's actions menu. On first visit the owner picks a display name and colour; guests use their invitation name.
 
 ## Handwriting
 
@@ -19,10 +69,13 @@ Open the printed address in any modern browser (desktop, iPad, Android tablet). 
 - **Marker** (`M`): highlighter that multiplies under ink and text, like a real one.
 - **Eraser** (`E`): whole-stroke or precise (cuts strokes). A stylus barrel button erases too.
 - **Lasso** (`L`): circle ink *and* cards, then drag to move, drag the corner to scale, recolour, duplicate, or delete.
+- **Select** (`V`): click handwriting or cards, or drag a box around both. Double-click a card to edit it; use **Note** (`N`) to create a note.
 - **Palm rejection**: with a stylus, fingers pan and two fingers pinch-zoom. Turn on "Finger draws" for drawing with a finger.
 - `[` / `]` change the size of the current tool.
 
 ## Notebooks and PDFs
+
+**Notes beta:** enable it in **Workspace settings → Notes** for an optional PC/iPad notebook interface with a library, page thumbnails and bookmarks, seven paper styles, page duplication/reordering, PDF text search, favorite pens, audio notes, flashcards with spaced review, and portable notebook backups. It is off by default. See [Notes beta features and limits](docs/NOTES_BETA.md).
 
 - **Pages** (`Shift+G`): A4 pages with blank, ruled, grid, dots, or graph paper. Add pages from the Pages panel or the board menu.
 - **Import PDF**: drop a PDF on the board (or use the menu). Each page becomes a locked page you can write on.
@@ -39,12 +92,21 @@ Open the printed address in any modern browser (desktop, iPad, Android tablet). 
 
 ## Working together
 
+- **Folders and subfolders**: create named folders, nest them, and drag boards or folders into another folder. Folder actions let you create a board inside, rename, move, or delete the folder. Deleting a folder keeps its boards and subfolders in its parent.
+- **Related boards**: open Links to connect boards and navigate between them. Connections are bidirectional and survive restarts. Guests only see connections to boards they can access.
+- **Shared folders**: use Share on a board in a folder, or choose Share folder in its actions. Create a separate named invitation for each person, copy the generated link, and revoke individual invitations anytime. Access includes all boards and subfolders, including future additions. A person holding the invitation link can use it; names are labels, not verified accounts. The link is shown once, invitation hashes are stored on disk, and accepted invitations use an HttpOnly cookie. Opening another invitation in the same browser replaces its current folder access.
+
+- **Workspace**: recently updated boards appear first; star a board beside its title and find it under Starred boards. Stars are saved in this browser. Search & commands opens the keyboard command palette (`Ctrl+K`).
+- **Overview**: search cards and frames on the current board, click an entry to focus it, or fit everything into view. The overview renders on demand and caps its visible results for large boards.
+- **People**: the online count opens a teammate list with Follow controls. Each browser tab has its own live connection identity, while your display name and colour are remembered across tabs. Save state appears beside the board title; document counts are in Overview.
+- **Team templates**: Sprint planning and Team retrospective provide editable frames, sticky notes, and checklists. Create them from New or Explore templates.
+
 - Live sync of every card, stroke, and comment; collaborators' **cursors**, **ink while they write**, and **selections** ("Brewka is typing…") are shown in their colour.
 - Click someone's avatar to **follow their view**.
 - Undo only undoes *your* changes; concurrent edits merge per object (newest wins), deletes are kept as tombstones, and edits made offline sync when you reconnect.
 - Comments (`K`), presentation mode from frames (`Shift+P`), folders, search, templates (Notebook, Math notebook, Physics problem, Coding session).
 
-`npm run share` binds to all network interfaces, so anyone on your network can open and edit boards. LAN sharing has no user authentication or roles; use it only on a trusted network. Python execution on the host is limited to the host machine unless you set `QUANTA_REMOTE_RUN=1`.
+`npm run share` binds to all network interfaces. Manage the workspace at `http://localhost:4173`; remote clients need a folder invitation. Guests can create, edit, and link boards within their folder; folder management, invitations, deletion, trash, host Python, AI, and MCP remain owner-only. Folder scope is enforced for board reads/writes, search, assets, and live events. Revocation disconnects active streams and rejects subsequent requests; copies already downloaded cannot be recalled. For sharing over HTTPS through a tunnel, run `npm run tunnel`: it prints a private **Owner URL** (open it once to keep owner access through the tunnel) and a **Public URL** to put in the sharing dialog's server address for invitees. Never share the Owner URL; anyone who opens it becomes the workspace owner.
 
 ## AI and agents
 
@@ -54,7 +116,7 @@ Open the printed address in any modern browser (desktop, iPad, Android tablet). 
 - **OpenRouter**: set `OPENROUTER_API_KEY` on the server and restart. Refresh lists models advertising tool support. You can also type a model ID directly.
 - **Anthropic**: set `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` and restart. Enter any tool-capable model ID; `QUANTA_MODEL` controls the default.
 - **Compatible API / LM Studio**: start LM Studio's local server, or configure `QUANTA_COMPATIBLE_URL` and optionally `QUANTA_COMPATIBLE_KEY` for another Chat Completions-compatible service. Refresh discovers `/models`.
-- Local model servers and terminal providers are available only from localhost on the host machine. Cloud API providers can be used by LAN guests. Credentials stay in server environment variables and are never sent to the browser. Stop cancels the provider request; board edits already completed remain on the canvas.
+- Local model servers and terminal providers are available only from localhost on the host machine. Assistant providers are available to the workspace owner. Credentials stay in server environment variables and are never sent to the browser. Stop cancels the provider request; board edits already completed remain on the canvas.
 - **MCP server** at `http://localhost:4173/mcp` (Streamable HTTP): list, read, create, and edit boards from any MCP client; changes appear live in open tabs.
 - **WebMCP** registers 11 tools when the browser supports `document.modelContext` (with a legacy `navigator.modelContext` fallback): read/add/update/delete/search cards, read selection, run a specified code card, focus a card, fit the board, undo, and redo. Inputs are validated before changes, outputs are JSON strings, and registration success/failure appears in the Assistant panel. Card mutations use the document's undo and live-sync path. Unsupported browsers can use the HTTP MCP server; `window.Quanta` remains available for debugging. WebMCP is a board-control interface, not a web-search service.
 
@@ -66,7 +128,7 @@ Open the printed address in any modern browser (desktop, iPad, Android tablet). 
 | `HOST` | `127.0.0.1` (`0.0.0.0` with `npm run share`) | Bind address |
 | `QUANTA_DATA` | `./data` | Where boards and uploaded files are stored |
 | `QUANTA_ALLOWED_HOSTS` | unset | Additional trusted Host header names, comma-separated |
-| `QUANTA_REMOTE_RUN` | unset | `1` lets LAN guests run Python on the host |
+| `QUANTA_REMOTE_RUN` | unset | Legacy runtime setting; folder guests always run Python in-browser |
 | `QUANTA_RUN_TIMEOUT` | `20000` | Host code-run timeout in ms |
 | `QUANTA_MODEL` | first discovered | Default Anthropic model (manual ID if catalog unavailable) |
 | `QUANTA_AI_PROVIDER` | first available | Preferred provider: `anthropic`, `ollama`, `claude-code`, `codex`, `openrouter`, `compatible` |
@@ -87,3 +149,5 @@ Open the printed address in any modern browser (desktop, iPad, Android tablet). 
 For a browser workload, open `http://127.0.0.1:4173/diagnostics/canvas-profile.html` and click **Run profile**. Keep that tab in the foreground until it finishes. It uses an in-memory 2,000-stroke board and reports pan frame intervals, CPU submission times, and stroke submissions without changing saved boards. Frame intervals depend on browser scheduling and other activity; CPU timings exclude deferred GPU rasterization.
 The same page has **Run live ink at 5% zoom**, which exercises the actual live preview with coalesced samples. It reports raster surface size, cleared area, idle frame intervals, and input-to-next-frame intervals. Runs flagged with scheduling interruptions are unsuitable for latency comparisons.
 `npm run test:ai` exercises mock provider tool loops, CLI subprocesses, cancellation, access controls, model discovery, and WebMCP input validation without paid inference calls or changes to your boards.
+
+`npm run test:collaboration` checks distinct tab identities, ordered and bounded presence requests on slow connections, retrying live ink after a failure, isolation when switching boards, and SSE backpressure. Slow SSE viewers are disconnected once their pending output exceeds 1 MiB and recover through the existing snapshot reconnect flow. Provider discovery runs alongside workspace loading so it does not block the first canvas.

@@ -47,7 +47,9 @@ Check the boards before changing your normal launch configuration. Keep the orig
 
 The default server binds to `127.0.0.1`. Host, Origin, and cross-site requests are checked; private data, backups, environment files, and server internals are not served as static files. JSON mutation inputs are bounded and validated. Requests have IDs for correlating errors with the server log.
 
-This release does not implement user accounts, roles, SSO, encrypted storage, audit trails, or multi-tenant isolation. `npm run share` explicitly exposes edit access to trusted LAN clients; it is not an authenticated enterprise service. Host code cards run with the host user's privileges. Keep `QUANTA_REMOTE_RUN` unset. Do not publish the server directly to the internet. Custom trusted hostnames can be added with `QUANTA_ALLOWED_HOSTS` (comma-separated hostname values); this does not add authentication.
+Workspace ownership is limited to loopback requests addressed to localhost, 127.0.0.1, or ::1, plus requests holding the private owner link printed by `npm run tunnel`. Remote clients need a named folder invitation; its bearer token grants edit access to the folder and its descendants. Separate invitations support individual revocation. Tokens are random, only their hashes are persisted, and the browser keeps an accepted invitation in an HttpOnly cookie. API reads/writes, search, assets, and SSE enforce folder scope; MCP, AI, host code execution, trash, deletion, and invitation management are owner-only. Existing downloaded copies remain on recipients' devices after revocation.
+
+There are no verified user accounts, passwords, SSO, encrypted storage, audit trails, or enterprise tenant isolation. Anyone holding an invitation can use it. Use HTTPS when sharing outside a trusted network. Host code cards run with the host user's privileges. Custom trusted hostnames can be added with `QUANTA_ALLOWED_HOSTS` (comma-separated hostname values); tunnel requests still require a folder invitation or the private owner link printed by `npm run tunnel`, and an anonymous tunnel request never inherits localhost ownership.
 
 ## Verification
 

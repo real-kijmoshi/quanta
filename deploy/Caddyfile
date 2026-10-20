@@ -1,0 +1,12 @@
+{$QUANTA_DOMAIN} {
+  request_body {
+    max_size 48MB
+  }
+  reverse_proxy quanta:4173 {
+    flush_interval -1
+    transport http {
+      keepalive 4s
+    }
+  }
+  header Strict-Transport-Security "max-age=31536000"
+}

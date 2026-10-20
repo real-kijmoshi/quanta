@@ -2,27 +2,52 @@
   "name": "quanta-whiteboard",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22" },
+  "license": "MIT",
+  "author": "igor rypniewski",
+  "homepage": "https://real-kijmoshi.github.io/quanta/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/real-kijmoshi/quanta.git"
+  },
+  "bugs": {
+    "url": "https://github.com/real-kijmoshi/quanta/issues"
+  },
+  "keywords": ["whiteboard", "notebook", "handwriting", "math", "collaboration", "mcp", "self-hosted"],
+  "bin": {
+    "quanta": "bin/quanta.mjs"
+  },
+  "files": ["bin", "server.mjs", "index.html", "*.css", "src", "lib", "scripts", "deploy", "docs", "README.md", "LICENSE", "npm-shrinkwrap.json"],
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "description": "Collaborative whiteboard and notebook: handwriting, typeset math, plots, runnable code, live sync, MCP",
   "scripts": {
     "start": "node server.mjs",
     "check": "node scripts/check.mjs",
     "test:performance": "node scripts/performance-test.mjs",
+    "test:selection": "node scripts/selection-test.mjs",
+    "test:notes": "node scripts/notes-test.mjs",
     "test:ai": "node scripts/ai-test.mjs",
+    "test:cli": "node scripts/cli-test.mjs",
     "test:storage": "node scripts/storage-test.mjs",
     "test:recovery": "node scripts/client-recovery-test.mjs",
+    "test:collaboration": "node scripts/collaboration-test.mjs",
+    "test:folders": "node scripts/folders-test.mjs",
+    "test:hosted": "node scripts/hosted-test.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:verify": "node scripts/backup.mjs --verify",
-    "test": "npm run check && npm run test:performance && npm run test:storage && npm run test:recovery && npm run test:ai",
+    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:notes && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:ai && npm run test:cli",
     "share": "node server.mjs --share",
     "tunnel": "node scripts/tunnel.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
+    "@huggingface/transformers": "^4.3.1",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "katex": "^0.18.10",
     "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.25.76"
   }
 }
