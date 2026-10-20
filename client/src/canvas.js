@@ -38,7 +38,7 @@ import {
 import { applyView, screenToWorld, shellRect, view, zoomAt, panBy } from "./view.js";
 import { inkCursor } from "./native-cursor.js";
 
-const CREATE_MODES = new Set(["note", "text", "code", "math", "plot", "shape", "frame", "comment", "arrow"]);
+const CREATE_MODES = new Set(["note", "text", "code", "math", "plot", "shape", "frame", "comment", "arrow", "portal"]);
 const DRAW_SIZED = new Set(["shape", "frame"]);
 
 let shell = null;

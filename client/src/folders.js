@@ -91,7 +91,7 @@ export async function shareFolder(folder) {
   const connection = el("details", { class: "hosting-details" }, [el("summary", { text: "Connection settings" }), el("label", { class: "folder-label", text: "Server address" }), base]);
   if (!account.enabled) box.append(connection);
   else base.value = account.publicUrl;
-  if (!account.enabled && local && !healthInfo?.shared) box.append(el("p", { class: "hint", text: "For other devices, run npm run share and use the network address, or enter your tunnel URL above." }));
+  if (!account.enabled && local && !healthInfo?.shared) box.append(el("p", { class: "hint", text: "For other devices, start Quanta with quanta --share (network) or quanta --tunnel (internet), or enter your tunnel URL above." }));
   const name = el("input", { class: "folder-input", "aria-label": "Person's name", placeholder: "Person's name", maxlength: 80, required: true });
   if (account.enabled) {
     name.type = "email"; name.placeholder = "teammate@example.com"; name.maxLength = 254;

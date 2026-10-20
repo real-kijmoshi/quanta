@@ -1,7 +1,5 @@
-import { el, setIdentity, setPrefs, toast } from "./core.js";
+import { el, emit, setIdentity, setPrefs, toast } from "./core.js";
 import { api, flushSave, state } from "./doc.js";
-import { notesSetting } from "./notes-preferences.js";
-import { assistantSettings } from "./assistants.js";
 
 export let account = { enabled: false, user: null };
 
@@ -88,40 +86,36 @@ async function signOut() {
   location.reload();
 }
 
+// The hosted account block inside Settings › Workspace.
+export function accountSection() {
+  const current = el("input", { class: "folder-input", type: "password", autocomplete: "current-password", placeholder: "Current password", "aria-label": "Current password", required: true, maxlength: 256 });
+  const next = el("input", { class: "folder-input", type: "password", autocomplete: "new-password", placeholder: "New password (12+ characters)", "aria-label": "New password", required: true, minlength: 12, maxlength: 256 });
+  const error = el("p", { class: "form-error", role: "alert" });
+  const save = el("button", { class: "ghost-btn", type: "submit", text: "Update password" });
+  const form = el("form", { class: "folder-form" }, [current, next, error, save]);
+  form.onsubmit = async (event) => {
+    event.preventDefault(); save.disabled = true;
+    try { await flushSave(); if (["offline", "error"].includes(state.status)) throw new Error("Reconnect and save your changes first."); await api("/api/auth/password", { method: "POST", body: { currentPassword: current.value, password: next.value } }); location.reload(); }
+    catch (issue) { error.textContent = issue.message; save.disabled = false; }
+  };
+  return [
+    el("p", { class: "settings-group", text: "Your account" }),
+    el("div", { class: "settings-account" }, [el("strong", { text: account.user.name }), el("p", { text: account.user.email }), el("span", { class: "status-badge", text: account.user.role === "owner" ? "Workspace owner" : "Member" })]),
+    el("p", { class: "settings-group", text: "Change password" }),
+    form,
+    el("button", { class: "folder-action danger", text: "Sign out", onclick: () => signOut().catch((issue) => toast(issue.message, "bad")) }),
+  ];
+}
+
 export function workspaceSettings() {
-  const previous = document.activeElement;
-  const box = el("dialog", { class: "sheet-box folder-dialog settings-dialog", "aria-label": "Workspace settings" });
-  box.append(el("header", {}, [el("h2", { text: "Your workspace" }), el("button", { class: "panel-close", text: "×", "aria-label": "Close", onclick: () => box.close() })]));
-  const status = el("div", { class: "hosting-status" }, [el("span", { class: "hosting-icon", text: account.enabled ? "↗" : "⌂" }), el("div", {}, [el("strong", { text: account.enabled ? "Always here, wherever you are" : "On this computer" }), el("p", { text: account.enabled ? "Hosted workspace · account access" : "Local workspace · invitation links" })]), el("span", { class: "status-badge", text: account.enabled ? "Hosted" : "Local" })]);
-  box.append(notesSetting(), status);
-  if (account.enabled) {
-    box.append(el("p", { class: "hint", text: account.publicUrl }), el("h3", { text: "Your account" }), el("div", { class: "settings-account" }, [el("strong", { text: account.user.name }), el("p", { text: account.user.email }), el("span", { class: "status-badge", text: account.user.role === "owner" ? "Workspace owner" : "Member" })]));
-    const current = el("input", { class: "folder-input", type: "password", autocomplete: "current-password", placeholder: "Current password", "aria-label": "Current password", required: true, maxlength: 256 });
-    const next = el("input", { class: "folder-input", type: "password", autocomplete: "new-password", placeholder: "New password (12+ characters)", "aria-label": "New password", required: true, minlength: 12, maxlength: 256 });
-    const error = el("p", { class: "form-error", role: "alert" });
-    const save = el("button", { class: "ghost-btn", type: "submit", text: "Update password" });
-    const form = el("form", { class: "folder-form" }, [current, next, error, save]);
-    form.onsubmit = async (event) => {
-      event.preventDefault(); save.disabled = true;
-      try { await flushSave(); if (["offline", "error"].includes(state.status)) throw new Error("Reconnect and save your changes first."); await api("/api/auth/password", { method: "POST", body: { currentPassword: current.value, password: next.value } }); location.reload(); }
-      catch (issue) { error.textContent = issue.message; save.disabled = false; }
-    };
-    box.append(assistantSettings(), el("h3", { text: "Change password" }), form, el("button", { class: "folder-action danger", text: "Sign out", onclick: () => signOut().catch((issue) => toast(issue.message, "bad")) }));
-  } else {
-    box.append(el("h3", { text: "Give your team a permanent home" }), el("p", { text: "Run Quanta on your own server so your boards stay available when your computer is off. Everyone signs in to their own account." }), el("div", { class: "hosting-features" }, [el("span", { text: "✓ Personal accounts" }), el("span", { text: "✓ Private folders" }), el("span", { text: "✓ Live collaboration" }), el("span", { text: "✓ Persistent storage" })]));
-    const details = el("details", { class: "hosting-details" }, [el("summary", { text: "Set up on a VPS" }), el("ol", {}, [el("li", { text: "Point a domain to your VPS and install Docker Compose." }), el("li", { text: "Copy this project to the server. Copy .env.example to .env and set your domain, owner email, and a strong password." }), el("li", { text: "Start the hosted service with the command below, then sign in at your domain." })]), el("pre", { class: "share-cmd", text: "docker compose up -d --build" }), el("p", { class: "hint", text: "Full instructions, backups, and account recovery: docs/SELF_HOSTING.md in the project. Your local boards can be migrated; keep a backup first." })]);
-    box.append(details);
-  }
-  box.addEventListener("keydown", (event) => { if (event.key !== "Escape") event.stopPropagation(); });
-  box.addEventListener("close", () => { box.remove(); if (previous?.isConnected) previous.focus(); });
-  document.body.append(box); box.showModal();
+  emit("settings:open", "workspace");
 }
 
 export function mountAccount() {
   const button = document.querySelector("#workspaceSettingsBtn");
-  button.onclick = workspaceSettings;
+  button.onclick = () => emit("settings:open");
   document.querySelector("#sidebarInviteBtn").onclick = () => document.querySelector("#shareBtn").click();
-  button.querySelector("small").textContent = account.enabled ? "Hosted · accounts enabled" : "Local · on this computer";
+  button.querySelector("small").textContent = account.enabled ? "Account, tools, workspace" : "Tools, toolbar, sharing";
   document.querySelector("#workspaceLabel").textContent = account.enabled ? "Team workspace" : "My workspace";
 }
 

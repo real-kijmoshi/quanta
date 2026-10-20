@@ -41,7 +41,8 @@ irm https://github.com/real-kijmoshi/quanta/releases/latest/download/install.ps1
 ```
 
 ```sh
-quanta start --open     # http://localhost:4173, boards in ~/.quanta/data
+quanta                  # starts in the background, opens http://localhost:4173
+quanta --tunnel         # same, plus a public link (cloudflared is fetched if missing)
 ```
 
 Updating is re-running the installer; your boards are not touched.
@@ -66,9 +67,10 @@ Updating is re-running the installer; your boards are not touched.
 
 | Command | Purpose |
 |---|---|
-| `quanta start [--open] [--port N] [--data DIR]` | Run locally |
-| `quanta share` | Allow other devices on your network (invitation required) |
-| `quanta tunnel` | Share over the internet via a Cloudflare quick tunnel |
+| `quanta [--tunnel|--share] [--port N] [--data DIR]` | Start in the background and open the browser |
+| `quanta stop` / `restart` / `status` / `logs [-f]` / `open` | Manage the background workspace |
+| `quanta config mode tunnel` | Make the tunnel (or `share`, `local`) the default for plain `quanta` |
+| `quanta --foreground` | Run attached to the terminal; Ctrl+C stops it |
 | `quanta setup` | Interactive Linux server setup with accounts and HTTPS |
 | `quanta backup [dir]` / `backup --verify <dir>` | Verified backups |
 | `quanta reset-password <email>` | Hosted mode account recovery |

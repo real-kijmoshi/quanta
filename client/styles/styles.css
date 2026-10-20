@@ -1404,14 +1404,14 @@ body.presenting .canvas-grid { opacity: .4; }
 .template-card small { font-size: 11px; color: var(--muted); line-height: 1.4; }
 .template-art { height: 86px; border-radius: 8px; background-color: var(--paper); position: relative; overflow: hidden; background-size: 10px 10px; }
 .template-art[data-template="blank"] { background-image: radial-gradient(circle, #c9ccc5 1px, transparent 1.2px); }
-.template-art[data-template="notebook"]::before, .template-art[data-template="math"]::before {
+.template-art:not([data-template="blank"]):not([data-template="code"])::before {
   content: ""; position: absolute; left: 30%; top: 10px; width: 40%; bottom: -10px; background-color: #fff; box-shadow: var(--shadow-sm);
-  background-image: linear-gradient(transparent 7px, #c8d6ee 1px); background-size: 100% 8px;
 }
-.template-art[data-template="math"]::before { background-image: linear-gradient(#dde2ea 1px, transparent 1px), linear-gradient(90deg, #dde2ea 1px, transparent 1px); background-size: 6px 6px; left: 12%; }
-.template-art[data-template="math"]::after { content: "∫"; position: absolute; right: 16%; top: 18px; font-size: 34px; color: var(--blue); font-family: serif; }
-.template-art[data-template="physics"] { background-image: linear-gradient(#e2e5ea 1px, transparent 1px), linear-gradient(90deg, #e2e5ea 1px, transparent 1px); }
-.template-art[data-template="physics"]::after { content: ""; position: absolute; left: 14%; right: 14%; bottom: -30px; height: 90px; border: 3px solid var(--red); border-color: var(--red) transparent transparent transparent; border-radius: 50%; }
+.template-art[data-template="notebook"]::before { background-image: linear-gradient(transparent 7px, #c8d6ee 1px); background-size: 100% 8px; }
+.template-art[data-template="math"]::before { background-image: linear-gradient(#dde2ea 1px, transparent 1px), linear-gradient(90deg, #dde2ea 1px, transparent 1px); background-size: 5px 5px; }
+.template-art[data-template="physics"]::before { background-image: linear-gradient(#d6dbe4 1px, transparent 1px), linear-gradient(90deg, #d6dbe4 1px, transparent 1px); background-size: 10px 10px; }
+.template-art[data-template="dots"]::before { background-image: radial-gradient(circle, #b9c0cc .8px, transparent 1.1px); background-size: 7px 7px; }
+.template-art[data-template="cornell"]::before { background-image: linear-gradient(90deg, transparent 27%, #9cacc5 27%, #9cacc5 calc(27% + 1px), transparent calc(27% + 1px)), linear-gradient(transparent 7px, #c8d6ee 1px); background-size: 100% 100%, 100% 8px; }
 .template-art[data-template="code"]::before { content: "def f(x):\A  return x*x"; white-space: pre; position: absolute; inset: 12px 14px; background: #fff; border-radius: 6px; padding: 8px; font-family: var(--mono); font-size: 10px; color: var(--hl-keyword); box-shadow: var(--shadow-sm); }
 
 /* ---------------------------------------------------------------- print */

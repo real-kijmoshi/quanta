@@ -64,8 +64,6 @@
 .kind-frame { background: var(--blue-wash); color: var(--blue-dark); }
 .kind-code { font-size: 10px; }
 .boot-error { position: fixed; z-index: 1000; inset: 12px 12px auto; padding: 20px; background: #fff0ec; border: 1px solid #e3b2a3; color: #a13921; white-space: pre-wrap; }
-.template-art[data-template="sprint"], .template-art[data-template="retro"] { background: repeating-linear-gradient(90deg, #eceef4 0 30%, transparent 30% 34%); }
-.template-art[data-template="sprint"]::after, .template-art[data-template="retro"]::after { content: ""; position: absolute; top: 29px; left: 10%; width: 18%; height: 27px; background: var(--note-yellow); box-shadow: 50px 7px var(--note-green), 100px -3px var(--note-pink); border-radius: 3px; }
 
 @media (min-width: 1001px) and (max-width: 1550px) {
   .zoom-bar { bottom: 92px; }

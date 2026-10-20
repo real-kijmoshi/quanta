@@ -112,6 +112,15 @@ export function mountObjects() {
   on("peer:update", peersChanged);
   on("peer:left", peersChanged);
   on("peers", peersChanged);
+  // Portal labels show the destination's current name.
+  on("workspace", () => {
+    for (const [id, node] of nodes) {
+      const obj = object(id);
+      if (obj?.type !== "portal") continue;
+      node._rendered = null;
+      render(node, obj);
+    }
+  });
   on("runtimes", () => {
     for (const [id, node] of nodes) {
       const obj = object(id);
@@ -129,7 +138,8 @@ export function mountObjects() {
     const node = event.target.closest(".obj");
     if (!node) return;
     event.stopPropagation();
-    startEdit(node.dataset.id);
+    if (node.dataset.type === "portal") emit("portal:enter", node.dataset.id);
+    else startEdit(node.dataset.id);
   });
   world.addEventListener("click", (event) => {
     const task = event.target.closest("[data-task]");
@@ -171,6 +181,8 @@ export function mountObjects() {
     } else if (act === "lang") {
       setProp("lang", value);
     } else if (act === "edit") startEdit(ids[0]);
+    else if (act === "portal-target") emit("portal:pick", ids[0]);
+    else if (act === "portal-go") emit("portal:enter", ids[0]);
     updateSelectionUI();
   });
 }
@@ -269,6 +281,18 @@ function build(obj) {
     node.append(el("img", { class: "obj-image", alt: obj.text || "Image", draggable: "false" }));
   } else if (obj.type === "comment") {
     node.append(el("span", { class: "pin-dot" }), el("span", { class: "pin-count" }));
+  } else if (obj.type === "portal") {
+    node.append(
+      el("div", { class: "portal-ring", "aria-hidden": "true" }),
+      el("div", { class: "portal-label" }, [el("small", { text: "Portal to" }), el("strong")]),
+      el("button", { class: "portal-go", type: "button", text: "Enter →" }),
+    );
+    const go = node.querySelector(".portal-go");
+    go.addEventListener("pointerdown", (event) => event.stopPropagation());
+    go.addEventListener("click", (event) => {
+      event.stopPropagation();
+      emit("portal:enter", obj.id);
+    });
   } else if (obj.type === "arrow") {
     // Parsed from markup so the <svg> lands in the SVG namespace.
     node.append(el("div", { class: "arrow-art", html: '<svg class="arrow-svg"></svg>' }), textArea(obj, "obj-src arrow-label"));
@@ -531,6 +555,13 @@ function render(node, obj) {
   } else if (obj.type === "image") {
     const img = node.querySelector("img");
     if (img.getAttribute("src") !== obj.props?.src) img.src = obj.props?.src ?? "";
+  } else if (obj.type === "portal") {
+    // Look the name up live so a renamed destination stays current.
+    const target = state.workspace.boards.find((b) => b.id === obj.props?.boardId);
+    node.querySelector(".portal-label strong").textContent = obj.props?.boardId ? target?.name ?? "Missing board" : "Choose a destination";
+    node.querySelector(".portal-go").textContent = obj.props?.boardId ? "Enter →" : "Pick board";
+    node.classList.toggle("unlinked", !target);
+    node.title = target ? `Double-click to go to “${target.name}”` : "Pick a board for this portal";
   } else if (obj.type === "comment") {
     const count = (obj.props?.thread ?? []).length;
     node.querySelector(".pin-count").textContent = count > 1 ? String(count) : "";
@@ -684,6 +715,9 @@ function toolbarContent(items) {
     ]));
     parts.push(group(INK_COLORS.slice(0, 5).map((color) => el("button", { class: "ink-color small", style: `--ink:${color}`, dataset: { act: "arrow-color", value: color }, title: "Colour", type: "button" }))));
   }
+  if (only("portal") && items.length === 1) {
+    parts.push(group([btn("portal-target", "Destination…", "Choose the board this portal leads to"), btn("portal-go", "Enter →", "Go through the portal")]));
+  }
   if (items.length === 1 && ["note", "text", "math", "plot", "code", "shape"].includes(items[0].type)) {
     parts.push(group([btn("edit", "Edit", "Edit (Enter)")]));
   }
@@ -825,7 +859,8 @@ export function createObjectAt(type, point, extra = {}) {
   });
   syncObjects([obj.id]);
   select([obj.id]);
-  if (!["image", "comment", "frame", "arrow"].includes(type) && extra.edit !== false) startEdit(obj.id);
+  if (!["image", "comment", "frame", "arrow", "portal"].includes(type) && extra.edit !== false) startEdit(obj.id);
+  if (type === "portal" && !props.boardId) emit("portal:pick", obj.id);
   if (type === "frame" && !props.page) toast("Frame added — frames become presentation slides");
   return obj;
 }
