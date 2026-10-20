@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.0.0
+## 0.9.0
 
-First public release.
+First public release (beta).
 
 - Infinite whiteboard with handwriting, shape snapping, math, plot, and code cards.
 - Notes beta: notebooks, PDF import, flashcards, audio notes.
