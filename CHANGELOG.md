@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- New `quanta update` command: checks GitHub for a newer release, installs it with the verified installer (or npm, depending on how Quanta was installed), keeps your boards, and restarts a running background workspace. `quanta update --check` only reports.
+
 ## 0.10.0
 
 - `quanta` now starts in the background and opens your browser; `--tunnel` adds a public link and downloads cloudflared when missing. New `stop`, `restart`, `status`, `logs`, `open` and `config` commands (`quanta config mode tunnel` makes the tunnel the default).
