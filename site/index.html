@@ -76,8 +76,7 @@ h1 { font-size: clamp(56px, 7.4vw, 104px); line-height: .96; letter-spacing: -.0
 h1 em { font-style: normal; color: var(--citron); position: relative; white-space: nowrap; }
 h1 em svg { position: absolute; left: -2%; bottom: -.14em; width: 104%; height: .3em; overflow: visible; }
 h1 em path { stroke: var(--citron); stroke-width: 5; fill: none; stroke-linecap: round; stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1.1s .6s ease-out forwards; }
-.hero-kicker { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 22px; padding: 7px 14px; border: 1px solid rgba(228, 237, 135, .4); border-radius: 999px; color: var(--citron); font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.hero-kicker span { font-size: 15px; }
+.lead strong { color: var(--paper); font-weight: 700; }
 .lead { font-size: 19px; line-height: 1.7; color: var(--soft); max-width: 29em; margin: 0 0 32px; }
 .cta { display: flex; gap: 12px; flex-wrap: wrap; }
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 14px; font-weight: 700; text-decoration: none; transition: background-color .15s, transform .15s, box-shadow .15s; }
@@ -311,9 +310,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="wrap">
     <div class="hero" id="top">
       <div>
-        <p class="hero-kicker"><span aria-hidden="true">✎</span> Open-source whiteboard for maths, physics &amp; code</p>
         <h1>A space to <em>think.<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 12 C 40 2, 80 18, 120 8 S 180 6, 196 10"/></svg></em></h1>
-        <p class="lead">Quanta is a collaborative whiteboard. Sketch a thought, solve an equation, run the code: handwriting, typeset maths, live plots and Python share one infinite canvas, on a server you own.</p>
+        <p class="lead"><strong>Quanta is an open-source whiteboard for maths, physics and code.</strong> Sketch a thought, solve an equation, run the code: handwriting, typeset maths, live plots and Python share one infinite canvas, on a server you own.</p>
         <div class="cta">
           <a class="btn primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>Install Quanta</a>
           <a class="btn ghost" href="https://github.com/real-kijmoshi/quanta/releases/latest">Download release</a>
