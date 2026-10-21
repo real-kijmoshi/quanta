@@ -50,7 +50,11 @@ const DEFAULTS = {
   fingerDraws: false,
 };
 
-export const inkSettings = { ...DEFAULTS, ...prefs("ink2", {}) };
+// Phones rarely have a stylus, so there a finger draws unless the person chose
+// otherwise; a stylus still turns finger drawing off once it is used.
+const phone = Boolean(globalThis.matchMedia?.("(pointer: coarse)").matches && globalThis.screen && Math.min(screen.width, screen.height) < 600);
+const saved = prefs("ink2", {});
+export const inkSettings = { ...DEFAULTS, ...saved, ...(saved.fingerDrawsChosen ? {} : { fingerDraws: phone }) };
 
 const layers = { hl: null, pen: null, live: null };
 const ctx = { hl: null, pen: null, live: null };
@@ -775,7 +779,7 @@ function receivePeerInk(peer) {
 // --------------------------------------------------------------- settings
 
 export function setInk(patch) {
-  Object.assign(inkSettings, patch);
+  Object.assign(inkSettings, patch, "fingerDraws" in patch ? { fingerDrawsChosen: true } : {});
   setPrefs("ink2", inkSettings);
   emit("ink:settings", inkSettings);
 }
