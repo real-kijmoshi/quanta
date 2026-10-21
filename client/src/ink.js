@@ -6,6 +6,7 @@
 // a real marker), pen ink, and a live layer painted on input for the stroke
 // being drawn, the lasso, and other people's in-progress strokes.
 import { $, app, el, emit, on, prefs, setPrefs, uid } from "./core.js";
+import { displayInk, drawnTheme } from "./theme.js";
 import {
   addStroke,
   addStrokes,
@@ -103,6 +104,11 @@ export function mountInk() {
     peerInk.clear();
     scheduleRedraw();
   });
+  on("theme", () => {
+    for (const swatch of lassoBar.querySelectorAll("[data-color]")) swatch.style.setProperty("--ink", displayInk(swatch.dataset.color));
+    scheduleRedraw();
+    scheduleLive();
+  });
   on("peer:update", (peer) => receivePeerInk(peer));
   on("peer:left", (id) => {
     peerInk.delete(id);
@@ -192,7 +198,7 @@ let visibleHighlights = 0;
 
 function redrawBase() {
   if (!state.board || !ctx.pen) return;
-  const key = `${state.board.id}:${view.zoom}:${inkDpr()}`;
+  const key = `${state.board.id}:${view.zoom}:${inkDpr()}:${drawnTheme()}`;
   const reuse = key === baseKey && baseView &&
     Math.abs(view.x - baseView.x) <= BASE_PADDING && Math.abs(view.y - baseView.y) <= BASE_PADDING;
   const camera = reuse ? baseView : { ...view };
@@ -233,7 +239,7 @@ function redrawBase() {
   for (const [id, stroke] of visible) {
     if (painted.has(id)) continue;
     if (stroke.tool === "highlighter") visibleHighlights += 1;
-    paintStroke(stroke.tool === "highlighter" ? ctx.hl : ctx.pen, stroke, { minWidth: 0.8 / camera.zoom });
+    paintStroke(stroke.tool === "highlighter" ? ctx.hl : ctx.pen, stroke, { minWidth: 0.8 / camera.zoom, color: displayInk(stroke.color) });
   }
   painted = visible;
   baseKey = key;
@@ -292,12 +298,12 @@ function redrawLive() {
   c.setTransform(dpr * view.zoom, 0, 0, dpr * view.zoom, dpr * view.x, dpr * view.y);
   livePaintRect = rect;
 
-  for (const { stroke } of peerInk.values()) paintStroke(c, stroke, { minWidth: 0.8 / view.zoom });
+  for (const { stroke } of peerInk.values()) paintStroke(c, stroke, { minWidth: 0.8 / view.zoom, color: displayInk(stroke.color) });
 
   if (active) {
     // A fresh object each frame: the active stroke keeps growing, so a cached
     // outline would be stale.
-    paintStroke(c, { ...active, points: active.predicted?.length ? [...active.points, ...active.predicted] : active.points }, { minWidth: 0.8 / view.zoom });
+    paintStroke(c, { ...active, points: active.predicted?.length ? [...active.points, ...active.predicted] : active.points }, { minWidth: 0.8 / view.zoom, color: displayInk(active.color) });
   }
 
   if (lasso) drawLasso(c);
@@ -654,7 +660,7 @@ function drawLasso(c) {
       c.translate(-o.x, -o.y);
       for (const id of hidden) {
         const stroke = state.board.strokes[id];
-        if (stroke) paintStroke(c, stroke, { minWidth: 0.8 / (view.zoom * scale) });
+        if (stroke) paintStroke(c, stroke, { minWidth: 0.8 / (view.zoom * scale), color: displayInk(stroke.color) });
       }
       c.restore();
     }
@@ -678,7 +684,7 @@ function mountLassoBar() {
   lassoBar = $("#lassoBar");
   lassoBar.replaceChildren(
     el("div", { class: "tb-group" }, INK_COLORS.slice(0, 6).map((color) =>
-      el("button", { class: "ink-color small", style: `--ink:${color}`, title: "Recolour ink", dataset: { act: "color", color }, type: "button" }),
+      el("button", { class: "ink-color small", style: `--ink:${displayInk(color)}`, title: "Recolour ink", dataset: { act: "color", color }, type: "button" }),
     )),
     el("div", { class: "tb-group" }, [
       el("button", { class: "tb-btn", dataset: { act: "recognize" }, type: "button", title: "Convert selected handwriting to text", text: "To text" }),

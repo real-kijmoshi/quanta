@@ -6,6 +6,7 @@ import { toggleStickyTool } from "./canvas.js";
 import { account, accountSection } from "./account.js";
 import { assistantSettings } from "./assistants.js";
 import { notesEnabled, setNotesEnabled } from "./notes-preferences.js";
+import { setTheme, themeChoice, THEMES } from "./theme.js";
 import { resetToolbarLayout, setToolbarLayout, toolbarLayout, toolInfo } from "./toolbar.js";
 
 const DOCKS = [
@@ -105,6 +106,7 @@ function generalSection() {
     el("button", { type: "button", class: `color-dot${color === identity().color ? " on" : ""}`, style: `--peer:${color}`, title: color, "aria-label": `Colour ${color}`, onclick: () => { setIdentity({ color }); paint(); } })));
   paint();
   return [
+    row("Theme", "Paper is light; Studio is dark with bright citron ink. System follows your device. Saved on this device.", choice(THEMES, themeChoice(), setTheme, "Theme")),
     row("Your name", account.enabled ? "Comes from your account." : "Shown beside your cursor, selections, and comments.", name),
     row("Your colour", "Your cursor and selections use it.", colors),
   ];

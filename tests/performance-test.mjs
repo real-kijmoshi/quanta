@@ -44,6 +44,8 @@ const context = vm.createContext({
   layers: { hl: { style: {} }, pen: { style: {} } },
   prepare: () => { clears++; },
   paintStroke: (layer, stroke) => paints.push([layer, stroke.id]),
+  displayInk: color => color,
+  drawnTheme: () => 'paper',
 });
 vm.runInContext(ink.slice(start, end), context);
 const redraw = (dirty = true) => { paints = []; clears = 0; scans = 0; vm.runInContext(`${dirty ? 'baseDirty = true;' : ''} redrawBase()`, context); };
@@ -289,7 +291,7 @@ const live = vm.createContext({
   activeBounds: { x: 100, y: 100, r: 120, b: 120 }, livePaintRect: null,
   liveViewport: { width: 800, height: 600 },
   peerInk: new Map(), lasso: null, view: { x: 0, y: 0, zoom: 1 }, inkDpr: () => 1,
-  paintStroke() {}, drawLasso() {},
+  paintStroke() {}, drawLasso() {}, displayInk: color => color,
 });
 const liveStart = ink.indexOf('let liveEmpty = false;');
 const liveEnd = ink.indexOf('// ------------------------------------------------------------------ drawing', liveStart);

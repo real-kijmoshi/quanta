@@ -23,6 +23,7 @@ import { evaluateCard, formatNumber, numberTex } from "./math.js";
 import { buildPlot, renderPlot, setParamInText } from "./plot.js";
 import { escapeHtml, renderRich, tex, toggleTask } from "./rich.js";
 import { availableLanguages, pythonWhere, runCodeObject } from "./run.js";
+import { displayInk } from "./theme.js";
 import { view } from "./view.js";
 
 const nodes = new Map();
@@ -121,6 +122,15 @@ export function mountObjects() {
       node._viewKey = null;
       render(node, obj);
     }
+  });
+  on("theme", () => {
+    for (const [id, node] of nodes) {
+      const obj = object(id);
+      if (obj?.type !== "arrow") continue;
+      node._memo = null;
+      render(node, obj);
+    }
+    updateSelectionUI();
   });
   on("runtimes", () => {
     for (const [id, node] of nodes) {
@@ -534,7 +544,7 @@ function renderArrow(node, obj) {
   node.style.height = `${obj.h + ARROW_PAD * 2}px`;
   const svg = node.querySelector("svg");
   svg.setAttribute("viewBox", `0 0 ${obj.w + ARROW_PAD * 2} ${obj.h + ARROW_PAD * 2}`);
-  svg.innerHTML = arrowSvg(obj, ARROW_PAD);
+  svg.innerHTML = arrowSvg(obj, ARROW_PAD, displayInk);
   const label = node.querySelector("textarea");
   const mid = arrowMid(obj);
   label.style.left = `${mid.x - obj.x + ARROW_PAD}px`;
@@ -751,7 +761,7 @@ function toolbarContent(items) {
       btn("head", "—", "Plain line", "none", { cls: head === "none" ? "on" : "" }),
       btn("dash", "┄", "Dashed", undefined, { cls: items[0].props?.dash ? "on" : "" }),
     ]));
-    parts.push(group(INK_COLORS.slice(0, 5).map((color) => el("button", { class: "ink-color small", style: `--ink:${color}`, dataset: { act: "arrow-color", value: color }, title: "Colour", type: "button" }))));
+    parts.push(group(INK_COLORS.slice(0, 5).map((color) => el("button", { class: "ink-color small", style: `--ink:${displayInk(color)}`, dataset: { act: "arrow-color", value: color }, title: "Colour", type: "button" }))));
   }
   if (only("portal") && items.length === 1) {
     const windowed = items[0].props?.style === "window";

@@ -17,6 +17,7 @@ import { mountSettings } from "./settings.js";
 import { mountSwitcher } from "./switcher.js";
 import { mountToolbar } from "./toolbar.js";
 import { mountMobile } from "./mobile.js";
+import { mountTheme } from "./theme.js";
 
 // The website demo starts from showcase boards shipped next to the app.
 async function seedDemo() {
@@ -36,6 +37,7 @@ async function boot() {
     history.replaceState({}, "", location.pathname + location.search);
     await api("/api/access", { method: "POST", body: { token: invitation } });
   }
+  mountTheme();
   mountView();
   mountInk();
   mountObjects();

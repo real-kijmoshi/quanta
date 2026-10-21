@@ -64,14 +64,15 @@ export function routeArrow(arrow) {
   return { x: box.x, y: box.y, w: box.w, h: box.h, props: { ...arrow.props, flip: box.flip } };
 }
 
-/** SVG markup for an arrow inside its own box (with padding for the head). */
-export function arrowSvg(obj, pad) {
+/** SVG markup for an arrow inside its own box (with padding for the head);
+ *  `paint` maps the saved colour to the one drawn under the current theme. */
+export function arrowSvg(obj, pad, paint = (color) => color) {
   const { a, b } = endpoints(obj);
   const ax = a.x - obj.x + pad;
   const ay = a.y - obj.y + pad;
   const bx = b.x - obj.x + pad;
   const by = b.y - obj.y + pad;
-  const color = obj.props?.color ?? "#3a3f45";
+  const color = paint(obj.props?.color ?? "#3a3f45");
   const width = obj.props?.width ?? 2;
   const dash = obj.props?.dash ? `stroke-dasharray="${width * 4} ${width * 3}"` : "";
   const head = obj.props?.head ?? "end";

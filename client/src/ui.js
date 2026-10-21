@@ -61,6 +61,7 @@ import {
   inkSettings,
   setInk,
 } from "./ink.js";
+import { activeTheme, displayInk, setTheme } from "./theme.js";
 import { clearSelection, createObjectAt, moveSelection, PAPERS, select, selectAll, selectionBounds, startEdit, stopEdit, updateSelectionUI } from "./objects.js";
 import { setMode, toggleStickyTool } from "./canvas.js";
 import { addPage, goToPage, importPdf, insertImage, pages, printPages, TEMPLATES, templateDoc } from "./notebook.js";
@@ -146,6 +147,7 @@ export function mountUi() {
   on("settings", renderBackgroundChoices);
   on("mode", renderToolState);
   on("ink:settings", renderInkBar);
+  on("theme", renderInkBar);
   on("ink:snapped", (shape) => toast(`Snapped to ${shape}`));
   on("identity", renderMe);
   on("comment:new", (id) => {
@@ -698,12 +700,12 @@ function renderInkBar() {
         "div",
         { class: "ink-colors" },
         INK_COLORS.map((color) =>
-          el("button", { class: `ink-color${color === inkSettings.color ? " active" : ""}`, style: `--ink:${color}`, title: color, onclick: () => setInk({ color }), type: "button" }),
+          el("button", { class: `ink-color${color === inkSettings.color ? " active" : ""}`, style: `--ink:${displayInk(color)}`, title: color, onclick: () => setInk({ color }), type: "button" }),
         ),
       ),
       customColor(inkSettings.color, (color) => setInk({ color })),
       el("i", { class: "tool-sep" }),
-      sizeSlider(inkSettings.size, 0.6, 16, (size) => setInk({ size }), inkSettings.color),
+      sizeSlider(inkSettings.size, 0.6, 16, (size) => setInk({ size }), displayInk(inkSettings.color)),
       el("i", { class: "tool-sep" }),
       segmented(
         [
@@ -1260,6 +1262,7 @@ const COMMANDS = [
   { id: "add-window", icon: "▣", title: "Add a window into another board", keys: "W", run: () => createObjectAt("window", viewCenter()) },
   { id: "customize-toolbar", icon: "⚙", title: "Customize toolbar", run: () => emit("settings:open", "canvas") },
   { id: "settings", icon: "⚙", title: "Settings", keys: "Ctrl ,", run: () => emit("settings:open") },
+  { id: "theme", icon: "◐", title: "Switch theme: Paper / Studio", run: () => setTheme(activeTheme() === "studio" ? "paper" : "studio") },
   { id: "add-page", icon: "▯", title: "Add a notebook page", run: () => addPage(pagePaper) },
   { id: "insert-image", icon: "▨", title: "Insert image", run: () => $("#imageInput").click() },
   { id: "import-pdf", icon: "⎙", title: "Import PDF to annotate", run: () => $("#pdfInput").click() },

@@ -7,6 +7,7 @@ import { inkSettings, setInk } from "./ink.js";
 import { goToPage, printPages } from "./notebook.js";
 import { clearSelection, select } from "./objects.js";
 import { paintStroke } from "./stroke.js";
+import { displayInk } from "./theme.js";
 import { contentBounds, shellRect, view } from "./view.js";
 import { runCommand } from "./ui.js";
 import { notesEnabled } from "./notes-preferences.js";
@@ -50,6 +51,7 @@ function choose(label, options, value) {
 export function mountNotes() {
   $("#notesToolsBtn").onclick = notesTools;
   on("notes:tools", notesTools);
+  on("theme", () => { renderPresets(); renderPages(); });
   on("notes:recognize", openRecognition);
   on("notes:audio", audioNotes);
   on("notes:study", studyNotes);
@@ -216,7 +218,7 @@ function renderPages() {
         (item.text || "").split("\n").slice(0, 12).forEach((line, i) => ctx.fillText(line.slice(0, 85), item.x + 12, item.y + 22 + i * 22, item.w - 24));
       }
     }
-    for (const stroke of [...contents.strokes.filter((s) => s.tool === "highlighter"), ...contents.strokes.filter((s) => s.tool !== "highlighter")]) paintStroke(ctx, stroke);
+    for (const stroke of [...contents.strokes.filter((s) => s.tool === "highlighter"), ...contents.strokes.filter((s) => s.tool !== "highlighter")]) paintStroke(ctx, stroke, { color: displayInk(stroke.color) });
     thumb.append(canvas);
     const star = button(page.props.bookmarked ? "★" : "☆", page.props.bookmarked ? "Remove page bookmark" : "Bookmark page", () => {
       updateObject(page.id, { props: { ...object(page.id).props, bookmarked: !object(page.id).props.bookmarked } }); renderPages();
@@ -334,7 +336,7 @@ function renderPresets() {
   const saved = prefs("notesPens", [{ color: "#1f2328", size: 2, style: "ballpoint" }, { color: "#2747d6", size: 3.5, style: "fountain" }, { color: "#d93a2b", size: 3.5, style: "ballpoint" }]);
   presets.replaceChildren(...saved.map((pen, index) => {
     const item = button("", `Favorite pen ${index + 1}: ${pen.color}, ${pen.size}px`, () => { setInk(pen); setMode("pen"); });
-    item.style.setProperty("--pen-color", pen.color);
+    item.style.setProperty("--pen-color", displayInk(pen.color));
     item.className = "notes-pen";
     item.setAttribute("aria-pressed", String(pen.color === inkSettings.color && pen.size === inkSettings.size && pen.style === inkSettings.style));
     return item;
