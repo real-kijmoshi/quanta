@@ -3,7 +3,8 @@
 #   - the value of a trailing expression is shown, like a notebook cell
 #   - tracebacks only mention the card's own lines
 #   - matplotlib figures are returned as PNG images
-import ast, base64, io, json, linecache, os, sys, traceback
+import ast, base64, io, json, linecache, math, os, sys, traceback
+from numbers import Real
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 _MARK = "\x1e"
@@ -27,6 +28,23 @@ def _quanta_figures():
     plt.close("all")
 
 
+def _quanta_series(value):
+    np = sys.modules.get("numpy")
+    if np is not None and isinstance(value, np.ndarray):
+        if value.ndim != 1:
+            return
+    elif not isinstance(value, (list, tuple)):
+        return
+    count = len(value)
+    if not 2 <= count <= 100000:
+        return
+    if any(isinstance(v, bool) or not isinstance(v, Real) or not math.isfinite(v) for v in value):
+        return
+    size = min(256, count)
+    points = [[round(i * (count - 1) / (size - 1)), float(value[round(i * (count - 1) / (size - 1))])] for i in range(size)]
+    _quanta_emit("SERIES", json.dumps(points, allow_nan=False))
+
+
 def _quanta_run(source):
     name = "<card>"
     linecache.cache[name] = (len(source), None, source.splitlines(True), name)
@@ -42,6 +60,10 @@ def _quanta_run(source):
             value = eval(compile(last, name, "eval"), namespace)
             if value is not None:
                 _quanta_emit("VAL", json.dumps(repr(value)[:20000]))
+                try:
+                    _quanta_series(value)
+                except (TypeError, ValueError, OverflowError):
+                    pass  # a preview must never turn successful code into an error
     except SystemExit:
         pass
     except BaseException:

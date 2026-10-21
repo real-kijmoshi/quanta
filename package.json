@@ -31,6 +31,7 @@
     "test:site": "node tests/site-ink-test.mjs",
     "test:notes": "node tests/notes-test.mjs",
     "test:writing": "node tests/writing-test.mjs",
+    "test:trailer": "node tests/trailer-test.mjs",
     "test:ai": "node tests/ai-test.mjs",
     "test:cli": "node tests/cli-test.mjs",
     "test:storage": "node tests/storage-test.mjs",
@@ -42,7 +43,7 @@
     "test:templates": "node tests/template-dialog-test.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:verify": "node scripts/backup.mjs --verify",
-    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:site && npm run test:notes && npm run test:writing && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:connections && npm run test:templates && npm run test:ai && npm run test:cli",
+    "test": "npm run check && npm run test:performance && npm run test:selection && npm run test:site && npm run test:notes && npm run test:writing && npm run test:trailer && npm run test:storage && npm run test:recovery && npm run test:collaboration && npm run test:folders && npm run test:hosted && npm run test:connections && npm run test:templates && npm run test:ai && npm run test:cli",
     "share": "node server/index.mjs --share",
     "tunnel": "node scripts/tunnel.mjs"
   },

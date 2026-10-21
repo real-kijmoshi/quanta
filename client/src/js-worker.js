@@ -1,3 +1,4 @@
+import { resultSeries } from "../../shared/result-series.js";
 // Runs a code card's JavaScript in a worker, away from the page.
 function show(value, depth = 0) {
   if (value === undefined) return "undefined";
@@ -35,6 +36,7 @@ self.onmessage = async (event) => {
       ok: true,
       logs,
       value: value === undefined ? null : show(value),
+      series: resultSeries(value),
       ms: Math.round(performance.now() - started),
     });
   } catch (error) {

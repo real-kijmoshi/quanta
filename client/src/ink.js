@@ -344,13 +344,13 @@ export function beginStroke(event, tool) {
 function armHold() {
   clearTimeout(holdTimer);
   if (!inkSettings.snap) return;
-  holdTimer = setTimeout(snapActive, 600);
+  holdTimer = setTimeout(snapActive, 500);
 }
 
 /** Draw-and-hold: replace the rough stroke with a clean shape. */
 function snapActive() {
-  if (!active || active.shape) return;
-  const result = recognizeShape(active.points);
+  if (!active || active.shape || !inkSettings.snap) return;
+  const result = recognizeShape(active.points, { zoom: active.captureZoom ?? view.zoom });
   if (!result) return;
   active.points = result.points;
   active.shape = result.shape;

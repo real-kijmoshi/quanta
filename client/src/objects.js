@@ -1,6 +1,6 @@
 // Board objects: DOM rendering, text editing, selection, and the selection
 // toolbar. Geometry lives in the document; this module only reflects it.
-import { $, app, el, emit, on, toast } from "./core.js";
+import { $, app, el, emit, on, relativeTime, toast } from "./core.js";
 import {
   addObject,
   beginGesture,
@@ -16,6 +16,7 @@ import {
   updateObject,
   updateObjects,
 } from "./doc.js";
+import { resultChart } from "../../shared/result-series.js";
 import { arrowMid, arrowSvg, routeArrow } from "./arrows.js";
 import { highlight } from "./highlight.js";
 import { INK_COLORS, setDuplicateHandler } from "./ink.js";
@@ -245,7 +246,7 @@ function build(obj) {
         ]),
       ]),
       el("div", { class: "code-wrap" }, [el("pre", { class: "code-hl", "aria-hidden": "true" }), textArea(obj, "obj-code")]),
-      el("footer", { class: "obj-output" }, [el("pre", { class: "out-text" }), el("div", { class: "out-images" })]),
+      el("footer", { class: "obj-output" }, [el("pre", { class: "out-text" }), el("div", { class: "out-images" }), el("div", { class: "out-chart" })]),
     );
     node.querySelector(".run-btn").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -314,7 +315,19 @@ function build(obj) {
   } else if (obj.type === "image") {
     node.append(el("img", { class: "obj-image", alt: obj.text || "Image", draggable: "false" }));
   } else if (obj.type === "comment") {
-    node.append(el("span", { class: "pin-dot" }), el("span", { class: "pin-count" }));
+    const preview = el("span", { class: "comment-preview", tabindex: 0, role: "button", "aria-label": "Open comment thread", hidden: true }, [
+      el("span", { class: "comment-avatar", "aria-hidden": "true" }),
+      el("span", { class: "comment-copy" }, [el("span", { class: "comment-byline" }), el("span", { class: "comment-message" })]),
+    ]);
+    const open = (event) => {
+      if (!["select", "comment"].includes(app.mode) || event.type === "keydown" && !["Enter", " "].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation(); emit("comment:new", obj.id);
+    };
+    // A click on the reply opens it; the pin remains the drag handle. Let ink
+    // tools keep receiving pointer events through the preview while writing.
+    preview.addEventListener("pointerdown", (event) => { if (["select", "comment"].includes(app.mode)) event.stopPropagation(); });
+    preview.addEventListener("click", open); preview.addEventListener("keydown", open);
+    node.append(el("span", { class: "pin-dot" }), el("span", { class: "pin-count" }), preview);
   } else if (obj.type === "portal") {
     // Both looks are built once; the style class picks which one shows.
     node.append(
@@ -502,10 +515,13 @@ function renderCode(node, obj) {
   const meta = node.querySelector(".run-meta");
   const text = node.querySelector(".out-text");
   const images = node.querySelector(".out-images");
+  const chart = node.querySelector(".out-chart");
+  chart.innerHTML = result?.ok && !result.running && !result.images?.length ? resultChart(result.series) : "";
   node.classList.toggle("running", Boolean(result?.running));
   if (!result) {
     output.className = "obj-output";
     text.textContent = "Not run yet · Ctrl+Enter";
+    text.hidden = false;
     images.replaceChildren();
     meta.textContent = "";
     return;
@@ -513,6 +529,8 @@ function renderCode(node, obj) {
   if (result.running) {
     output.className = "obj-output";
     text.textContent = result.text || "Running…";
+    text.hidden = false;
+    images.replaceChildren();
     meta.textContent = "";
     return;
   }
@@ -614,6 +632,13 @@ function render(node, obj) {
     const count = (obj.props?.thread ?? []).length;
     node.querySelector(".pin-count").textContent = count > 1 ? String(count) : "";
     node.classList.toggle("resolved", Boolean(obj.props?.resolved));
+    const latest = obj.props?.thread?.at(-1), preview = node.querySelector(".comment-preview");
+    preview.hidden = !latest || Boolean(obj.props?.resolved);
+    if (latest) {
+      node.querySelector(".comment-avatar").textContent = (latest.author || "?").slice(0, 1).toLocaleUpperCase();
+      node.querySelector(".comment-byline").textContent = `${latest.author || "Anonymous"} · ${relativeTime(latest.at ?? obj.updatedAt)}`;
+      node.querySelector(".comment-message").textContent = String(latest.text || "").slice(0, 240);
+    }
     node.title = (obj.props?.thread ?? []).map((m) => `${m.author}: ${m.text}`).join("\n") || "Empty comment";
   }
 }
