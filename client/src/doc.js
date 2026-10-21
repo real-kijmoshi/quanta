@@ -4,7 +4,7 @@
 // Sync model: each object and stroke has an `updatedAt`; the newest write per id
 // wins everywhere. We only ever send the ids we touched ("ops"), and the server
 // relays them to everyone else on the board over SSE.
-import { app, emit, identity, prefs, setPrefs, uid } from "./core.js";
+import { app, demo, emit, identity, prefs, setPrefs, uid } from "./core.js";
 import { cacheBoard, readCachedBoard } from "./local-cache.js";
 import { queueChanges, acknowledgeChanges, readOutbox } from "./outbox.js";
 
@@ -527,6 +527,7 @@ app.liveSync = true;
 
 export async function loadWorkspace() {
   try {
+    if (demo) throw new Error("Demo runs without a server");
     state.workspace = await api("/api/workspace");
     state.serverless = false;
     setPrefs("cache:workspace", state.workspace);
@@ -611,7 +612,7 @@ export async function openBoard(id) {
 export async function createBoard(name = "Untitled board", folderId = null, contents = null) {
   if (state.serverless) {
     const doc = normalize({ id: uid("b"), name, folderId, rev: 1, ...(contents ?? {}) });
-    state.workspace.boards.unshift({ id: doc.id, name, folderId, updatedAt: Date.now(), objects: 0 });
+    state.workspace.boards.unshift({ id: doc.id, name, folderId, updatedAt: Date.now(), objects: Object.keys(doc.objects).length, strokes: Object.keys(doc.strokes).length });
     setPrefs("cache:workspace", state.workspace);
     await cacheBoard(doc);
     emit("workspace", state.workspace);
@@ -693,6 +694,7 @@ export async function searchWorkspace(query) {
 }
 
 export async function health() {
+  if (demo) return null;
   return api("/health").catch(() => null);
 }
 

@@ -1,6 +1,6 @@
 // Boot order: view and layers first, then chrome, then load the board.
-import { on, prefs, toast, setIdentity, el } from "./core.js";
-import { api, loadWorkspace, openBoard, state } from "./doc.js";
+import { demo, on, prefs, toast, setIdentity, el } from "./core.js";
+import { api, importBoard, loadWorkspace, openBoard, state } from "./doc.js";
 import { mountView, restoreView } from "./view.js";
 import { mountInk } from "./ink.js";
 import { mountObjects } from "./objects.js";
@@ -16,6 +16,12 @@ import { mountNotes } from "./notes.js";
 import { mountSettings } from "./settings.js";
 import { mountSwitcher } from "./switcher.js";
 import { mountToolbar } from "./toolbar.js";
+
+// The website demo starts from showcase boards shipped next to the app.
+async function seedDemo() {
+  const boards = await fetch("demo/boards.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  for (const board of [...boards].reverse()) await importBoard(board.name, board);
+}
 
 async function boot() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -57,6 +63,7 @@ async function boot() {
     return;
   }
   if (state.workspace.access?.name) setIdentity({ name: state.workspace.access.name });
+  if (demo && !state.workspace.boards.length) await seedDemo();
   const requested = new URL(location.href).searchParams.get("board");
   const known = state.workspace.boards.some((b) => b.id === requested);
   const last = prefs("lastBoard");
@@ -65,7 +72,9 @@ async function boot() {
   restoreView(state.board.id);
   setMode("select");
 
-  if (state.serverless) {
+  if (demo) {
+    toast("You're trying Quanta in your browser. Boards stay on this device; install it for files, sharing, and AI");
+  } else if (state.serverless) {
     toast("Local-only mode: run `quanta` in a terminal for board files, Python, and sharing", "warn");
   }
   // Warm up KaTeX so typeset math is ready by the time you look at it.

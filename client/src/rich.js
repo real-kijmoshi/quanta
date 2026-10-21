@@ -1,6 +1,6 @@
 // Rendering for note and text cards: a small, safe Markdown subset plus LaTeX
 // math through KaTeX ($inline$, $$display$$). KaTeX is served locally from
-// /vendor/katex and loaded on first use.
+// /vendor/katex (relative to the app, so sub-paths work) and loaded on first use.
 import { emit } from "./core.js";
 
 let katexState = "idle"; // idle | loading | ready | failed
@@ -10,10 +10,10 @@ export function ensureKatex() {
   katexState = "loading";
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "/vendor/katex/katex.min.css?v=20261015";
+  css.href = "vendor/katex/katex.min.css?v=20261015";
   document.head.append(css);
   const script = document.createElement("script");
-  script.src = "/vendor/katex/katex.min.js?v=20261015";
+  script.src = "vendor/katex/katex.min.js?v=20261015";
   script.onload = () => {
     katexState = "ready";
     emit("katex:ready");

@@ -5,6 +5,7 @@ import {
   $$,
   app,
   copyText,
+  demo,
   download,
   el,
   emit,
@@ -161,7 +162,8 @@ export function mountUi() {
   renderToolState();
   renderHistoryButtons();
   renderBackgroundChoices();
-  if (!prefs("identity:named")) setTimeout(() => { if (state.workspace.access?.owner !== false) openNameSheet(); }, 400);
+  // Names only matter to collaborators, and the website demo has none.
+  if (!demo && !prefs("identity:named")) setTimeout(() => { if (state.workspace.access?.owner !== false) openNameSheet(); }, 400);
 }
 
 // -------------------------------------------------------------------- sidebar
@@ -496,7 +498,7 @@ function renderStatus(status) {
     idle: ["", ""],
     saving: ["Saving…", "saving"],
     saved: ["Saved", "ok"],
-    offline: [state.serverless ? "Local only" : "Offline — changes are kept and will sync", "warn"],
+    offline: [demo ? "Demo · saved in this browser" : state.serverless ? "Local only" : "Offline — changes are kept and will sync", "warn"],
     error: ["Save failed — retrying", "bad"],
   };
   const [text, kind] = map[status] ?? ["", ""];
@@ -504,7 +506,7 @@ function renderStatus(status) {
   node.dataset.kind = kind;
   const server = $("#serverState");
   const python = app.runtimes.python ? "Python here" : "Python in browser";
-  server.textContent = state.serverless ? "server offline" : `JS · ${python}`;
+  server.textContent = demo ? "demo" : state.serverless ? "server offline" : `JS · ${python}`;
   server.title = state.serverless
     ? "Running without the server: boards save to this browser only."
     : app.runtimes.python

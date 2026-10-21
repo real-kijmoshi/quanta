@@ -2,6 +2,9 @@
 
 export const bus = new EventTarget();
 
+/** The website's in-browser demo: no server, boards live in this browser. */
+export const demo = Boolean(globalThis.document?.querySelector('meta[name="quanta-demo"]'));
+
 export function emit(type, detail) {
   bus.dispatchEvent(new CustomEvent(type, { detail }));
 }
