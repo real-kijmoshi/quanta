@@ -271,6 +271,19 @@ function build(obj) {
       }
       updateObject(obj.id, { text }, { history: false });
     });
+    // Touch drags don't focus a range input, so track the press itself to keep
+    // the inputs alive while the card re-renders under the finger.
+    const sliderBox = node.querySelector(".plot-sliders");
+    sliderBox.addEventListener("pointerdown", () => {
+      sliderBox.dataset.dragging = "";
+      const done = () => {
+        delete sliderBox.dataset.dragging;
+        window.removeEventListener("pointerup", done, true);
+        window.removeEventListener("pointercancel", done, true);
+      };
+      window.addEventListener("pointerup", done, true);
+      window.addEventListener("pointercancel", done, true);
+    });
     node.querySelector(".plot-sliders").addEventListener("change", (event) => {
       const input = event.target.closest("input[type=range]");
       if (input?._gesture) {
@@ -424,7 +437,7 @@ function renderPlotCard(node, obj) {
   node.querySelector(".plot-area").innerHTML = result.svg;
   node.querySelector(".plot-area").style.height = `${plotH}px`;
   // Sliders: keep the existing inputs while dragging so the thumb isn't reset.
-  const active = document.activeElement?.closest?.(".plot-sliders") === sliders;
+  const active = "dragging" in sliders.dataset || document.activeElement?.closest?.(".plot-sliders") === sliders;
   if (!active) {
     const ranges = obj.props?.sliders ?? {};
     sliders.replaceChildren(
