@@ -172,6 +172,13 @@ try {
   }
   assert.equal(store.assetPath("../../secret.mp3"), null);
   await assert.rejects(store.saveAsset(Buffer.from("bad"), "text/html"), /Unsupported/);
+  const notebook = await store.createBoard({ name: "Notebook file", doc: { settings: { notesNotebook: true }, objects: {}, strokes: {} } });
+  const regular = await store.createBoard({ name: "Regular board" });
+  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook");
+  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === regular.id).kind, "board");
+  await store.close();
+  await store.init();
+  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook", "file type survives index rebuild");
   const created = await store.createBoard({ name: "Notes persistence" });
   const entity = { ...structuredClone(p1), updatedAt: Date.now(), props: { page: true, paper: "cornell", pdfText: "Searchable PDF", bookmarked: true, audioClips: [{ id: "a", src: "/assets/clip.m4a", markers: [{ at: 0, pageId: "p1" }] }] } };
   await store.applyOps(created.id, { objects: { p1: entity } });

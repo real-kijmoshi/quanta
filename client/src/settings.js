@@ -1,11 +1,10 @@
 // One settings dialog for everything a person can change: who they are, how
 // the canvas and toolbar behave, the assistant, and the workspace itself.
-import { $, app, el, identity, on, PEER_COLORS, prefs, setIdentity, setPrefs } from "./core.js";
+import { $, app, el, emit, identity, on, PEER_COLORS, prefs, setIdentity, setPrefs } from "./core.js";
 import { inkSettings, setInk } from "./ink.js";
 import { toggleStickyTool } from "./canvas.js";
 import { account, accountSection } from "./account.js";
 import { assistantSettings } from "./assistants.js";
-import { notesEnabled, setNotesEnabled } from "./notes-preferences.js";
 import { setTheme, themeChoice, THEMES } from "./theme.js";
 import { resetToolbarLayout, setToolbarLayout, toolbarLayout, toolInfo } from "./toolbar.js";
 
@@ -116,8 +115,7 @@ function canvasSection() {
   const preview = el("div", { class: "dock-preview", dataset: { dock: prefs("toolbarDock", "bottom") }, "aria-hidden": "true" }, [el("i")]);
   return [
     el("p", { class: "settings-group", text: "Layout" }),
-    beta(row("Notebook mode", "A GoodNotes-style layout: page thumbnails down the side, a notebook ribbon, paper and focus mode. Saved on this device.",
-      switchControl(notesEnabled(), (on) => setNotesEnabled(on), "Notebook mode"))),
+    row("Notebook files", "Create a notebook from the sidebar. Each notebook has its own pages and paper; writing tools work on every board.", el("button", { class: "ghost-btn", text: "New notebook", onclick: () => { emit("notes:create"); } })),
     el("p", { class: "settings-group", text: "Toolbar" }),
     row("Position", "Dock the tools along the top or bottom, or down one side. Pen options follow them.", el("div", { class: "dock-choice" }, [
       choice(DOCKS, prefs("toolbarDock", "bottom"), (dock) => { setPrefs("toolbarDock", dock); preview.dataset.dock = dock; applyToolbarLayout(); }, "Toolbar position"),

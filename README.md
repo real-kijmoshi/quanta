@@ -24,7 +24,7 @@ Quanta is a self-hosted whiteboard and notebook for maths, physics, and code. Wr
 - **Real-time collaboration.** Live cursors, ink as it's written, follow mode, comments, and offline edits that merge when you reconnect.
 - **Folders with invitations.** Share a folder with a revocable link per person. Optional hosted mode adds accounts for an always-on team workspace.
 - **AI that edits the board.** Ollama, Anthropic, OpenRouter, LM Studio, Claude Code, and Codex, plus an MCP server so any MCP client can read and edit boards.
-- **Notebooks and PDFs.** A4 pages, PDF import you can write on, print to PDF, and an optional Notes beta with flashcards and audio notes.
+- **Notebooks and PDFs.** A4 pages, PDF import you can write on, print to PDF, and separate notebook files with flashcards and audio notes.
 
 ## Quick start
 
@@ -118,7 +118,7 @@ Run `quanta --help` for everything else. See [local release and recovery](docs/L
 - **Pages** are A4 with blank, ruled, grid, dots, or graph paper. Add them from the Pages panel or the board menu.
 - **Import PDF** by dropping one on the board. Each page becomes a locked page you can write on.
 - **Print / save as PDF** prints every page (or every frame) one per sheet, ink included.
-- **Notes beta** is an optional PC/iPad notebook interface with a library, page thumbnails and bookmarks, seven paper styles, page duplication and reordering, PDF text search, favourite pens, audio notes, flashcards with spaced review, and portable notebook backups. Enable it in **Workspace settings → Notes**. See [Notes beta features and limits](docs/NOTES_BETA.md).
+- **Notebook files** live alongside boards in your folders. Choose **＋ Notebook file** in the sidebar or create one inside a folder. Each opens its own pages, paper, bookmarks, PDF annotations, audio, and flashcards. **Writing** on any board opens quick pens, undo/redo, pen stabilization, finger drawing, hold-to-straighten, writing zoom, line navigation, and focus controls. See [Notebooks and writing tools](docs/NOTES_BETA.md).
 
 ### Working together
 
@@ -277,7 +277,7 @@ Guests run Python in their own browser via Pyodide, and JavaScript in a browser 
 <details>
 <summary><b>Can I use it on an iPad or with a stylus?</b></summary>
 
-Yes. Pressure, coalesced and predicted pointer events, barrel-button erase, and palm rejection are supported where the browser exposes them. The optional Notes beta is built for PC and iPad.
+Yes. Pressure, coalesced and predicted pointer events, barrel-button erase, and palm rejection are supported where the browser exposes them. Notebook files and the Writing shelf support PC and iPad.
 </details>
 
 <details>

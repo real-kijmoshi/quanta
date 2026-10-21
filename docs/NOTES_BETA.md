@@ -1,13 +1,30 @@
-# Notes beta
+# Notebook files and writing tools
 
-Open **Workspace settings → Notes (Beta)** to enable the notebook workspace.
-It starts off, and the preference is stored per device/browser (and per account
-in hosted workspaces). Turning it off restores the whiteboard interface without
-removing notebook content. Existing boards can be opened in either interface.
+Choose **＋ Notebook file** in the sidebar, **New notebook file** in Commands,
+or **New notebook in this folder** from a folder's menu. Notebooks are separate
+files alongside boards: their title, folder, pages, paper, ink, attachments and
+history save together. Opening a board restores the board interface; opening a
+notebook restores its page interface. The old device-wide Notes beta switch is
+no longer used. Existing notebooks created with that switch retain their type
+and content. Ordinary boards keep their content without being converted.
+
+## Writing on any board
+
+Open **Writing** for quick black, blue, red and green pens, undo/redo,
+**Stabilize** (Off, Light, Strong), **Finger draws**, and **Hold to straighten**.
+Stabilization filters small movements while preserving pressure; it affects only
+new pen strokes. Turn Finger draws off to pan with fingers while using a stylus.
+
+**Writing zoom** toggles between 200% and 100%. **Next line** returns to the
+start of your first pen stroke and moves down by the chosen line height in
+board units. **Set line start** uses the start of your next pen stroke instead.
+The line origin resets when you open another file. **Focus** hides distractions;
+press it again to return. On phones the shelf scrolls horizontally.
+**More…** opens recognition, audio, study and favorite-pen tools on any board.
 
 ## Available workflows
 
-- **Library:** find existing boards/notebooks or create a notebook in a folder.
+- **Library:** find notebook files or create a notebook in a folder.
 - **Stationery:** blank, ruled, grid, dots, graph, Cornell, and music paper;
   A4, US Letter, and square pages in portrait or landscape. Page size and
   orientation settings apply to newly created pages.

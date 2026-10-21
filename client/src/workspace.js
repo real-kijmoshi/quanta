@@ -91,7 +91,7 @@ function renderStar() {
 function renderSummary() {
   const cards = Object.keys(state.board?.objects ?? {}).length;
   const strokes = Object.keys(state.board?.strokes ?? {}).length;
-  $("#boardStats").textContent = `${cards.toLocaleString()} ${cards === 1 ? "card" : "cards"} · ${strokes.toLocaleString()} ${strokes === 1 ? "stroke" : "strokes"} · Infinite canvas`;
+  $("#boardStats").textContent = `${cards.toLocaleString()} ${cards === 1 ? "card" : "cards"} · ${strokes.toLocaleString()} ${strokes === 1 ? "stroke" : "strokes"} · ${state.board?.settings?.notesNotebook ? "Notebook file" : "Infinite canvas"}`;
   $("#emptyBoard").hidden = !state.board || cards > 0 || strokes > 0;
   if (!$("#overviewPanel").hidden) renderOverview();
 }

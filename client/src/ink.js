@@ -5,6 +5,7 @@
 // Three canvases: highlighter ink (multiply-blended so text shows through, like
 // a real marker), pen ink, and a live layer painted on input for the stroke
 // being drawn, the lasso, and other people's in-progress strokes.
+import { stabilizePoint } from "./writing-model.js";
 import { $, app, el, emit, on, prefs, setPrefs, uid } from "./core.js";
 import { displayInk, drawnTheme } from "./theme.js";
 import {
@@ -48,6 +49,7 @@ const DEFAULTS = {
   eraser: "stroke",
   eraserSize: 14,
   snap: true,
+  stabilization: 0,
   fingerDraws: false,
 };
 
@@ -364,8 +366,8 @@ export function extendStroke(event) {
   const events = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
   const minGap = 0.35 / view.zoom;
   for (const e of events.length ? events : [event]) {
-    const point = pointFrom(e);
     const last = active.points[active.points.length - 1];
+    const point = active.tool === "pen" ? stabilizePoint(last, pointFrom(e), inkSettings.stabilization, view.zoom) : pointFrom(e);
     if (Math.hypot(point[0] - last[0], point[1] - last[1]) > minGap) {
       active.points.push(point);
       activeBounds.x = Math.min(activeBounds.x, point[0]); activeBounds.y = Math.min(activeBounds.y, point[1]);
