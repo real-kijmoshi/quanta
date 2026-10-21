@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.12.0
 
 - Checked the actual trailer examples and added `npm run test:trailer`. Maths now accepts degree notation such as `θ = 30°`, including correct trigonometric evaluation and typesetting.
 - Numeric Python/NumPy and JavaScript results now keep their text and show an inline graph. Local Python missing a supported scientific package automatically uses the browser runtime.
 - Comment pins show their latest reply directly on the board. Draw-and-hold snaps after 500 ms, handles wobbly lines and rotated rectangles more reliably, and uses consistent recognition thresholds across zoom levels.
-
+- Added Paper, Studio and System themes, including dark cards, notes and plots.
 - Notebooks are now a separate file type in the workspace, created through **+ New → Notebook** or directly inside a folder. Opening a notebook selects its page editor; regular boards no longer inherit a global Notes setting. Existing notebook files remain compatible.
 - Added a shared **Write** desk for boards and notebooks: saved pens, pen stabilization, ruled/grid guides with adjustable spacing, writing zoom, left-margin and next-line controls, optional ink-follow panning, stylus-only input, shape hold, and focus mode.
 - Notebook identity survives workspace listing, export/import, duplication, browser recovery, moves and trash restoration.
