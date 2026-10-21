@@ -5,6 +5,7 @@
 import { $, el, emit, on, prefs, relativeTime, setPrefs, toast } from "./core.js";
 import { createBoard, object, objectList, state, updateObject } from "./doc.js";
 import { paintStroke, strokeBounds } from "./stroke.js";
+import { displayInk, drawnTheme } from "./theme.js";
 import { centerOn, fitBoard, shellRect, view } from "./view.js";
 import { switchBoard } from "./ui.js";
 import { updateSelectionUI } from "./objects.js";
@@ -242,15 +243,16 @@ function drawBoard(ctx, doc, width, height, ratio, camera = null, skip = null) {
   const { scale, ox, oy } = camera;
   ctx.setTransform(scale, 0, 0, scale, ox, oy);
   const px = 1 / scale; // one device pixel in board units
+  const studio = drawnTheme() === "studio";
   for (const o of objects) {
     if (o.type === "arrow" || o.type === "comment" || o.id === skip) continue;
     const radius = o.type === "portal" ? Math.min(o.w, o.h) / 2 : 8;
     ctx.beginPath();
     ctx.roundRect(o.x, o.y, o.w, o.h, radius);
-    ctx.fillStyle = o.type === "note" ? NOTE_FILL[o.props?.color ?? "yellow"] ?? "#fff" : o.type === "portal" ? "#e7e4ff" : o.type === "frame" && !o.props?.page ? "rgba(255,255,255,.5)" : o.type === "image" ? "#eef0f4" : "#fff";
+    ctx.fillStyle = o.type === "note" ? NOTE_FILL[o.props?.color ?? "yellow"] ?? "#fff" : o.type === "portal" ? "#e7e4ff" : o.type === "frame" && !o.props?.page ? (studio ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.5)") : o.type === "image" ? "#eef0f4" : "#fff";
     ctx.fill();
     ctx.lineWidth = px;
-    ctx.strokeStyle = o.type === "portal" ? "#7a6cf0" : "#d5dae3";
+    ctx.strokeStyle = o.type === "portal" ? "#7a6cf0" : studio && o.type === "frame" ? "#3d3f3a" : "#d5dae3";
     ctx.stroke();
     const font = 15;
     if (o.text && font * scale >= 3.5 && !["frame", "image"].includes(o.type)) {
@@ -260,7 +262,7 @@ function drawBoard(ctx, doc, width, height, ratio, camera = null, skip = null) {
     }
   }
   for (const s of strokes) if (s.tool === "highlighter") paintStroke(ctx, s);
-  for (const s of strokes) if (s.tool !== "highlighter") paintStroke(ctx, s, { minWidth: px });
+  for (const s of strokes) if (s.tool !== "highlighter") paintStroke(ctx, s, { minWidth: px, color: displayInk(s.color) });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   return camera;
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Themes: Settings → General → Theme picks Paper (light, as before), Studio (the dark board with citron ink from the promo videos) or System (follows your device). Saved per device; ink keeps its saved colours, so collaborators on another theme see what they expect. Also in the command palette as "Switch theme".
+
 ## 0.11.1
 
 - Sharing over a tunnel works in one step: Share → Create invite link builds the link on the public tunnel address (not localhost), copies it, and opens the board directly for your guest. By default only that board is shared (it moves into its own subfolder); tick off "Only this board" to share the whole folder.

@@ -22,6 +22,10 @@ export function mountView() {
   shell = $("#canvasShell");
   world = $("#world");
   grid = $("#canvasGrid");
+  on("theme", () => {
+    dotColor = undefined;
+    applyView({ quiet: true });
+  });
   window.addEventListener("resize", () => {
     cachedRect = null;
     emit("view");
@@ -64,13 +68,17 @@ const BACKGROUNDS = {
   blank: { base: 24, layers: () => [] },
 };
 
+let dotColor;
+
 function applyBackground() {
   const kind = boardSettings().background;
   if (kind === "dots") {
-    const key = `dots:${view.zoom}`;
+    // Read once per theme, not per frame: computed style would force a recalc.
+    dotColor ??= getComputedStyle(grid).getPropertyValue("--grid-dot").trim() || undefined;
+    const key = `dots:${view.zoom}:${dotColor}`;
     if (key !== backgroundKey) {
       backgroundKey = key;
-      const pattern = dotPattern(view.zoom);
+      const pattern = dotPattern(view.zoom, dotColor);
       grid._dotPattern = pattern;
       grid.style.backgroundImage = pattern.image;
       grid.style.backgroundSize = `${pattern.size}px ${pattern.size}px`;

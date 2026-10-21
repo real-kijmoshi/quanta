@@ -195,11 +195,11 @@ export function strokePath(stroke) {
 }
 
 /** Draw one stroke onto a context already transformed into board space. */
-export function paintStroke(ctx, stroke, { alpha = 1, minWidth = 0 } = {}) {
+export function paintStroke(ctx, stroke, { alpha = 1, minWidth = 0, color = stroke.color } = {}) {
   if (!stroke.points?.length) return;
   const runs = strokeRuns(stroke);
-  ctx.fillStyle = stroke.color;
-  ctx.strokeStyle = stroke.color;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.globalAlpha = (stroke.tool === "highlighter" ? 0.32 : 1) * alpha;
