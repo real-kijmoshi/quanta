@@ -1,3 +1,4 @@
+import { documentKind } from "../shared/document-kind.js";
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
@@ -26,6 +27,7 @@ let fail = false;
 let observeEvent = null;
 const board = id => ({ id, name: id, objects: {}, strokes: {}, deleted: {}, settings: {}, rev: 1 });
 const context = vm.createContext({
+  documentKind,
   app: { me: {}, selection: new Set(), peers: new Map() },
   emit: (...args) => observeEvent?.(...args), identity: () => ({ id: 'test-client' }), prefs: () => null, setPrefs() {}, uid: prefix => `${prefix}_new`,
   queueChanges, acknowledgeChanges, readOutbox, cacheBoard, readCachedBoard,

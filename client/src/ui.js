@@ -1,3 +1,4 @@
+import { isNotebook } from "../../shared/document-kind.js";
 // Chrome: sidebar, topbar, tool bars, ink options, pages, sharing, comments,
 // command palette, clipboard, drag and drop, and keyboard shortcuts.
 import {
@@ -182,7 +183,7 @@ function setSidebarHidden(collapsed) {
 }
 
 function mountSidebar() {
-  $("#newBoardBtn").addEventListener("click", () => openTemplates());
+  $("#newBoardBtn").addEventListener("click", () => openNewFile());
   $("#newFolderBtn").addEventListener("click", async () => {
     if (state.serverless) return toast("Folders need the local server running");
     editFolder();
@@ -222,11 +223,12 @@ function boardRow(row) {
   const active = row.id === state.board?.id;
   const node = el(
     "button",
-    { class: `board-row${active ? " active" : ""}`, dataset: { board: row.id }, "aria-current": active ? "page" : null, title: row.name, draggable: "true" },
+    { class: `board-row${active ? " active" : ""}`, dataset: { board: row.id, kind: isNotebook(row) ? "notebook" : "board" }, "aria-current": active ? "page" : null, title: `${row.name} · ${isNotebook(row) ? "Notebook" : "Board"}`, draggable: "true" },
     [
+      el("span", { class: "file-kind-icon", "aria-hidden": "true", text: isNotebook(row) ? "▤" : "▧" }),
       el("span", { class: "row-main" }, [
-        el("strong", { text: `${row.kind === "notebook" ? "▤ " : ""}${row.name}` }),
-        el("small", { text: `${row.kind === "notebook" ? "Notebook file" : "Board"} · ${row.objects ?? 0} ${row.objects === 1 ? "card" : "cards"} · ${row.strokes ?? 0} ${row.strokes === 1 ? "stroke" : "strokes"} · ${relativeTime(row.updatedAt)}` }),
+        el("strong", { text: row.name }),
+        el("small", { text: `${isNotebook(row) ? `Notebook · ${row.pages ?? 0} ${row.pages === 1 ? "page" : "pages"}` : `Board · ${row.objects ?? 0} ${row.objects === 1 ? "card" : "cards"}`} · ${row.strokes ?? 0} ${row.strokes === 1 ? "stroke" : "strokes"} · ${relativeTime(row.updatedAt)}` }),
       ]),
       el("span", { class: "row-menu", dataset: { act: "menu" }, text: "⋯", title: "Board actions" }),
     ],
@@ -257,7 +259,7 @@ function boardMenu(row, anchor) {
       onclick: async () => {
         const source = state.board?.id === row.id ? state.board : null;
         const doc = source ?? (await fetch(`/api/boards/${row.id}`).then((r) => r.json()).catch(() => null));
-        if (!doc) return toast("Could not read that file");
+        if (!doc) return toast("Could not read that board");
         const copy = await importBoard(`${row.name} copy`, doc);
         await switchBoard(copy.id);
       },
@@ -330,6 +332,7 @@ function renderSidebar() {
   const starred = new Set(prefs("starredBoards", []));
   const boards = state.workspace.boards
     .filter((row) => boardFilter !== "starred" || starred.has(row.id))
+    .filter((row) => boardFilter !== "notebooks" || isNotebook(row))
     .toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   const folders = boardFilter === "starred" ? [] : state.workspace.folders;
   const children = [];
@@ -339,7 +342,7 @@ function renderSidebar() {
     children.push(el("div", { class: "side-label", text: folders.length ? "Other files" : "Files" }));
     children.push(...loose.map(boardRow));
   }
-  if (!boards.length && !folders.length) children.push(el("p", { class: "side-empty", text: boardFilter === "starred" ? "Star a board using the star next to its title to keep it close." : "No boards yet. Create one above." }));
+  if (!boards.length && !folders.length) children.push(el("p", { class: "side-empty", text: boardFilter === "starred" ? "Star a board using the star next to its title to keep it close." : "No files yet. Create a board or notebook above." }));
   if (!children.length && boardFilter === "shared") children.push(el("p", { class: "side-empty", text: "A place for your team. Use Share on any board to choose a folder and invite people." }));
   list.replaceChildren(...children);
 }
@@ -1074,6 +1077,20 @@ function mountTemplates() {
   });
 }
 
+function openNewFile() {
+  closeMenus();
+  const box = el("dialog", { class: "sheet-box folder-dialog new-file-dialog", "aria-label": "New file" });
+  box.append(el("header", {}, [el("h2", { text: "What are you working on?" }), el("button", { class: "panel-close", text: "×", "aria-label": "Close", onclick: () => box.close() })]),
+    el("p", { class: "hint", text: "Two kinds of files. The same writing tools." }),
+    el("button", { class: "new-file-option", onclick: () => { box.close(); openTemplates(); } }, [el("span", { class: "new-file-symbol", text: "▧" }), el("span", {}, [el("strong", { text: "Board" }), el("small", { text: "An infinite canvas for ideas, diagrams, maths and code." })])]),
+    el("button", { class: "new-file-option", onclick: () => { box.close(); emit("notebook:new"); } }, [el("span", { class: "new-file-symbol notebook-symbol", text: "▤" }), el("span", {}, [el("strong", { text: "Notebook" }), el("small", { text: "A separate file with pages, paper and PDF annotation." })])]),
+  );
+  const previous = document.activeElement;
+  box.addEventListener("keydown", (event) => event.stopPropagation());
+  box.addEventListener("close", () => { box.remove(); if (previous?.isConnected) previous.focus(); });
+  document.body.append(box); box.showModal();
+}
+
 function openTemplates() {
   const dialog = $("#templateOverlay");
   if (dialog.open) return;
@@ -1257,12 +1274,13 @@ const viewCenter = () => {
 // Ordered by how often they are needed; `keys` shows the shortcut in the palette.
 const COMMANDS = [
   { id: "switch-board", icon: "⇄", title: "Switch board", keys: "Ctrl B", run: () => emit("switcher:open") },
-  { id: "new-board", icon: "＋", title: "New board…", keys: "Ctrl ⇧ N", run: () => openTemplates() },
+  { id: "new-notebook", icon: "▤", title: "New notebook file…", run: () => emit("notebook:new") },
+  { id: "new-board", icon: "＋", title: "New file…", keys: "Ctrl ⇧ N", run: () => openNewFile() },
   { id: "add-portal", icon: "◎", title: "Add a portal to another board", keys: "O", run: () => createObjectAt("portal", viewCenter()) },
   { id: "add-window", icon: "▣", title: "Add a window into another board", keys: "W", run: () => createObjectAt("window", viewCenter()) },
   { id: "customize-toolbar", icon: "⚙", title: "Customize toolbar", run: () => emit("settings:open", "canvas") },
-  { id: "settings", icon: "⚙", title: "Settings", keys: "Ctrl ,", run: () => emit("settings:open") },
   { id: "theme", icon: "◐", title: "Switch theme: Paper / Studio", run: () => setTheme(activeTheme() === "studio" ? "paper" : "studio") },
+  { id: "settings", icon: "⚙", title: "Settings", keys: "Ctrl ,", run: () => emit("settings:open") },
   { id: "add-page", icon: "▯", title: "Add a notebook page", run: () => addPage(pagePaper) },
   { id: "insert-image", icon: "▨", title: "Insert image", run: () => $("#imageInput").click() },
   { id: "import-pdf", icon: "⎙", title: "Import PDF to annotate", run: () => $("#pdfInput").click() },
@@ -1302,8 +1320,7 @@ const COMMANDS = [
   { id: "recognize-text", icon: "Aa", title: "Recognize handwriting or scan text (OCR)", run: () => emit("notes:recognize") },
   { id: "board-audio", icon: "♪", title: "Audio recordings and transcripts", run: () => emit("notes:audio") },
   { id: "study-cards", icon: "◫", title: "Study flashcards on this board", run: () => emit("notes:study") },
-  { id: "new-notebook", icon: "▤", title: "New notebook file", run: () => emit("notes:create") },
-  { id: "notes-tools", icon: "✐", title: "Writing tools on this board", run: () => emit("notes:tools") },
+  { id: "notes-tools", icon: "✐", title: "Writing & learning tools", run: () => emit("notes:tools") },
   { id: "team", icon: "◉", title: "People: follow a collaborator", run: () => togglePanel("teamPanel") },
   { id: "select-all", icon: "⬚", title: "Select everything", keys: "Ctrl A", run: selectAll },
   { id: "rename-me", icon: "☺", title: "Change my name", run: () => openNameSheet() },
@@ -1616,7 +1633,7 @@ function mountKeys() {
     }
     if (mod && event.shiftKey && event.key.toLowerCase() === "n") {
       event.preventDefault();
-      openTemplates();
+      openNewFile();
       return;
     }
     if (event.key === "Escape") {

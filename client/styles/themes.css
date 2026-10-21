@@ -281,3 +281,8 @@
 [data-theme="studio"] .notes-thumbnail[data-paper="grid"],
 [data-theme="studio"] .notes-thumbnail[data-paper="graph"] { background-image: linear-gradient(rgba(255, 255, 255, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .07) 1px, transparent 1px); }
 [data-theme="studio"] .notes-thumbnail[data-paper="dots"] { background-image: radial-gradient(#4a4c45 .6px, transparent 1px); }
+
+[data-theme="studio"] :is(.writing-desk button:hover, .writing-desk button[aria-pressed="true"], .new-file-option:hover) { background: var(--blue-wash); color: var(--ink); }
+[data-theme="studio"] .new-file-symbol { color: var(--brand-citron); background: var(--blue-wash); }
+[data-theme="studio"] .writing-guides { background-image: linear-gradient(#b0bd7a22 1px, transparent 1px); }
+[data-theme="studio"] .writing-guides[data-guide="grid"] { background-image: linear-gradient(#b0bd7a22 1px, transparent 1px), linear-gradient(90deg, #b0bd7a22 1px, transparent 1px); }

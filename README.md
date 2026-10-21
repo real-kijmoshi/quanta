@@ -19,12 +19,13 @@ Quanta is a self-hosted whiteboard and notebook for maths, physics, and code. Wr
 ## Highlights
 
 - **Handwriting that feels right.** Pressure-aware pens, shape snapping, palm rejection, a highlighter, and a precise eraser.
+- **A writing desk on every canvas.** Saved pens, ruled/grid guides, writing zoom, next-line return (Alt+Enter), optional ink-follow panning and stylus-only controls. Open **Write** on a board or notebook.
 - **Maths and physics built in.** Cards evaluate and typeset each line, with units-friendly constants, vectors, integrals, derivatives, solvers, and live plots with sliders.
 - **Runnable code.** JavaScript in a browser worker; Python on the host, or in each guest's browser via Pyodide (numpy, sympy, matplotlib).
 - **Real-time collaboration.** Live cursors, ink as it's written, follow mode, comments, and offline edits that merge when you reconnect.
 - **Folders with invitations.** Share a folder with a revocable link per person. Optional hosted mode adds accounts for an always-on team workspace.
 - **AI that edits the board.** Ollama, Anthropic, OpenRouter, LM Studio, Claude Code, and Codex, plus an MCP server so any MCP client can read and edit boards.
-- **Notebooks and PDFs.** A4 pages, PDF import you can write on, print to PDF, and separate notebook files with flashcards and audio notes.
+- **Notebooks and PDFs.** Separate notebook files alongside boards in your folders, with page thumbnails, paper choices, PDF annotation, flashcards and audio notes. Create one with **+ New → Notebook**.
 
 ## Quick start
 
@@ -118,7 +119,7 @@ Run `quanta --help` for everything else. See [local release and recovery](docs/L
 - **Pages** are A4 with blank, ruled, grid, dots, or graph paper. Add them from the Pages panel or the board menu.
 - **Import PDF** by dropping one on the board. Each page becomes a locked page you can write on.
 - **Print / save as PDF** prints every page (or every frame) one per sheet, ink included.
-- **Notebook files** live alongside boards in your folders. Choose **＋ Notebook file** in the sidebar or create one inside a folder. Each opens its own pages, paper, bookmarks, PDF annotations, audio, and flashcards. **Writing** on any board opens quick pens, undo/redo, pen stabilization, finger drawing, hold-to-straighten, writing zoom, line navigation, and focus controls. See [Notebooks and writing tools](docs/NOTES_BETA.md).
+- **Notebook files** live alongside boards in your folders. Choose **+ New → Notebook** or create one inside a folder. Each opens its own pages, paper, bookmarks, PDF annotations, audio, and flashcards. **Write** opens saved pens, stabilization, guides, writing zoom, next-line navigation, ink following, and focus controls on any canvas. See [Notebooks and writing tools](docs/NOTES_BETA.md).
 
 ### Working together
 
@@ -277,7 +278,7 @@ Guests run Python in their own browser via Pyodide, and JavaScript in a browser 
 <details>
 <summary><b>Can I use it on an iPad or with a stylus?</b></summary>
 
-Yes. Pressure, coalesced and predicted pointer events, barrel-button erase, and palm rejection are supported where the browser exposes them. Notebook files and the Writing shelf support PC and iPad.
+Yes. Pressure, coalesced and predicted pointer events, barrel-button erase, and palm rejection are supported where the browser exposes them. Notebook files and the writing desk support PC and iPad.
 </details>
 
 <details>

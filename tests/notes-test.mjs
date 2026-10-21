@@ -1,3 +1,5 @@
+import { documentKind, isNotebook } from "../shared/document-kind.js";
+import { nextWritingLine, writingCamera, writingOrigin } from "../client/src/writing-model.js";
 import assert from "node:assert/strict";
 import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,6 +25,21 @@ assert.equal(reviewSchedule({}, "good", 0).due, 86400000);
 assert.equal(reviewSchedule({ interval: 4, reviews: 2 }, "good", 0).interval, 10);
 assert.equal(reviewSchedule({ interval: 4, reviews: 2 }, "hard", 0).reviews, 3);
 assert.deepEqual(flashcardData({ text: "**Edited question**\n\nEdited answer", props: { studyCard: { question: "stale" } } }), { question: "Edited question", answer: "Edited answer" });
+
+// File identity is independent of a device preference or the presence of frames.
+assert.equal(documentKind({}), "board");
+assert.equal(isNotebook({ objects: { p1 } }), false);
+assert.equal(isNotebook({ kind: "notebook" }), true);
+assert.equal(isNotebook({ settings: { notesNotebook: true } }), true, "legacy notebooks still open in the notebook editor");
+const box = { width: 900, height: 600 };
+const camera = { x: 40, y: -200, zoom: 2 };
+const origin = writingOrigin(camera, box);
+const zoomed = writingCamera(origin, box, 3);
+assert.equal(origin.x * zoomed.zoom + zoomed.x, 80, "writing zoom preserves the left margin");
+assert.equal(origin.y * zoomed.zoom + zoomed.y, 240, "baseline stays at a usable height");
+assert.equal(nextWritingLine(origin, 32).next.y, origin.y + 32, "line return is in world units, independent of zoom");
+assert.equal(nextWritingLine({ x: 30, y: 140 }, 32, p1).needsPage, true, "line return stops before the notebook's bottom margin");
+assert.equal(nextWritingLine({ x: 30, y: 40 }, 32, p1).needsPage, false);
 
 const operations = stripModule(await readFile(new URL("../client/src/notes-pages.js", import.meta.url), "utf8"));
 function fixture() {
@@ -172,14 +189,21 @@ try {
   }
   assert.equal(store.assetPath("../../secret.mp3"), null);
   await assert.rejects(store.saveAsset(Buffer.from("bad"), "text/html"), /Unsupported/);
-  const notebook = await store.createBoard({ name: "Notebook file", doc: { settings: { notesNotebook: true }, objects: {}, strokes: {} } });
-  const regular = await store.createBoard({ name: "Regular board" });
-  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook");
-  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === regular.id).kind, "board");
-  await store.close();
-  await store.init();
-  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook", "file type survives index rebuild");
+  const folder = await store.createFolder({ name: "Lectures" });
+  const notebook = await store.createBoard({ name: "Physics", folderId: folder.id, doc: { kind: "notebook" } });
+  assert.equal(notebook.kind, "notebook");
+  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook", "the file browser receives the type");
+  await store.patchBoard(notebook.id, { name: "Physics notes", folderId: null });
+  assert.equal((await store.getBoard(notebook.id)).kind, "notebook", "rename and move preserve the type");
+  await store.deleteBoard(notebook.id);
+  assert.equal((await store.restoreBoard(notebook.id)).kind, "notebook", "trash recovery preserves the notebook file type");
+  const legacy = await store.createBoard({ name: "Older notes", doc: { settings: { notesNotebook: true } } });
+  assert.equal(legacy.kind, "notebook");
+  await store.close(); await store.init();
+  assert.equal((await store.listWorkspace()).boards.find((b) => b.id === notebook.id).kind, "notebook", "file type survives an index rebuild");
+  await assert.rejects(store.createBoard({ doc: { kind: "unknown" } }), /Invalid file type/);
   const created = await store.createBoard({ name: "Notes persistence" });
+  assert.equal(created.kind, "board", "regular canvases remain board files");
   const entity = { ...structuredClone(p1), updatedAt: Date.now(), props: { page: true, paper: "cornell", pdfText: "Searchable PDF", bookmarked: true, audioClips: [{ id: "a", src: "/assets/clip.m4a", markers: [{ at: 0, pageId: "p1" }] }] } };
   await store.applyOps(created.id, { objects: { p1: entity } });
   assert.deepEqual((await store.getBoard(created.id)).objects.p1.props, entity.props);

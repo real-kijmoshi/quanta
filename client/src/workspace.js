@@ -1,5 +1,6 @@
 // Workspace chrome stays off the pointer hot path. Document summaries are
 // coalesced; overview DOM is built only when its panel is visible.
+import { isNotebook } from "../../shared/document-kind.js";
 import { $, $$, app, el, emit, identity, initials, on, prefs, setPrefs } from "./core.js";
 import { objectList, state } from "./doc.js";
 import { createObjectAt, select } from "./objects.js";
@@ -91,7 +92,10 @@ function renderStar() {
 function renderSummary() {
   const cards = Object.keys(state.board?.objects ?? {}).length;
   const strokes = Object.keys(state.board?.strokes ?? {}).length;
-  $("#boardStats").textContent = `${cards.toLocaleString()} ${cards === 1 ? "card" : "cards"} · ${strokes.toLocaleString()} ${strokes === 1 ? "stroke" : "strokes"} · ${state.board?.settings?.notesNotebook ? "Notebook file" : "Infinite canvas"}`;
+  const pages = isNotebook(state.board) ? objectList().filter((o) => o.type === "frame" && o.props?.page).length : 0;
+  $("#boardStats").textContent = isNotebook(state.board)
+    ? `${pages} ${pages === 1 ? "page" : "pages"} · ${strokes.toLocaleString()} ${strokes === 1 ? "stroke" : "strokes"} · Notebook`
+    : `${cards.toLocaleString()} ${cards === 1 ? "card" : "cards"} · ${strokes.toLocaleString()} ${strokes === 1 ? "stroke" : "strokes"} · Infinite canvas`;
   $("#emptyBoard").hidden = !state.board || cards > 0 || strokes > 0;
   if (!$("#overviewPanel").hidden) renderOverview();
 }

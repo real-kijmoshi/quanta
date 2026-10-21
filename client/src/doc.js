@@ -1,3 +1,4 @@
+import { documentKind } from "../../shared/document-kind.js";
 // The board document: mutations, undo history, autosave, and live sync.
 // Every edit in the UI goes through here, and nothing else writes to the board.
 //
@@ -353,6 +354,7 @@ function setStatus(status) {
 }
 
 function normalize(doc) {
+  doc.kind = documentKind(doc);
   doc.objects ??= {};
   doc.strokes ??= {};
   doc.deleted ??= {};
@@ -576,8 +578,11 @@ export async function openBoard(id) {
     }
   }
   state.board = normalize(doc);
-  const fileRow = state.workspace.boards.find((row) => row.id === doc.id);
-  if (fileRow) fileRow.kind = state.board.settings?.notesNotebook === true ? "notebook" : "board";
+  const row = state.workspace.boards.find((item) => item.id === doc.id);
+  if (row && row.kind !== doc.kind) {
+    row.kind = doc.kind;
+    setPrefs("cache:workspace", state.workspace);
+  }
   gesture = 0;
   pending = null;
   dirty.objects.clear();
@@ -614,7 +619,7 @@ export async function openBoard(id) {
 export async function createBoard(name = "Untitled board", folderId = null, contents = null) {
   if (state.serverless) {
     const doc = normalize({ id: uid("b"), name, folderId, rev: 1, ...(contents ?? {}) });
-    state.workspace.boards.unshift({ id: doc.id, name, folderId, kind: doc.settings?.notesNotebook === true ? "notebook" : "board", updatedAt: Date.now(), objects: Object.keys(doc.objects).length, strokes: Object.keys(doc.strokes).length });
+    state.workspace.boards.unshift({ id: doc.id, name, kind: doc.kind, pages: Object.values(doc.objects).filter((o) => o.type === "frame" && o.props?.page).length, folderId, updatedAt: Date.now(), objects: Object.keys(doc.objects).length, strokes: Object.keys(doc.strokes).length });
     setPrefs("cache:workspace", state.workspace);
     await cacheBoard(doc);
     emit("workspace", state.workspace);
@@ -627,6 +632,7 @@ export async function createBoard(name = "Untitled board", folderId = null, cont
 
 export async function importBoard(name, doc) {
   return createBoard(name, null, {
+    kind: documentKind(doc),
     objects: doc.objects ?? {},
     strokes: doc.strokes ?? {},
     deleted: {},
