@@ -13,7 +13,6 @@ import { mountWorkspace } from "./workspace.js";
 import { mountFolders } from "./folders.js";
 import { ensureAccount, mountAccount, showNoFolders } from "./account.js";
 import { mountNotes } from "./notes.js";
-import { mountWriting } from "./writing.js";
 import { mountSettings } from "./settings.js";
 import { mountSwitcher } from "./switcher.js";
 import { mountToolbar } from "./toolbar.js";
@@ -49,7 +48,6 @@ async function boot() {
   mountFolders();
   mountAccount();
   mountNotes();
-  mountWriting();
   mountSettings();
   mountSwitcher();
   mountPresent();

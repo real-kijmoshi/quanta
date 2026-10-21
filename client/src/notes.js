@@ -1,4 +1,4 @@
-// Optional notebook chrome. All content goes through the existing document,
+// Notebook file editor. All content goes through the existing document,
 // history, recovery, asset access, and collaboration paths.
 import { $, download, el, emit, on, prefs, setPrefs, toast, uid } from "./core.js";
 import { addObject, createBoard, flushSave, object, objectList, openBoard, state, strokeList, updateObject, uploadAsset } from "./doc.js";
@@ -10,6 +10,8 @@ import { paintStroke } from "./stroke.js";
 import { displayInk } from "./theme.js";
 import { contentBounds, shellRect, view } from "./view.js";
 import { runCommand } from "./ui.js";
+import { isNotebook } from "../../shared/document-kind.js";
+import { mountWriting } from "./writing.js";
 import { notesEnabled } from "./notes-preferences.js";
 import { NOTE_PAPERS, NOTE_SIZES, notebookPages, pageContents, pageMatches, reviewSchedule, flashcardData } from "./notes-model.js";
 import { deleteNotePage, duplicateNotePage, moveNotePage } from "./notes-pages.js";
@@ -49,12 +51,17 @@ function choose(label, options, value) {
 }
 
 export function mountNotes() {
-  $("#notesToolsBtn").onclick = notesTools;
-  $("#newNotebookBtn").onclick = createNotebook;
-  on("notes:tools", notesTools);
+  $("#notesToolsBtn").onclick = () => emit("writing:toggle");
+  on("notebook:new", (folderId) => createNotebook(folderId));
+  on("notes:create", (folderId) => createNotebook(folderId));
   on("theme", () => { renderPresets(); renderPages(); });
-  on("notes:create", createNotebook);
+  on("notes:tools", notesTools);
   on("notes:recognize", openRecognition);
+  on("notes:continue", (id) => {
+    const list = allPages(), index = list.findIndex((p) => p.id === id);
+    const next = list[index + 1] ?? newPage();
+    if (next) visit(next);
+  });
   on("notes:audio", audioNotes);
   on("notes:study", studyNotes);
   on("ink:committed", captureAudioInk);
@@ -63,6 +70,7 @@ export function mountNotes() {
   const surface = el("div", { class: "notes-surface" });
   shell.before(surface);
   surface.append(shell);
+  mountWriting();
   ribbon = el("nav", { class: "notes-ribbon", "aria-label": "Notes workspace", hidden: true });
   surface.before(ribbon);
   rail = el("aside", { class: "notes-rail", id: "notesRail", "aria-label": "Notebook pages", hidden: true });
@@ -81,23 +89,22 @@ export function mountNotes() {
     el("footer", {}, [button("+ Add page", "Add a notebook page", () => newPage(), "solid-btn"), el("div", { class: "notes-page-nav" }, [button("‹", "Previous page", () => navigate(-1)), pageStatus, button("›", "Next page", () => navigate(1))])]));
   const pagesButton = button("☷ Pages", "Show or hide notebook pages", () => {
     const collapsed = document.body.classList.toggle("notes-rail-hidden");
+    setPrefs("notesRailHidden", collapsed);
     pagesButton.setAttribute("aria-expanded", String(!collapsed));
     window.dispatchEvent(new Event("resize"));
   });
   pagesButton.setAttribute("aria-controls", "notesRail");
-  pagesButton.setAttribute("aria-expanded", "true");
+  const railHidden = prefs("notesRailHidden", window.innerWidth < 760);
+  document.body.classList.toggle("notes-rail-hidden", railHidden);
+  pagesButton.setAttribute("aria-expanded", String(!railHidden));
   presets = el("div", { class: "notes-presets", "aria-label": "Favorite pens" });
   ribbon.append(el("span", { class: "notes-wordmark", text: "Notebook" }),
-    button("Library", "Open notebook library", notebookLibrary), pagesButton, button("+ Page", "Add page with current paper", () => newPage()),
-    button("Paper", "Paper and page options", pageOptions), el("i", { class: "notes-separator" }), presets,
-    button("PDF", "Import a PDF to annotate", () => runCommand("import-pdf")), button("Image", "Insert an image or sticker", () => runCommand("insert-image")),
-    button("Audio", "Record or play notebook audio", audioNotes), button("Study", "Flashcards and spaced repetition", studyNotes),
-    button("To text", "Recognize handwriting or scanned text", openRecognition),
-    button("Export", "Export PDF or notebook backup", exportNotebook), button("Focus", "Toggle focused writing space", () => {
-      const focused = document.body.classList.toggle("notes-focus");
-      ribbon.querySelector("[aria-label='Toggle focused writing space']").setAttribute("aria-pressed", String(focused));
-      window.dispatchEvent(new Event("resize"));
-    }));
+    button("Files", "Open notebook files", notebookLibrary), pagesButton, button("+ Page", "Add page with current paper", () => newPage()),
+    button("Paper", "Paper and page options", pageOptions), button("Write", "Open writing tools", () => emit("writing:toggle")), el("i", { class: "notes-separator" }),
+    button("PDF", "Import a PDF to annotate", () => runCommand("import-pdf")),
+    button("Audio", "Record or play notebook audio", audioNotes),
+    button("Export", "Export PDF or notebook backup", exportNotebook),
+    button("More", "Recognition, audio, images and study tools", notesTools));
   on("settings", () => { if (document.body.classList.contains("notes-mode") !== notesEnabled()) applyEnabled(); });
   on("board:opened", () => {
     activeId = prefs(`notesPage:${state.board.id}`);
@@ -109,6 +116,7 @@ export function mountNotes() {
   on("board:renamed", scheduleRender);
   on("view", updateActivePage);
   on("ink:settings", renderPresets);
+  renderPresets();
   document.addEventListener("keydown", (event) => {
     if (!notesEnabled() || document.querySelector("dialog[open]") || event.target.closest("input, textarea, select, [contenteditable='true']")) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
@@ -137,9 +145,10 @@ function boardPoint() {
 }
 
 function notesTools() {
-  const box = dialog("Writing tools");
+  const box = dialog("Writing & learning tools");
   const action = (label, fn) => button(label, label, () => { box.close(); fn(); }, "ghost-btn");
-  box.append(el("p", { text: "Write comfortably on any board. Open Writing in the toolbar for pens, stabilization, touch controls, and line navigation." }), el("div", { class: "notes-action-grid" }, [
+  box.append(el("p", { text: "Writing tools work on every canvas. Notebooks are separate files in your workspace." }), el("div", { class: "notes-action-grid" }, [
+    action("Writing desk", () => emit("writing:toggle")), action("New notebook file", createNotebook),
     action("Handwriting & scan to text", openRecognition), action("Audio, transcripts & ink replay", audioNotes), action("Study flashcards", studyNotes),
     action("Favorite pens", favoritePens), action("Page options", pageOptions), action("Add a page", newPage), action("Import PDF", () => runCommand("import-pdf")),
     action("Images & stickers", () => runCommand("insert-image")), action("Find board content", () => runCommand("overview")), action("Export & backup", exportNotebook),
@@ -152,7 +161,7 @@ function favoritePens() {
   const parent = presets.parentNode, next = presets.nextSibling;
   box.append(presets, el("p", { class: "hint", text: "Choose a pen color, width, and style using the pen tool, then save it with +. Favorites work on every board." }));
   renderPresets();
-  box.addEventListener("close", () => parent.insertBefore(presets, next), { once: true });
+  box.addEventListener("close", () => { if (parent) parent.insertBefore(presets, next); else presets.remove(); }, { once: true });
 }
 
 function scheduleRender() {
@@ -166,6 +175,7 @@ function visit(page) {
   activeId = page.id;
   setPrefs(`notesPage:${state.board.id}`, activeId);
   goToPage(page);
+  emit("writing:page", page);
   if (recording?.boardId === state.board.id) recording.markers.push({ pageId: page.id, at: (Date.now() - recording.startedAt) / 1000 });
   updateSelection();
 }
@@ -289,7 +299,7 @@ function notebookLibrary() {
   const search = input("Find a notebook", { type: "search", placeholder: "Search by title" });
   const list = el("div", { class: "notes-library" });
   const render = () => {
-    const rows = state.workspace.boards.filter((b) => b.kind === "notebook" && b.name.toLocaleLowerCase().includes(search.field.value.toLocaleLowerCase()));
+    const rows = state.workspace.boards.filter(isNotebook).filter((b) => b.name.toLocaleLowerCase().includes(search.field.value.toLocaleLowerCase()));
     list.replaceChildren(...rows.map((b) => {
       const folder = state.workspace.folders.find((f) => f.id === b.folderId);
       return el("button", { type: "button", class: `notes-library-item${b.id === state.board?.id ? " active" : ""}`, onclick: safe(async () => { if (await switchNotebook(b.id)) box.close(); }) }, [
@@ -322,7 +332,7 @@ function createNotebook(folderId) {
       if (await flushSave() === false) throw new Error("Save your current notebook before creating another.");
       const base = NOTE_SIZES[size.field.value], dims = orientation.field.value === "landscape" ? { w: base.h, h: base.w } : base;
       const id = uid("fr"), now = Date.now();
-      const doc = await createBoard(name.field.value.trim(), folder.field.value || null, { settings: { background: "blank", notesNotebook: true }, objects: { [id]: { id, type: "frame", x: 0, y: 0, ...dims, z: -1000, text: "Page 1", props: { page: true, paper: paper.field.value }, createdAt: now, updatedAt: now } }, strokes: {} });
+      const doc = await createBoard(name.field.value.trim(), folder.field.value || null, { kind: "notebook", settings: { background: "blank" }, objects: { [id]: { id, type: "frame", x: 0, y: 0, ...dims, z: -1000, text: "Page 1", props: { page: true, paper: paper.field.value }, createdAt: now, updatedAt: now } }, strokes: {} });
       setPrefs("notesPageDefaults", { paper: paper.field.value, size: size.field.value, orientation: orientation.field.value });
       await openBoard(doc.id); box.close(); setMode("pen");
     } finally { save.disabled = false; }
@@ -335,7 +345,7 @@ function renderPresets() {
   const saved = prefs("notesPens", [{ color: "#1f2328", size: 2, style: "ballpoint" }, { color: "#2747d6", size: 3.5, style: "fountain" }, { color: "#d93a2b", size: 3.5, style: "ballpoint" }]);
   presets.replaceChildren(...saved.map((pen, index) => {
     const item = button("", `Favorite pen ${index + 1}: ${pen.color}, ${pen.size}px`, () => { setInk(pen); setMode("pen"); });
-    item.style.setProperty("--pen-color", displayInk(pen.color));
+    item.style.setProperty("--pen-color", pen.color);
     item.className = "notes-pen";
     item.setAttribute("aria-pressed", String(pen.color === inkSettings.color && pen.size === inkSettings.size && pen.style === inkSettings.style));
     return item;
@@ -463,7 +473,7 @@ async function startRecording(page) {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     if (state.board?.id !== boardId || (page && !object(page.id))) throw new Error("Board changed. Start recording again on the current board.");
-    page ??= addObject({ type: "note", ...boardPoint(), w: 300, h: 110, text: "## Audio notes\nOpen Notes → Audio to play recordings, transcribe, and replay ink.", props: { color: "plain", audioAnchor: true } });
+    page ??= addObject({ type: "note", ...boardPoint(), w: 300, h: 110, text: "## Audio notes\nOpen Write → More → Audio to play recordings, transcribe, and replay ink.", props: { color: "plain", audioAnchor: true } });
     const mimeType = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find((type) => MediaRecorder.isTypeSupported(type));
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     const session = { recorder, stream, boardId, pageId: page.id, startedAt: Date.now(), markers: [{ pageId: page.id, at: 0 }], chunks: [], bytes: 0, stopped: false, inkEvents: [], inkPoints: 0 };
@@ -521,7 +531,7 @@ function paintAudioReplay(canvas, events, time) {
   const scale = Math.min((canvas.width - 32) / Math.max(1, bounds.r - bounds.x), (canvas.height - 32) / Math.max(1, bounds.b - bounds.y));
   ctx.setTransform(scale, 0, 0, scale, 16 - bounds.x * scale, 16 - bounds.y * scale);
   const visible = events.filter((event) => event.at <= time).map((event) => event.stroke);
-  for (const stroke of [...visible.filter((s) => s.tool === "highlighter"), ...visible.filter((s) => s.tool !== "highlighter")]) paintStroke(ctx, stroke);
+  for (const stroke of [...visible.filter((s) => s.tool === "highlighter"), ...visible.filter((s) => s.tool !== "highlighter")]) paintStroke(ctx, stroke, { color: displayInk(stroke.color) });
 }
 
 function transcriptDialog(hostId, clipId) {

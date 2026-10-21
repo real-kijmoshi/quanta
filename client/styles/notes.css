@@ -44,7 +44,6 @@
 .notes-empty { padding: 22px 4px; color: #7b8497; text-align: center; line-height: 1.7; font-size: 11px; }
 .notes-empty strong { color: #48516c; display: block; margin-bottom: 8px; }
 .notes-mode.notes-rail-hidden .notes-rail { display: none; }
-
 .notes-mode.notes-focus .ink-bar, .notes-mode.notes-focus .help-hint, .notes-mode.notes-focus .zoom-bar { display: none; }
 .notes-mode.notes-focus .notes-rail { display: none; }
 .notes-mode.notes-focus .toolbar { opacity: .35; transition: opacity .15s; }
@@ -112,15 +111,35 @@
 @media (max-width: 500px) { .notes-rail { width: 125px; flex-basis: 125px; } .notes-rail-head { flex-wrap: wrap; } .notes-search { font-size: 9px; } }
 @media print { .notes-ribbon, .notes-rail { display: none !important; } }
 
-/* A compact shelf for practical writing aids in both boards and notebooks. */
-.writing-shelf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--paper, #fff); z-index: 12; }
-.writing-shelf[hidden] { display: none; }
-.writing-shelf button, .writing-shelf select { border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; min-height: 36px; font: inherit; font-size: 11px; background: transparent; color: var(--ink); }
-.writing-shelf button:hover, .writing-shelf button[aria-pressed="true"] { background: #e9edfc; border-color: #aab8ea; }
-.writing-shelf label { display: flex; align-items: center; gap: 5px; font-size: 10px; }
-.writing-pens { display: flex; gap: 3px; }
-.writing-pens button { font-size: 20px; padding: 0 9px; }
-.writing-focus .sidebar, .writing-focus .help-hint, .writing-focus .board-meta { display: none; }
-.writing-focus #app { grid-template-columns: 0 minmax(0, 1fr); }
-.writing-focus .workspace { grid-column: 2; }
-@media (max-width: 700px) { .writing-shelf { flex-wrap: nowrap; overflow-x: auto; padding: 6px; } .writing-shelf > * { flex-shrink: 0; } }
+/* Writing aids belong to every canvas, independently of the notebook editor. */
+.writing-desk { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: var(--paper, #fff); border-bottom: 1px solid var(--line, #e1e4ec); overflow-x: auto; flex: 0 0 auto; white-space: nowrap; scrollbar-width: thin; }
+.writing-desk[hidden], .writing-guides[hidden] { display: none; }
+.writing-label { font-size: 11px; font-weight: 700; color: var(--muted); margin-right: 6px; }
+.writing-desk button, .writing-desk select { font: inherit; font-size: 11px; min-height: 36px; padding: 7px 10px; border-radius: 7px; flex: 0 0 auto; }
+.writing-desk button:hover, .writing-desk button[aria-pressed="true"] { background: #e9edfc; color: #3d51b4; }
+.writing-desk select { color: var(--ink); background: transparent; border: 1px solid var(--line); }
+.writing-pens { border-right: 1px solid var(--line); padding-right: 8px; }
+.writing-pens .notes-pen { width: 32px; padding: 5px; display: grid; place-items: center; }
+.writing-follow { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.writing-follow input { accent-color: #5262ba; width: 16px; height: 16px; }
+.writing-guides { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; background-image: linear-gradient(#667fb51c 1px, transparent 1px); background-size: var(--writing-step) var(--writing-step); }
+.writing-guides[data-guide="grid"] { background-image: linear-gradient(#667fb51c 1px, transparent 1px), linear-gradient(90deg, #667fb51c 1px, transparent 1px); }
+.writing-baseline { position: absolute; left: 0; right: 0; height: 1px; background: #6279bf55; }
+.writing-margin { position: absolute; top: 0; bottom: 0; width: 1px; background: #cb657544; }
+.writing-focus .sidebar, .writing-focus .topbar, .writing-focus .notes-ribbon, .writing-focus .notes-rail, .writing-focus .help-hint { display: none !important; }
+.writing-focus .app { grid-template-columns: minmax(0, 1fr); }
+.writing-focus .workspace { grid-column: 1; }
+.new-file-dialog { width: min(480px, calc(100vw - 32px)); }
+.new-file-option { display: flex; align-items: center; gap: 16px; padding: 20px; text-align: left; border: 1px solid var(--line); border-radius: 12px; width: 100%; margin-top: 12px; }
+.new-file-option:hover { background: #f1f4fd; border-color: #b3bef0; }
+.new-file-option strong, .new-file-option small { display: block; }
+.new-file-option strong { font-size: 15px; margin-bottom: 6px; }
+.new-file-option small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.new-file-symbol { font-size: 28px; color: #6073be; background: #edf0fc; padding: 10px 14px; border-radius: 9px; }
+.notebook-symbol { color: #9f6849; background: #f6eee7; }
+@media (pointer: coarse) { .writing-desk button, .writing-desk select { min-height: 44px; } }
+@media (max-width: 760px) { .writing-desk { padding: 6px 8px; } .writing-label { display: none; } }
+@media print { .writing-desk, .writing-guides { display: none !important; } }
+
+.file-kind-icon { flex: 0 0 auto; font-size: 18px; color: #7e889c; margin-right: 6px; }
+.board-row[data-kind="notebook"] .file-kind-icon { color: #a17752; }

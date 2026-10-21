@@ -1,3 +1,20 @@
+// Writing helpers use world coordinates so ink and guides agree at every zoom.
+export function writingOrigin(camera, box, page = null) {
+  return page ? { x: page.x + 56, y: page.y + 96 } : {
+    x: (Math.min(80, box.width * .15) - camera.x) / camera.zoom,
+    y: (box.height * .4 - camera.y) / camera.zoom,
+  };
+}
+
+export function writingCamera(origin, box, zoom) {
+  return { x: Math.min(80, box.width * .15) - origin.x * zoom, y: box.height * .4 - origin.y * zoom, zoom };
+}
+
+export function nextWritingLine(origin, spacing, page = null) {
+  const next = { ...origin, y: origin.y + spacing };
+  return { next, needsPage: Boolean(page && next.y > page.y + page.h - 48) };
+}
+
 // Distance-based filtering: small hand tremors are reduced, fast strokes catch up.
 // Keep raw pressure and never rewrite ink already committed to the document.
 export function stabilizePoint(previous, point, strength = 0, zoom = 1) {

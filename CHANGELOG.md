@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Themes: Settings → General → Theme picks Paper (light, as before), Studio (the dark look from the promo videos: dark board, cards, notes and plots with citron ink and curves) or System (follows your device). Saved per device; ink keeps its saved colours, so collaborators on another theme see what they expect. Also in the command palette as "Switch theme".
+- Notebooks are now a separate file type in the workspace, created through **+ New → Notebook** or directly inside a folder. Opening a notebook selects its page editor; regular boards no longer inherit a global Notes setting. Existing notebook files remain compatible.
+- Added a shared **Write** desk for boards and notebooks: saved pens, pen stabilization, ruled/grid guides with adjustable spacing, writing zoom, left-margin and next-line controls, optional ink-follow panning, stylus-only input, shape hold, and focus mode.
+- Notebook identity survives workspace listing, export/import, duplication, browser recovery, moves and trash restoration.
 
 ## 0.11.1
 

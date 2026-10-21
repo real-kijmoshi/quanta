@@ -1,3 +1,4 @@
+import { documentKind } from "../shared/document-kind.js";
 // Board storage. Boards live as JSON files under data/ so the UI, the MCP
 // server, and anything else that talks to this process read the same state.
 //
@@ -134,6 +135,7 @@ export function makeObject(input = {}) {
 }
 
 function normalize(doc) {
+  doc.kind = documentKind(doc);
   doc.objects ??= {};
   doc.strokes ??= {};
   doc.deleted ??= {};
@@ -179,8 +181,9 @@ function summary(doc) {
   return {
     id: doc.id,
     name: doc.name,
+    kind: documentKind(doc),
+    pages: Object.values(doc.objects ?? {}).filter((o) => o.type === "frame" && o.props?.page).length,
     folderId: doc.folderId,
-    kind: doc.settings?.notesNotebook === true ? "notebook" : "board",
     rev: doc.rev,
     updatedAt: doc.updatedAt,
     objects: Object.keys(doc.objects ?? {}).length,
@@ -349,7 +352,10 @@ export function editBoard(id, mutate, origin = "server") {
 
 export async function createBoard({ name, folderId = null, doc } = {}) {
   requireFolder(await listWorkspace(), folderId);
-  if (doc != null) validateOps(doc, { maxEntities: 1000000 });
+  if (doc != null) {
+    validateOps(doc, { maxEntities: 1000000 });
+    if (doc.kind != null && !["board", "notebook"].includes(doc.kind)) throw Object.assign(new Error("Invalid file type"), { status: 400 });
+  }
   const board = normalize({ ...emptyBoard(name ?? "Untitled board", folderId), ...(doc ?? {}) });
   board.id = uid("b");
   board.rev = 1;

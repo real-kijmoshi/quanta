@@ -153,7 +153,7 @@ export function folderActions(folder) {
     await go(board.id);
     $("#boardName").focus(); $("#boardName").select();
   }));
-  box.append(action("+ New notebook in this folder", () => { emit("notes:create", folder.id); }));
+  box.append(action("+ New notebook in this folder", () => emit("notebook:new", folder.id)));
   if (owner()) box.append(
     action("+ New subfolder", () => editFolder(null, folder.id)),
     action("Share folder & manage access", () => shareFolder(folder)),
@@ -195,7 +195,7 @@ export function folderTree(boards, boardRow, refresh, sharedOnly = false) {
     const rows = [header];
     if (open) {
       const content = [...folders.filter((f) => f.parentId === folder.id).flatMap(render), ...boards.filter((b) => b.folderId === folder.id && (!sharedOnly || shared)).map(boardRow)];
-      if (!content.length) content.push(el("button", { class: "folder-empty", text: "+ Add your first board", onclick: () => folderActions(folder) }));
+      if (!content.length) content.push(el("button", { class: "folder-empty", text: "+ Add your first file", onclick: () => folderActions(folder) }));
       rows.push(el("div", { class: "folder-children" }, content));
     }
     return rows;

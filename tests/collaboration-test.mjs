@@ -1,3 +1,4 @@
+import { documentKind } from "../shared/document-kind.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
@@ -30,6 +31,7 @@ const streams = [];
 const doc = (await readFile(new URL("../client/src/doc.js", import.meta.url), "utf8"))
   .replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
 const context = vm.createContext({
+  documentKind,
   Date: class extends Date { static now() { return now; } },
   app: { selection: new Set(), peers: new Map(), online: true },
   identity: () => ({ id: "sam-tab", name: "Sam", color: "#123456" }),
