@@ -1,4 +1,4 @@
-import { el, emit, setIdentity, setPrefs, toast } from "./core.js";
+import { demo, el, emit, setIdentity, setPrefs, toast } from "./core.js";
 import { api, flushSave, state } from "./doc.js";
 
 export let account = { enabled: false, user: null };
@@ -9,6 +9,7 @@ function clearInvitation() {
 }
 
 export async function ensureAccount(token) {
+  if (demo) { document.body.classList.remove("booting"); return false; }
   try { account = await api("/api/auth/me"); }
   catch (error) {
     let wasHosted = false;

@@ -10,7 +10,7 @@
 [![Self-hosted](https://img.shields.io/badge/self--hosted-yes-e4ed87?style=flat-square&labelColor=252824)](docs/SELF_HOSTING.md)
 [![MCP](https://img.shields.io/badge/MCP-server-e4ed87?style=flat-square&labelColor=252824)](#mcp-and-webmcp)
 
-**[Website](https://real-kijmoshi.github.io/quanta/)** · **[Download](https://github.com/real-kijmoshi/quanta/releases/latest)** · **[Self-hosting](docs/SELF_HOSTING.md)** · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)**
+**[Try it in your browser](https://real-kijmoshi.github.io/quanta/app/)** · **[Website](https://real-kijmoshi.github.io/quanta/)** · **[Download](https://github.com/real-kijmoshi/quanta/releases/latest)** · **[Self-hosting](docs/SELF_HOSTING.md)** · **[Changelog](CHANGELOG.md)** · **[Contributing](CONTRIBUTING.md)**
 
 </div>
 

@@ -47,8 +47,8 @@ export function goToPage(frame) {
 let pdfjs = null;
 async function loadPdfJs() {
   if (!pdfjs) {
-    pdfjs = await import("/vendor/pdfjs/pdf.min.mjs?v=20261015");
-    pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs?v=20261015";
+    pdfjs = await import("../vendor/pdfjs/pdf.min.mjs?v=20261015");
+    pdfjs.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.mjs?v=20261015";
   }
   return pdfjs;
 }
