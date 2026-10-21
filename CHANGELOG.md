@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Themes: Settings → General → Theme picks Paper (light, as before), Studio (the dark board with citron ink from the promo videos) or System (follows your device). Saved per device; ink keeps its saved colours, so collaborators on another theme see what they expect. Also in the command palette as "Switch theme".
+- Themes: Settings → General → Theme picks Paper (light, as before), Studio (the dark look from the promo videos: dark board, cards, notes and plots with citron ink and curves) or System (follows your device). Saved per device; ink keeps its saved colours, so collaborators on another theme see what they expect. Also in the command palette as "Switch theme".
 
 ## 0.11.1
 

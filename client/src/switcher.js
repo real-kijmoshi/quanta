@@ -11,6 +11,7 @@ import { switchBoard } from "./ui.js";
 import { updateSelectionUI } from "./objects.js";
 
 const NOTE_FILL = { yellow: "#ffe79a", blue: "#cfe0ff", green: "#cfeedd", pink: "#ffd7e0", plain: "#ffffff" };
+const STUDIO_NOTE_FILL = { yellow: "#48442a", blue: "#2c3650", green: "#29402f", pink: "#4a2e38", plain: "#2e2f2c" };
 const MAX_PREVIEW_STROKES = 5000;
 const docs = new Map(); // board id -> { doc, updatedAt }
 
@@ -249,14 +250,18 @@ function drawBoard(ctx, doc, width, height, ratio, camera = null, skip = null) {
     const radius = o.type === "portal" ? Math.min(o.w, o.h) / 2 : 8;
     ctx.beginPath();
     ctx.roundRect(o.x, o.y, o.w, o.h, radius);
-    ctx.fillStyle = o.type === "note" ? NOTE_FILL[o.props?.color ?? "yellow"] ?? "#fff" : o.type === "portal" ? "#e7e4ff" : o.type === "frame" && !o.props?.page ? (studio ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.5)") : o.type === "image" ? "#eef0f4" : "#fff";
+    ctx.fillStyle = o.type === "note" ? (studio ? STUDIO_NOTE_FILL : NOTE_FILL)[o.props?.color ?? "yellow"] ?? (studio ? "#2c2d2a" : "#fff")
+      : o.type === "portal" ? "#e7e4ff"
+      : o.type === "frame" && !o.props?.page ? (studio ? "rgba(255,255,255,.03)" : "rgba(255,255,255,.5)")
+      : o.type === "image" ? (studio ? "#33352f" : "#eef0f4")
+      : studio ? "#2c2d2a" : "#fff";
     ctx.fill();
     ctx.lineWidth = px;
-    ctx.strokeStyle = o.type === "portal" ? "#7a6cf0" : studio && o.type === "frame" ? "#3d3f3a" : "#d5dae3";
+    ctx.strokeStyle = o.type === "portal" ? "#7a6cf0" : studio ? "#3d3f3a" : "#d5dae3";
     ctx.stroke();
     const font = 15;
     if (o.text && font * scale >= 3.5 && !["frame", "image"].includes(o.type)) {
-      ctx.fillStyle = "#4b5161";
+      ctx.fillStyle = studio ? "#b5b8ad" : "#4b5161";
       ctx.font = `${font}px Manrope, sans-serif`;
       o.text.split("\n").slice(0, Math.floor((o.h - 12) / 21)).forEach((line, i) => ctx.fillText(line.replace(/[#*$`]/g, "").slice(0, 80), o.x + 12, o.y + 24 + i * 21, o.w - 24));
     }
