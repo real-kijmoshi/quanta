@@ -417,6 +417,13 @@ function mountTopbar() {
       setBoardSettings({ background: bg.dataset.bg });
       return;
     }
+    // Phone layout: header buttons that don't fit are reached from here.
+    const proxy = event.target.closest("[data-proxy]")?.dataset.proxy;
+    if (proxy) {
+      closeMenus();
+      $(`#${proxy}`).click();
+      return;
+    }
     const command = event.target.closest("[data-command]")?.dataset.command;
     if (!command) return;
     closeMenus();

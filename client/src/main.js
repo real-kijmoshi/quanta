@@ -16,6 +16,7 @@ import { mountNotes } from "./notes.js";
 import { mountSettings } from "./settings.js";
 import { mountSwitcher } from "./switcher.js";
 import { mountToolbar } from "./toolbar.js";
+import { mountMobile } from "./mobile.js";
 
 // The website demo starts from showcase boards shipped next to the app.
 async function seedDemo() {
@@ -48,6 +49,7 @@ async function boot() {
   mountSettings();
   mountSwitcher();
   mountPresent();
+  mountMobile();
 
   on("board:opened", (doc) => {
     const url = new URL(location.href);
