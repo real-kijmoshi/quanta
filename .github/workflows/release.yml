@@ -1,9 +1,15 @@
 name: Release
-# Tag a version to publish it:  git tag v1.0.0 && git push origin v1.0.0
+# Publish a version bump on main, or push an explicit v* tag.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
+    paths: [package.json]
   workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -13,8 +19,36 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check release version
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          publish=false
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            test "v$version" = "$GITHUB_REF_NAME"
+            publish=true
+          elif [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            previous=$(git show "$BEFORE_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+            if [[ "$version" != "$previous" ]]; then
+              if git show-ref --verify --quiet "refs/tags/v$version"; then
+                echo "Version v$version already has a tag; refusing to republish." >&2
+                exit 1
+              fi
+              publish=true
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -22,9 +56,6 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: bash tests/setup-test.sh
-      - name: Tag matches package.json
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
 
   package:
     needs: verify
@@ -66,22 +97,22 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}},value=${{ needs.verify.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.verify.outputs.version }}
+            type=raw,value=latest,enable=${{ needs.verify.outputs.publish == 'true' }}
       - uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          push: ${{ needs.verify.outputs.publish == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [package, image]
+    if: needs.verify.outputs.publish == 'true'
+    needs: [verify, package, image]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +123,16 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ needs.verify.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "Quanta ${GITHUB_REF_NAME#v}" \
-            --generate-notes \
-            --verify-tag
+          node --input-type=module <<'JS' > release-notes.md
+          import { readFileSync } from 'node:fs';
+          const version = process.env.RELEASE_TAG.slice(1);
+          const notes = readFileSync('CHANGELOG.md', 'utf8').split(`## ${version}\n`)[1]?.split('\n## ')[0]?.trim();
+          if (!notes) throw new Error(`Missing changelog for ${version}`);
+          console.log(notes);
+          JS
+          gh release create "$RELEASE_TAG" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "Quanta ${RELEASE_TAG#v}" \
+            --notes-file release-notes.md
