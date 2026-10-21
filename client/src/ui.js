@@ -225,8 +225,8 @@ function boardRow(row) {
     { class: `board-row${active ? " active" : ""}`, dataset: { board: row.id }, "aria-current": active ? "page" : null, title: row.name, draggable: "true" },
     [
       el("span", { class: "row-main" }, [
-        el("strong", { text: row.name }),
-        el("small", { text: `${row.objects ?? 0} ${row.objects === 1 ? "card" : "cards"} · ${row.strokes ?? 0} ${row.strokes === 1 ? "stroke" : "strokes"} · ${relativeTime(row.updatedAt)}` }),
+        el("strong", { text: `${row.kind === "notebook" ? "▤ " : ""}${row.name}` }),
+        el("small", { text: `${row.kind === "notebook" ? "Notebook file" : "Board"} · ${row.objects ?? 0} ${row.objects === 1 ? "card" : "cards"} · ${row.strokes ?? 0} ${row.strokes === 1 ? "stroke" : "strokes"} · ${relativeTime(row.updatedAt)}` }),
       ]),
       el("span", { class: "row-menu", dataset: { act: "menu" }, text: "⋯", title: "Board actions" }),
     ],
@@ -257,7 +257,7 @@ function boardMenu(row, anchor) {
       onclick: async () => {
         const source = state.board?.id === row.id ? state.board : null;
         const doc = source ?? (await fetch(`/api/boards/${row.id}`).then((r) => r.json()).catch(() => null));
-        if (!doc) return toast("Could not read that board");
+        if (!doc) return toast("Could not read that file");
         const copy = await importBoard(`${row.name} copy`, doc);
         await switchBoard(copy.id);
       },
@@ -336,7 +336,7 @@ function renderSidebar() {
   const loose = boards.filter((row) => !row.folderId || !folders.some((f) => f.id === row.folderId));
   if (boardFilter !== "starred") children.push(...folderTree(boards, boardRow, renderSidebar, boardFilter === "shared"));
   if (loose.length && boardFilter !== "shared") {
-    children.push(el("div", { class: "side-label", text: folders.length ? "Other boards" : "Boards" }));
+    children.push(el("div", { class: "side-label", text: folders.length ? "Other files" : "Files" }));
     children.push(...loose.map(boardRow));
   }
   if (!boards.length && !folders.length) children.push(el("p", { class: "side-empty", text: boardFilter === "starred" ? "Star a board using the star next to its title to keep it close." : "No boards yet. Create one above." }));
@@ -1302,7 +1302,8 @@ const COMMANDS = [
   { id: "recognize-text", icon: "Aa", title: "Recognize handwriting or scan text (OCR)", run: () => emit("notes:recognize") },
   { id: "board-audio", icon: "♪", title: "Audio recordings and transcripts", run: () => emit("notes:audio") },
   { id: "study-cards", icon: "◫", title: "Study flashcards on this board", run: () => emit("notes:study") },
-  { id: "notes-tools", icon: "✐", title: "Notes tools on this board", run: () => emit("notes:tools") },
+  { id: "new-notebook", icon: "▤", title: "New notebook file", run: () => emit("notes:create") },
+  { id: "notes-tools", icon: "✐", title: "Writing tools on this board", run: () => emit("notes:tools") },
   { id: "team", icon: "◉", title: "People: follow a collaborator", run: () => togglePanel("teamPanel") },
   { id: "select-all", icon: "⬚", title: "Select everything", keys: "Ctrl A", run: selectAll },
   { id: "rename-me", icon: "☺", title: "Change my name", run: () => openNameSheet() },

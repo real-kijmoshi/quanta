@@ -180,6 +180,7 @@ function summary(doc) {
     id: doc.id,
     name: doc.name,
     folderId: doc.folderId,
+    kind: doc.settings?.notesNotebook === true ? "notebook" : "board",
     rev: doc.rev,
     updatedAt: doc.updatedAt,
     objects: Object.keys(doc.objects ?? {}).length,

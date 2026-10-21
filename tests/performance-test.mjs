@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { stabilizePoint } from '../client/src/writing-model.js';
 
 const ink = readFileSync(new URL('../client/src/ink.js', import.meta.url), 'utf8');
 {
@@ -328,6 +329,7 @@ const inkFrames = new Map();
 let nextInkFrame = 0;
 const inkOrder = [], inkPaints = [], savedInk = [];
 Object.assign(live, {
+  stabilizePoint,
   liveFrame: 0, holdTimer: null, holdAnchor: null,
   inkSettings: { snap: false, size: 3.5, highlightSize: 5, color: '#2747d6', highlightColor: '#ffe14d', style: 'ballpoint' },
   uid: () => 'local-stroke',

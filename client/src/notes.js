@@ -50,8 +50,10 @@ function choose(label, options, value) {
 
 export function mountNotes() {
   $("#notesToolsBtn").onclick = notesTools;
+  $("#newNotebookBtn").onclick = createNotebook;
   on("notes:tools", notesTools);
   on("theme", () => { renderPresets(); renderPages(); });
+  on("notes:create", createNotebook);
   on("notes:recognize", openRecognition);
   on("notes:audio", audioNotes);
   on("notes:study", studyNotes);
@@ -85,7 +87,7 @@ export function mountNotes() {
   pagesButton.setAttribute("aria-controls", "notesRail");
   pagesButton.setAttribute("aria-expanded", "true");
   presets = el("div", { class: "notes-presets", "aria-label": "Favorite pens" });
-  ribbon.append(el("span", { class: "notes-wordmark", text: "Notes" }), el("span", { class: "notes-beta", text: "BETA" }),
+  ribbon.append(el("span", { class: "notes-wordmark", text: "Notebook" }),
     button("Library", "Open notebook library", notebookLibrary), pagesButton, button("+ Page", "Add page with current paper", () => newPage()),
     button("Paper", "Paper and page options", pageOptions), el("i", { class: "notes-separator" }), presets,
     button("PDF", "Import a PDF to annotate", () => runCommand("import-pdf")), button("Image", "Insert an image or sticker", () => runCommand("insert-image")),
@@ -96,14 +98,11 @@ export function mountNotes() {
       ribbon.querySelector("[aria-label='Toggle focused writing space']").setAttribute("aria-pressed", String(focused));
       window.dispatchEvent(new Event("resize"));
     }));
-  on("notes:enabled", applyEnabled);
+  on("settings", () => { if (document.body.classList.contains("notes-mode") !== notesEnabled()) applyEnabled(); });
   on("board:opened", () => {
     activeId = prefs(`notesPage:${state.board.id}`);
     pageSearch.value = "";
-    if (notesEnabled()) {
-      renderPages();
-      requestAnimationFrame(() => { if (notesEnabled() && currentPage()) visit(currentPage()); });
-    }
+    applyEnabled();
     if (recording && state.board?.id !== recording.boardId) stopRecording();
   });
   on("doc:changed", scheduleRender);
@@ -138,9 +137,9 @@ function boardPoint() {
 }
 
 function notesTools() {
-  const box = dialog("Notes tools · any board");
+  const box = dialog("Writing tools");
   const action = (label, fn) => button(label, label, () => { box.close(); fn(); }, "ghost-btn");
-  box.append(el("p", { text: "Write, recognize, record, and study on this board. Notebook pages are optional." }), el("div", { class: "notes-action-grid" }, [
+  box.append(el("p", { text: "Write comfortably on any board. Open Writing in the toolbar for pens, stabilization, touch controls, and line navigation." }), el("div", { class: "notes-action-grid" }, [
     action("Handwriting & scan to text", openRecognition), action("Audio, transcripts & ink replay", audioNotes), action("Study flashcards", studyNotes),
     action("Favorite pens", favoritePens), action("Page options", pageOptions), action("Add a page", newPage), action("Import PDF", () => runCommand("import-pdf")),
     action("Images & stickers", () => runCommand("insert-image")), action("Find board content", () => runCommand("overview")), action("Export & backup", exportNotebook),
@@ -290,7 +289,7 @@ function notebookLibrary() {
   const search = input("Find a notebook", { type: "search", placeholder: "Search by title" });
   const list = el("div", { class: "notes-library" });
   const render = () => {
-    const rows = state.workspace.boards.filter((b) => b.name.toLocaleLowerCase().includes(search.field.value.toLocaleLowerCase()));
+    const rows = state.workspace.boards.filter((b) => b.kind === "notebook" && b.name.toLocaleLowerCase().includes(search.field.value.toLocaleLowerCase()));
     list.replaceChildren(...rows.map((b) => {
       const folder = state.workspace.folders.find((f) => f.id === b.folderId);
       return el("button", { type: "button", class: `notes-library-item${b.id === state.board?.id ? " active" : ""}`, onclick: safe(async () => { if (await switchNotebook(b.id)) box.close(); }) }, [
@@ -305,13 +304,13 @@ function notebookLibrary() {
   render();
 }
 
-function createNotebook() {
+function createNotebook(folderId) {
   const box = dialog("New notebook"), defaults = pageDefaults();
   const name = input("Notebook title", { placeholder: "e.g. Ideas, lectures, everyday", required: true, maxlength: 120 });
   const paper = choose("Paper", NOTE_PAPERS, defaults.paper);
   const size = choose("Page size", [["a4", "A4"], ["letter", "US Letter"], ["square", "Square"]], defaults.size);
   const orientation = choose("Orientation", [["portrait", "Portrait"], ["landscape", "Landscape"]], defaults.orientation);
-  const folder = choose("Folder", [["", "Workspace"], ...state.workspace.folders.map((f) => [f.id, f.name])], state.board?.folderId || "");
+  const folder = choose("Folder", [["", "Workspace"], ...state.workspace.folders.map((f) => [f.id, f.name])], (typeof folderId === "string" ? folderId : state.board?.folderId) || "");
   if (state.workspace.access?.owner === false) { folder.field.querySelector("option[value='']")?.remove(); if (!folder.field.value) folder.field.selectedIndex = 0; }
   const save = el("button", { type: "submit", class: "solid-btn", text: "Create notebook" });
   const form = el("form", { class: "notes-form" }, [name.row, paper.row, el("div", { class: "notes-action-grid" }, [size.row, orientation.row]), folder.row, save]);

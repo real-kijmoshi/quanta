@@ -1,4 +1,4 @@
-import { $, copyText, el, on, prefs, setPrefs, toast } from "./core.js";
+import { $, copyText, el, emit, on, prefs, setPrefs, toast } from "./core.js";
 import { api, createBoard, createFolder, deleteFolder, flushSave, loadWorkspace, moveBoard, openBoard, state } from "./doc.js";
 import { restoreView } from "./view.js";
 import { confirmSheet, openPanel } from "./ui.js";
@@ -153,6 +153,7 @@ export function folderActions(folder) {
     await go(board.id);
     $("#boardName").focus(); $("#boardName").select();
   }));
+  box.append(action("+ New notebook in this folder", () => { emit("notes:create", folder.id); }));
   if (owner()) box.append(
     action("+ New subfolder", () => editFolder(null, folder.id)),
     action("Share folder & manage access", () => shareFolder(folder)),
