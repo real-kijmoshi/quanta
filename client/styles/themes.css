@@ -1,9 +1,8 @@
 /* Themes. Paper is the default look defined in the other stylesheets; this
    file only adds Studio, the dark board with citron ink from the promo
-   videos. Studio swaps the shared tokens on :root, then hands cards (notes,
-   math, code, plots) the Paper tokens back so they stay light, crisp sheets
-   on the dark board. Notebook pages turn dark instead, because ink is drawn
-   in Studio's bright colours wherever it lies. Loaded last so it wins ties. */
+   videos. Studio swaps the shared tokens on :root, so cards, notes, plots
+   and notebook pages all turn dark with it; the rules below cover colours
+   the other stylesheets hard-code. Loaded last so it wins ties. */
 
 :root[data-theme="studio"] {
   color-scheme: dark;
@@ -40,44 +39,68 @@
   --studio-pill: #2c2d2a;
 }
 
-/* Cards keep the Paper palette: light sheets, dark text. */
-[data-theme="studio"] .obj:is(.obj-note, .obj-code, .obj-math, .obj-plot, .obj-comment, .obj-portal),
-[data-theme="studio"] .obj-image,
-[data-theme="studio"] .obj-toolbar .note-swatches {
-  color-scheme: light;
-  --ink: #202225;
-  --muted: #6d737b;
-  --faint: #9aa0a6;
-  --line: #dfe1dc;
-  --line-soft: #ebece7;
-  --white: #fbfbf6;
-  --blue: #5a67eb;
-  --blue-dark: #4450d8;
-  --blue-wash: #eef0fe;
-  --green: #2f9e6b;
-  --red: #c8372d;
-  --amber: #d79a1b;
-  --brand-ink: #252824;
-  --brand-olive: #535c24;
-  --brand-wash: #f0f3d9;
-  --hover: #f1f2ee;
-  --chrome: #f4f4ee;
-  --paper: #f7f8fa;
-  --note-plain: #fbfbf6;
-  color: var(--ink);
+/* Cards are dark sheets too: a lifted surface, tinted notes, citron values. */
+:root[data-theme="studio"] {
+  --note-yellow: #48442a;
+  --note-blue: #2c3650;
+  --note-green: #29402f;
+  --note-pink: #4a2e38;
+  --note-purple: #3a3250;
+  --note-plain: #2e2f2c;
+  --hl-keyword: #d79bf2;
+  --hl-string: #a6d98a;
+  --hl-number: #f4b86a;
+  --hl-comment: #7f8379;
+  --hl-call: #93a3ff;
+  --hl-def: #72d4e8;
+  --hl-literal: #ff9d73;
+  --hl-builtin: #c9a0ff;
 }
+[data-theme="studio"] .obj:is(.obj-code, .obj-math, .obj-plot),
+[data-theme="studio"] .obj-image { background: #2c2d2a; border-color: #3a3c37; }
 [data-theme="studio"] .obj:is(.obj-note, .obj-code, .obj-math, .obj-plot) { box-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 30px rgba(0, 0, 0, .35); }
-[data-theme="studio"] .obj:is(.obj-code, .obj-math, .obj-plot) { border-color: transparent; }
+[data-theme="studio"] .obj:is(.obj-code, .obj-math, .obj-plot).selected { border-color: var(--brand-citron); }
+[data-theme="studio"] :is(.obj-head, .math-results, .plot-sliders, .plot-editor) { background: #262725; border-color: #3a3c37; }
+[data-theme="studio"] .obj-output { background: #262725; }
+[data-theme="studio"] .obj-output.ok { color: #a6d98a; background: rgba(127, 214, 166, .06); }
+[data-theme="studio"] .obj-output.bad,
+[data-theme="studio"] .plot-errors { background: rgba(255, 139, 124, .08); border-color: rgba(255, 139, 124, .25); }
+[data-theme="studio"] .obj-code.running .obj-output { background: rgba(228, 237, 135, .05); }
+[data-theme="studio"] :is(.rich code, .rich pre) { background: rgba(0, 0, 0, .22); border-color: rgba(255, 255, 255, .08); }
+[data-theme="studio"] .out-images img { background: #f4f4ee; }
+[data-theme="studio"] .obj-comment { background: #2c2d2a; }
 /* Typeset values and run buttons wear citron, as on the promo cards. */
-[data-theme="studio"] .obj :is(.run-btn, .lang-pill.on) { background: var(--brand-citron); color: #252824; }
-[data-theme="studio"] .obj .mval,
-[data-theme="studio"] .obj .mval .katex { color: #6c7a1c; }
+[data-theme="studio"] .obj .run-btn { background: var(--brand-citron); color: #252824; }
+[data-theme="studio"] .obj .run-btn:hover { background: var(--brand-citron-hover); }
+[data-theme="studio"] .obj :is(.mval, .mval .katex, .math-line:not(.error, .fn, .blank)) { color: var(--brand-citron); }
+
+/* Plots: faint grid, light axes, and the promo's bright curve colours. */
+[data-theme="studio"] .plot-grid { stroke: rgba(255, 255, 255, .06); }
+[data-theme="studio"] .plot-axis { stroke: rgba(236, 237, 230, .45); }
+[data-theme="studio"] :is(.plot-labels text, .plot-point-label) { stroke: #2c2d2a; }
+[data-theme="studio"] .plot-labels text { fill: var(--muted); }
+[data-theme="studio"] .plot-legend-bg { fill: rgba(38, 39, 37, .9); stroke: #3a3c37; }
+[data-theme="studio"] .plot-svg circle { stroke: #2c2d2a; }
+[data-theme="studio"] .plot-svg [stroke="#2747d6"] { stroke: #e4ed87; }
+[data-theme="studio"] .plot-svg [fill="#2747d6"] { fill: #e4ed87; }
+[data-theme="studio"] .plot-svg [stroke="#d93a2b"] { stroke: #ff8b7c; }
+[data-theme="studio"] .plot-svg [fill="#d93a2b"] { fill: #ff8b7c; }
+[data-theme="studio"] .plot-svg [stroke="#16834f"] { stroke: #74d6a4; }
+[data-theme="studio"] .plot-svg [fill="#16834f"] { fill: #74d6a4; }
+[data-theme="studio"] .plot-svg [stroke="#8b3fd1"] { stroke: #c9a0ff; }
+[data-theme="studio"] .plot-svg [fill="#8b3fd1"] { fill: #c9a0ff; }
+[data-theme="studio"] .plot-svg [stroke="#e08a00"] { stroke: #ffc266; }
+[data-theme="studio"] .plot-svg [fill="#e08a00"] { fill: #ffc266; }
+[data-theme="studio"] .plot-svg [stroke="#0e8fa8"] { stroke: #72d4e8; }
+[data-theme="studio"] .plot-svg [fill="#0e8fa8"] { fill: #72d4e8; }
+[data-theme="studio"] .plot-svg [stroke="#e8417d"] { stroke: #ff92b8; }
+[data-theme="studio"] .plot-svg [fill="#e8417d"] { fill: #ff92b8; }
+[data-theme="studio"] .plot-sliders input[type="range"] { accent-color: var(--brand-citron); }
 
 /* Board-level text sits on the dark board itself. */
 [data-theme="studio"] .obj-text,
 [data-theme="studio"] .shape-label { color: var(--ink); }
 [data-theme="studio"] .obj textarea::placeholder { color: rgba(236, 237, 230, .3); }
-[data-theme="studio"] .obj:is(.obj-note, .obj-code, .obj-math, .obj-plot) textarea::placeholder { color: rgba(32, 34, 37, .3); }
 [data-theme="studio"] .obj-frame:not(.page) { border-color: #3d3f3a; background: rgba(255, 255, 255, .015); }
 [data-theme="studio"] .frame-name { color: var(--muted); }
 [data-theme="studio"] .obj-frame.page { background: #2a2b28; box-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 26px rgba(0, 0, 0, .35); }
