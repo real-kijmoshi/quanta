@@ -1,0 +1,354 @@
+/* Phone layout. Loaded last so it can settle the layered breakpoints above:
+   one-row header, a full-width tool dock with labels, ink options straight
+   above it, and panels, menus and dialogs as bottom sheets. */
+
+.menu-quick, .menu-quick-rule, .touch-hint, .sheet-scrim { display: none; }
+
+@media (pointer: coarse) {
+  .empty-board .keys-hint { display: none; }
+  .empty-board .touch-hint { display: block; }
+  .command-launch, .help-hint { display: none; }
+  button, .tool, .ink-color, .custom-color { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+}
+
+/* Tablet portrait: status chip instead of a second header row, and the
+   zoom pill sits above the dock rather than on it. */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .topbar { position: relative; flex-wrap: nowrap; }
+  .topbar .save-status { display: none; }
+  .topbar .save-status[data-kind="warn"], .topbar .save-status[data-kind="bad"] {
+    display: block;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    flex: none;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    box-shadow: var(--shadow-md);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .zoom-bar { bottom: 96px; }
+  .canvas-shell:has(.ink-bar:not([hidden])) .zoom-bar { bottom: 160px; }
+}
+
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes scrim-in { from { opacity: 0; } }
+
+@media (max-width: 760px) {
+  :root {
+    --m-edge: 8px;
+    --m-safe-t: env(safe-area-inset-top, 0px);
+    --m-safe-b: env(safe-area-inset-bottom, 0px);
+    --m-dock: 60px;
+    --m-above-dock: calc(var(--m-edge) * 2 + var(--m-dock) + var(--m-safe-b));
+  }
+  html, body { overscroll-behavior: none; }
+  /* 100vh runs under the mobile browser's toolbars; the dock must stay visible. */
+  .app { height: 100vh; height: 100dvh; }
+
+  /* ---------------------------------------------------------------- header */
+
+  .topbar {
+    position: relative;
+    flex-wrap: nowrap;
+    min-height: 0;
+    gap: 4px;
+    padding: calc(6px + var(--m-safe-t)) 8px 6px;
+  }
+  .topbar .icon-btn { flex: 0 0 40px; width: 40px; height: 40px; padding: 10px; }
+  .topbar .board-name {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 8px;
+    font-size: 16px;
+    text-overflow: ellipsis;
+  }
+  #notesToolsBtn, #commentsBtn, #pagesBtn, #aiBtn, #presentBtn, #teamBtn, #overviewBtn, #boardLinksBtn,
+  .topbar .favorite-board, .board-folder-location, .top-spacer, .peer-stack { display: none; }
+  .topbar .pill-btn.accent { flex: 0 0 auto; min-height: 38px; padding: 0 16px; font-size: 13px; }
+  .topbar .me-chip { flex: 0 0 32px; width: 32px; height: 32px; margin-left: 2px; font-size: 11px; }
+  /* Routine "Saved" stays quiet; problems float under the header. */
+  .topbar .save-status { display: none; }
+  .topbar .save-status[data-kind="warn"], .topbar .save-status[data-kind="bad"] {
+    display: block;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    order: 0;
+    flex: none;
+    max-width: calc(100vw - 32px);
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    box-shadow: var(--shadow-md);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  /* --------------------------------------------------------------- sidebar */
+
+  .sidebar, .app:not(.sidebar-hidden) .sidebar { width: min(320px, 88vw); padding-top: var(--m-safe-t); padding-bottom: var(--m-safe-b); box-shadow: 0 0 40px rgba(20, 24, 40, .22); }
+  .sidebar-backdrop { background: rgba(22, 25, 32, .32); }
+  .side-head { padding: 16px 14px 10px 18px; }
+  .mobile-sidebar-close { min-width: 40px; height: 40px; border-radius: 10px; }
+  .side-search input, #searchInput { font-size: 16px; }
+  .workspace-nav .nav-item { min-height: 44px; font-size: 14px; }
+  .board-row { min-height: 52px; }
+
+  /* ------------------------------------------------------------- tool dock */
+
+  .toolbar, body[data-dock] .toolbar {
+    top: auto;
+    left: var(--m-edge);
+    right: var(--m-edge);
+    bottom: calc(var(--m-edge) + var(--m-safe-b));
+    transform: none;
+    flex-direction: row;
+    justify-content: space-between;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    padding: 5px;
+    gap: 2px;
+    border-radius: 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+  }
+  .toolbar .tool, body[data-dock] .toolbar .tool {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 36px;
+    height: 50px;
+    padding: 6px 0 4px;
+    gap: 3px;
+    border-radius: 13px;
+  }
+  .toolbar .tool svg { width: 21px; height: 21px; }
+  body:not(.compact-tools) .toolbar .tool span { display: block; font-size: 9.5px; line-height: 1; }
+  .toolbar .tool-sep { display: none; }
+
+  /* ------------------------------------------------------- ink options */
+
+  .ink-bar, body[data-dock] .ink-bar {
+    top: auto;
+    left: var(--m-edge);
+    right: var(--m-edge);
+    bottom: var(--m-above-dock);
+    transform: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    padding: 8px 12px;
+    gap: 12px;
+    border-radius: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+  }
+  .ink-bar .ink-colors { flex: none; flex-wrap: nowrap; gap: 8px; }
+  .ink-bar .ink-color { width: 26px; height: 26px; }
+  .ink-bar .custom-color { width: 26px; height: 26px; }
+  .ink-bar .size-slider input { width: 96px; height: 28px; }
+  .ink-bar .tool-sep { flex: 0 0 1px; height: 26px; }
+  .ink-bar .seg button { min-height: 32px; padding: 6px 10px; font-size: 11px; }
+
+  /* ----------------------------------------------- history and zoom pill */
+
+  .zoom-bar, body[data-dock] .zoom-bar {
+    top: auto;
+    left: var(--m-edge);
+    right: auto;
+    bottom: var(--m-above-dock);
+    padding: 3px;
+    border-radius: 14px;
+  }
+  .canvas-shell:has(.ink-bar:not([hidden])) .zoom-bar { bottom: calc(var(--m-above-dock) + 60px); }
+  .zoom-bar button { min-width: 40px; height: 38px; font-size: 15px; }
+  .zoom-bar #zoomLabel, .zoom-bar #fitBtn { font-size: 12px; }
+  .zoom-bar .tool-sep { height: 22px; margin: 0 2px; }
+
+  .toast { bottom: calc(var(--m-above-dock) + 4px); max-width: calc(100vw - 32px); text-align: center; }
+  .follow-banner { top: 10px; max-width: calc(100% - 24px); }
+  .empty-board { top: 38%; }
+  .empty-board h2 { font-size: 22px; }
+  .empty-board p { font-size: 14px; }
+  .empty-actions button { min-height: 40px; padding: 0 16px; font-size: 13px; }
+
+  /* Card and lasso toolbars stay on screen and scroll sideways if long. */
+  .obj-toolbar { max-width: calc(100vw - 16px); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px; }
+  .obj-toolbar::-webkit-scrollbar { display: none; }
+  .obj-toolbar .tb-btn { min-width: 36px; height: 36px; }
+
+  /* ---------------------------------------------------------- bottom sheets */
+
+  .sheet-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 36;
+    background: rgba(22, 25, 32, .34);
+    animation: scrim-in .18s ease-out;
+  }
+  .sheet-scrim[hidden] { display: none; }
+  body.sheet-open .toolbar, body.sheet-open .ink-bar, body.sheet-open .zoom-bar { visibility: hidden; }
+
+  .panel, #aiPanel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: min(76dvh, 680px);
+    padding-bottom: var(--m-safe-b);
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(20, 24, 40, .18);
+    animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1);
+    transition: transform .2s ease;
+  }
+  #aiPanel, #commentsPanel { height: calc(100dvh - 48px - var(--m-safe-t)); }
+  .panel header { position: relative; padding-top: 22px; min-height: 60px; }
+  .panel header::before, #moreMenu::before, #toolsMore::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    margin-left: -19px;
+    border-radius: 2px;
+    background: #d3d6dd;
+  }
+  .panel h2 { font-size: 16px; }
+  .panel-close { width: 40px; height: 40px; font-size: 24px; border-radius: 10px; }
+  .panel-body { padding: 12px 16px; }
+  .panel-foot { padding: 12px 16px 14px; }
+  .panel input, .panel textarea, .panel select, .ai-settings input, .ai-settings select { font-size: 16px; }
+  .panel .solid-btn, .panel .ghost-btn { min-height: 44px; }
+
+  #moreMenu {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 62;
+    min-width: 0;
+    max-height: 86dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 24px 12px calc(12px + var(--m-safe-b));
+    border: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(20, 24, 40, .18);
+    animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1);
+    transform-origin: bottom center;
+    transition: transform .2s ease;
+  }
+  #moreMenu > button { min-height: 48px; padding: 0 12px; font-size: 15px; border-radius: 12px; }
+  #moreMenu hr { margin: 8px 4px; }
+  #moreMenu .menu-label { padding: 4px 12px 8px; }
+  #moreMenu .menu-row { gap: 8px; padding: 0 4px 4px; overflow-x: auto; }
+  .menu-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 4px 8px; }
+  .menu-quick-rule { display: block; }
+  .menu-quick button {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    min-height: 0;
+    padding: 14px 4px 12px;
+    border-radius: 14px;
+    background: #f3f4f1;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .menu-quick button:active { background: var(--blue-wash); }
+  .menu-quick button.on { background: #fbf3dc; color: #8a6418; }
+  .menu-quick button.on svg { fill: currentColor; }
+  .menu-quick svg { width: 22px; height: 22px; }
+
+  /* More tools: a grid of the tools that didn't fit on the dock. */
+  #toolsMore {
+    position: fixed;
+    top: auto !important;
+    left: 0 !important;
+    right: 0;
+    bottom: 0;
+    z-index: 62;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    min-width: 0;
+    max-height: 80dvh;
+    overflow-y: auto;
+    padding: 26px 12px calc(12px + var(--m-safe-b));
+    border: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(20, 24, 40, .18);
+    animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1);
+    transition: transform .2s ease;
+  }
+  #toolsMore .more-item { flex-direction: column; justify-content: center; gap: 6px; min-height: 76px; padding: 10px 2px; border-radius: 14px; font-size: 12px; text-align: center; background: #f5f6f8; }
+  #toolsMore .more-item .more-icon { width: 26px; height: 26px; }
+  #toolsMore .more-item .more-icon svg { width: 22px; height: 22px; }
+  #toolsMore .more-item .more-label { flex: none; }
+  #toolsMore .more-item kbd { display: none; }
+  #toolsMore .more-item.on { background: var(--blue-wash); }
+  #toolsMore .more-customize { grid-column: 1 / -1; flex-direction: row; min-height: 48px; margin-top: 4px; border-top: 0; background: none; }
+
+  /* Dialogs rise from the bottom edge. */
+  .overlay.sheet { place-items: end stretch; }
+  .sheet-box, .sheet-box.narrow, .sheet-box.wide {
+    width: 100%;
+    max-height: 92dvh;
+    padding: 22px 18px calc(18px + var(--m-safe-b));
+    border-radius: 22px 22px 0 0;
+    animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1);
+  }
+  .sheet-box .text-input, .sheet-box input:not([type]), .sheet-box input[type="text"], .sheet-box input[type="search"], .sheet-box input[type="email"] { font-size: 16px; }
+  .sheet-box pre, .share-cmd { max-width: 100%; overflow-x: auto; white-space: pre; }
+  .sheet-actions { gap: 10px; }
+  .sheet-actions button { flex: 1; min-height: 48px; }
+  .sheet-box .color-row { flex-wrap: wrap; gap: 12px; }
+  .template-dialog { width: 100%; max-width: 100%; margin: auto 0 0; }
+  .template-dialog .sheet-box { max-height: 88dvh; }
+  .settings-dialog, .folder-dialog {
+    width: 100%;
+    max-width: 100%;
+    margin: auto 0 0;
+    border-radius: 22px 22px 0 0;
+    padding-bottom: var(--m-safe-b);
+  }
+  .settings-dialog { height: calc(100dvh - 32px - var(--m-safe-t)); }
+  .folder-dialog { max-height: 90dvh; }
+  .settings-nav button { min-height: 40px; }
+  .palette { padding-top: calc(12px + var(--m-safe-t)); }
+  .palette-box input { font-size: 16px; }
+  .palette-item { min-height: 48px; }
+  .switcher-search input { font-size: 16px; }
+
+  /* Presenting: thumb-sized controls clear of the home indicator. */
+  .overlay.present header { padding-top: calc(10px + var(--m-safe-t)); }
+  .overlay.present footer { gap: 18px; padding-bottom: calc(10px + var(--m-safe-b)); }
+  .overlay.present footer button { width: 52px; height: 44px; font-size: 18px; }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .panel, #moreMenu, #toolsMore, .sheet-box, .sheet-scrim { animation: none; transition: none; }
+}

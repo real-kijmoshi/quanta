@@ -6,6 +6,11 @@ import { $, app, el, emit, on, prefs, setPrefs } from "./core.js";
 // Separators go where neighbouring tools belong to different groups.
 const GROUPS = { select: 0, hand: 0, pen: 1, highlighter: 1, eraser: 1, lasso: 1, note: 2, text: 2, shape: 2, arrow: 2, frame: 2, portal: 2, window: 2, math: 3, plot: 3, code: 3, comment: 4, lock: 5 };
 const DEFAULT_HIDDEN = ["portal", "window"];
+// Phones keep their own layout: the everyday tools on the bar, the rest under More.
+const phone = globalThis.matchMedia?.("(max-width: 760px)");
+const PHONE_BAR = ["select", "hand", "pen", "highlighter", "eraser", "note", "text"];
+const layoutKey = () => (phone?.matches ? "toolbarLayoutPhone" : "toolbarLayout");
+const defaultHidden = () => (phone?.matches ? [...buttons.keys()].filter((id) => !PHONE_BAR.includes(id)) : DEFAULT_HIDDEN);
 
 const buttons = new Map(); // tool id -> its button in #toolbar
 let bar, more, popover;
@@ -19,19 +24,19 @@ export function toolInfo(id) {
 }
 
 export function toolbarLayout() {
-  const saved = prefs("toolbarLayout", null);
+  const saved = prefs(layoutKey(), null);
   const all = [...buttons.keys()];
   const order = [...(saved?.order ?? []).filter((id) => buttons.has(id)), ...all.filter((id) => !saved?.order?.includes(id))];
-  return { order, hidden: new Set((saved?.hidden ?? DEFAULT_HIDDEN).filter((id) => buttons.has(id))) };
+  return { order, hidden: new Set((saved?.hidden ?? defaultHidden()).filter((id) => buttons.has(id))) };
 }
 
 export function setToolbarLayout({ order, hidden }) {
-  setPrefs("toolbarLayout", { order, hidden: [...hidden] });
+  setPrefs(layoutKey(), { order, hidden: [...hidden] });
   applyLayout();
 }
 
 export function resetToolbarLayout() {
-  setPrefs("toolbarLayout", null);
+  setPrefs(layoutKey(), null);
   applyLayout();
 }
 
@@ -61,6 +66,7 @@ export function mountToolbar() {
   // Side docks place the ink options next to the bar, whatever its width.
   new ResizeObserver(() => document.body.style.setProperty("--dock-w", `${bar.offsetWidth}px`)).observe(bar);
   on("mode", markMore);
+  phone?.addEventListener("change", applyLayout);
   applyLayout();
 }
 
