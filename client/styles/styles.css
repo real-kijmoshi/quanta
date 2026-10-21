@@ -369,6 +369,8 @@ code { font-family: var(--mono); font-size: .92em; background: #fff; padding: 1p
 .canvas-shell[data-mode="hand"] { cursor: grab; }
 .canvas-shell.panning, body.space-pan .canvas-shell { cursor: grabbing; }
 .canvas-shell.ink-mode { cursor: var(--drawing-cursor, crosshair); }
+/* Scrollable card bodies must not turn a stroke that starts on a card into a scroll. */
+.canvas-shell.ink-mode .obj * { touch-action: none; }
 
 .canvas-grid {
   position: absolute;
