@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0
+
+- Replace SSE collaboration with one WebSocket for live board updates, cursors, viewport/selection presence and in-progress ink. HTTP writes still acknowledge persisted edits, with the existing offline outbox.
+- Add reconnect backoff, snapshot reconciliation after every handshake, heartbeat watchdogs, bounded presence queues and stale-connection isolation. Recovery preserves unsaved settings and newer live metadata.
+- Apply Host/Origin, invitation and account checks to upgrades and recheck access on messages and heartbeats. Revoking access or moving a board out of scope closes its socket. Invalid, binary and oversized messages are rejected.
+- Keep Cloudflare Quick Tunnels and bind their local server to loopback. Document WebSocket proxy settings and the required browser reload after upgrading.
+- Add ten real-network WebSocket regression groups covering reverse proxies, synchronization, access revocation, protocol errors and shutdown/restart, plus client recovery and backpressure checks.
+
 ## 0.12.0
 
 - Checked the actual trailer examples and added `npm run test:trailer`. Maths now accepts degree notation such as `θ = 30°`, including correct trigonometric evaluation and typesetting.

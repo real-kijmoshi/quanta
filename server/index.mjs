@@ -1,6 +1,7 @@
-// Quanta server: static files, the board API, live sync over SSE, local code
+// Quanta server: static files, the board API, live sync over WebSockets, local code
 // execution, the optional assistant, and an MCP endpoint over the same store.
-import { createServer } from "node:http";
+import { createServer, STATUS_CODES } from "node:http";
+import { WebSocket, WebSocketServer } from "ws";
 import { readFile, stat } from "node:fs/promises";
 import { networkInterfaces } from "node:os";
 import { extname, join, normalize, sep } from "node:path";
@@ -137,18 +138,13 @@ let liveIndex = null;
 const pendingAssets = new Map();
 
 function send(client, payload) {
-  try {
-    // Reconnect a lagging viewer instead of retaining an unbounded SSE queue.
-    // The client reloads the board snapshot when its stream reconnects.
-    if (client.res.writableLength > 1024 * 1024) {
-      client.res.destroy();
-      clients.delete(client);
-      return;
-    }
-    client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
-  } catch {
-    clients.delete(client);
+  if (client.ws.readyState !== WebSocket.OPEN) return;
+  // Drop stalled viewers; reconnect reloads a snapshot instead of queueing forever.
+  if (client.ws.bufferedAmount > 1024 * 1024) {
+    client.ws.terminate();
+    return;
   }
+  client.ws.send(JSON.stringify(payload), (error) => { if (error) client.ws.terminate(); });
 }
 
 function broadcast(payload, { boardId, except } = {}) {
@@ -157,9 +153,7 @@ function broadcast(payload, { boardId, except } = {}) {
     try { access = accessFor(client.req, liveIndex); }
     catch {
       send(client, { type: "access-revoked" });
-      client.res.end();
-      clients.delete(client);
-      presence.delete(client.id);
+      client.ws.close(1008, "Access revoked");
       continue;
     }
     if (boardId && !canBoard(liveIndex, access, boardId)) continue;
@@ -167,7 +161,7 @@ function broadcast(payload, { boardId, except } = {}) {
       send(client, { type: "workspace", workspace: visibleWorkspace(liveIndex, access) });
       if (client.boardId && !canBoard(liveIndex, access, client.boardId)) {
         send(client, { type: "board-deleted", id: client.boardId });
-        client.res.end();
+        client.ws.close(1008, "Access revoked");
       }
       continue;
     }
@@ -200,45 +194,76 @@ store.events.on("meta", (meta) => broadcast({ type: "meta", ...meta }, { boardId
 store.events.on("board-deleted", ({ id }) => broadcast({ type: "board-deleted", id }, { boardId: id }));
 store.events.on("workspace", (index) => { liveIndex = index; broadcast({ type: "workspace" }); });
 
-function openEventStream(req, res, url) {
-  // Deliver presence immediately instead of waiting for TCP packet coalescing.
+function updatePresence(body, access, id, boardId) {
+  const previous = presence.get(id)?.boardId === boardId ? presence.get(id) : null;
+  const peer = {
+    boardId,
+    name: String(access.owner ? body.name ?? "Someone" : access.name).slice(0, 40),
+    color: String(body.color ?? "#5a67eb").slice(0, 24),
+    x: Number.isFinite(body.x) ? body.x : previous?.x ?? 0,
+    y: Number.isFinite(body.y) ? body.y : previous?.y ?? 0,
+    view: body.view && typeof body.view === "object" ? body.view : previous?.view ?? null,
+    sel: Array.isArray(body.sel) ? body.sel.slice(0, 200) : previous?.sel ?? [],
+    editing: body.editing ?? null,
+    at: Date.now(),
+  };
+  presence.set(id, peer);
+  const ink = body.ink && typeof body.ink === "object" ? body.ink : null;
+  broadcast({ type: "presence", peer: { id, ...peer, ink } }, { boardId, except: id });
+}
+
+const accessIdentity = (access) => access.userId ? `user:${access.userId}` : access.owner ? "owner" : `invite:${access.invitationId}`;
+
+function openLiveSocket(req, ws, url) {
   req.socket.setNoDelay(true);
   const id = url.searchParams.get("client") || store.uid("c");
-  const client = {
-    id,
-    req,
-    res,
-    boardId: url.searchParams.get("board") ?? null,
-  };
-  res.writeHead(200, {
-    "content-type": "text/event-stream; charset=utf-8",
-    "cache-control": "no-store",
-    connection: "keep-alive",
-    "x-accel-buffering": "no",
-  });
+  const client = { id, req, ws, boardId: url.searchParams.get("board") || null, identity: accessIdentity(accessFor(req, liveIndex)) };
+  let alive = true;
   clients.add(client);
-  send(client, { type: "hello", clientId: id, peers: presenceFor(client.boardId, id) });
+  ws.on("error", () => ws.terminate());
+  ws.on("pong", () => { alive = true; });
+  ws.on("message", (data, binary) => {
+    try {
+      const access = accessFor(req, liveIndex);
+      if (client.boardId) requireBoard(liveIndex, access, client.boardId);
+      if (binary) throw new Error("Expected a JSON text message");
+      const body = JSON.parse(data.toString());
+      validateJson(body);
+      if (!body || Array.isArray(body) || body.type !== "presence" || !client.boardId) throw new Error("Expected board presence");
+      // The authenticated socket owns its board and identity; ignore client overrides.
+      updatePresence(body, access, id, client.boardId);
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        send(client, { type: "access-revoked" });
+        ws.close(1008, "Access revoked");
+      } else ws.close(1008, "Invalid live message");
+    }
+  });
   const ping = setInterval(() => {
     try {
       const access = accessFor(req, liveIndex);
       if (client.boardId) requireBoard(liveIndex, access, client.boardId);
-      res.write(": ping\n\n");
+      if (!alive) return ws.terminate();
+      alive = false;
+      ws.ping();
+      // Browsers cannot observe protocol ping frames; this feeds their watchdog.
+      send(client, { type: "ping" });
     } catch {
-      clearInterval(ping);
       send(client, { type: "access-revoked" });
-      res.end();
-      clients.delete(client);
+      ws.close(1008, "Access revoked");
     }
   }, 25000);
-  req.on("close", () => {
+  ws.on("close", () => {
     clearInterval(ping);
     clients.delete(client);
-    // Closing an old stream during a board switch must not remove its replacement.
+    // A closing connection must not erase the presence of its replacement.
     if ([...clients].some((other) => other.id === id)) return;
     const peer = presence.get(id);
     presence.delete(id);
     if (peer) broadcast({ type: "presence-left", id }, { boardId: peer.boardId });
   });
+  send(client, { type: "hello", clientId: id, peers: presenceFor(client.boardId, id) });
+  send(client, { type: "workspace", workspace: visibleWorkspace(liveIndex, accessFor(req, liveIndex)) });
 }
 
 // ------------------------------------------------------------------- routes
@@ -298,8 +323,8 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/events" && method === "GET") {
     if (url.searchParams.get("board")) requireBoard(index, access, url.searchParams.get("board"));
-    openEventStream(req, res, url);
-    return true;
+    res.setHeader("upgrade", "websocket");
+    return json(res, 426, { error: "Use a WebSocket connection for live events" });
   }
 
   if (pathname === "/api/workspace" && method === "GET") {
@@ -315,23 +340,7 @@ async function handleApi(req, res, url) {
     requireBoard(index, access, body.boardId);
     const id = String(body.clientId ?? "");
     if (!id) return json(res, 400, { error: "clientId required" });
-    const previous = presence.get(id);
-    const peer = {
-      boardId: body.boardId ?? null,
-      name: String(access.owner ? body.name ?? "Someone" : access.name).slice(0, 40),
-      color: String(body.color ?? "#5a67eb").slice(0, 24),
-      x: Number.isFinite(body.x) ? body.x : previous?.x ?? 0,
-      y: Number.isFinite(body.y) ? body.y : previous?.y ?? 0,
-      view: body.view && typeof body.view === "object" ? body.view : previous?.view ?? null,
-      sel: Array.isArray(body.sel) ? body.sel.slice(0, 200) : previous?.sel ?? [],
-      editing: body.editing ?? null,
-      at: Date.now(),
-    };
-    presence.set(id, peer);
-    // In-progress ink is relayed but not stored: it becomes a real stroke on pen-up.
-    const ink = body.ink && typeof body.ink === "object" ? body.ink : null;
-    broadcast({ type: "presence", peer: { id, ...peer, ink } }, { boardId: peer.boardId, except: id });
-    return json(res, 200, { ok: true });
+    return json(res, 426, { error: "Send presence through the board WebSocket" });
   }
 
   if (pathname === "/api/assets" && method === "POST") {
@@ -640,6 +649,32 @@ const httpServer = createServer(async (req, res) => {
     else res.end();
   }
 });
+// Upgrades bypass the HTTP request handler, so repeat its host/origin and access checks.
+const liveSockets = new WebSocketServer({ noServer: true, maxPayload: 512 * 1024, perMessageDeflate: false });
+httpServer.on("upgrade", async (req, socket, head) => {
+  const onError = () => socket.destroy();
+  socket.on("error", onError);
+  try {
+    const url = checkRequest(req, { host, port });
+    if (url.pathname !== "/api/events") throw Object.assign(new Error("Not found"), { status: 404 });
+    if (shuttingDown) throw Object.assign(new Error("Server shutting down"), { status: 503 });
+    const index = await store.listWorkspace();
+    const access = accessFor(req, index);
+    if (url.searchParams.get("board")) requireBoard(index, access, url.searchParams.get("board"));
+    const clientId = url.searchParams.get("client");
+    if (clientId?.length > 128) throw Object.assign(new Error("Invalid client identity"), { status: 400 });
+    if ([...clients].some((client) => client.id === clientId && client.identity !== accessIdentity(access))) {
+      throw Object.assign(new Error("Client identity is already in use"), { status: 409 });
+    }
+    if (socket.destroyed) return;
+    liveSockets.handleUpgrade(req, socket, head, (ws) => {
+      openLiveSocket(req, ws, url);
+    });
+  } catch (error) {
+    const status = error.status ?? 400;
+    if (!socket.destroyed) socket.end(`HTTP/1.1 ${status} ${STATUS_CODES[status] ?? "Bad Request"}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+  }
+});
 httpServer.headersTimeout = 15000;
 httpServer.requestTimeout = 30000;
 httpServer.keepAliveTimeout = 5000;
@@ -657,11 +692,15 @@ async function shutdown() {
   shuttingDown = true;
   try {
     const closed = new Promise((resolve) => httpServer.close(resolve));
-    for (const client of clients) client.res.end();
+    for (const client of clients) client.ws.close(1001, "Server shutting down");
+    const liveClosed = new Promise((resolve) => liveSockets.close(resolve));
     httpServer.closeIdleConnections();
-    const deadline = setTimeout(() => httpServer.closeAllConnections(), 5000);
+    const deadline = setTimeout(() => {
+      for (const ws of liveSockets.clients) ws.terminate();
+      httpServer.closeAllConnections();
+    }, 5000);
     deadline.unref();
-    await closed;
+    await Promise.all([closed, liveClosed]);
     clearTimeout(deadline);
     await store.close();
     process.exit(0);

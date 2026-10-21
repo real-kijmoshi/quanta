@@ -1,3 +1,4 @@
+import { openLive } from "./live-helper.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -133,36 +134,8 @@ try {
   assert.equal((await fetch(base + image.url, { headers: { cookie } })).status, 200, "guest can preview a new upload before autosave");
 
   const openStream = async (session, boardId) => {
-    const response = await fetch(`${base}/api/events?board=${boardId}&client=${Math.random()}`, { headers: session ? { cookie: session } : {} });
-    assert.equal(response.status, 200);
-    const reader = response.body.getReader(), messages = [], waiting = [];
-    const next = (predicate) => {
-      const found = messages.find(predicate);
-      if (found) return Promise.resolve(found);
-      return new Promise((done, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Expected SSE message did not arrive: ${predicate}; received ${messages.map((m) => m.type).join(", ")}`)), 5000);
-        waiting.push((message) => { if (predicate(message)) { clearTimeout(timer); done(message); } });
-      });
-    };
-    const pumping = (async () => {
-      let buffer = "";
-      const decoder = new TextDecoder();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let at;
-        while ((at = buffer.indexOf("\n\n")) >= 0) {
-          const raw = buffer.slice(0, at); buffer = buffer.slice(at + 2);
-          if (!raw.startsWith("data: ")) continue;
-          const message = JSON.parse(raw.slice(6)); messages.push(message);
-          waiting.forEach((waiter) => waiter(message));
-        }
-      }
-    })();
-    const stream = { messages, next, close: () => reader.cancel(), pumping };
+    const stream = await openLive(`${base}/api/events?board=${boardId}&client=${Math.random()}`, { headers: session ? { cookie: session } : {} });
     streams.push(stream);
-    await next((message) => message.type === "hello");
     return stream;
   };
   const aliceStream = await openStream(cookie, a.id);
@@ -193,7 +166,7 @@ try {
   assert.ok((await store.listWorkspace()).links.length, "board relationships survive restart");
   const persisted = await readFile(join(work, "data", "index.json"), "utf8");
   assert.ok(!persisted.includes(alice.token), "plaintext invitation tokens are never persisted");
-  console.log("PASS: nested folders, cycle validation, symmetric links, scoped invitations, protected APIs/assets/SSE, live revocation, guest collaboration, safe deletion, and restart persistence");
+  console.log("PASS: nested folders, cycle validation, symmetric links, scoped invitations, protected APIs/assets/WebSockets, live revocation, guest collaboration, safe deletion, and restart persistence");
 } finally {
   await Promise.allSettled(streams.map((stream) => stream.close()));
   if (child) { child.kill(); await exit; }

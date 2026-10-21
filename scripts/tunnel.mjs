@@ -69,7 +69,7 @@ catch (error) {
 }
 
 // 1. Open the tunnel first, so we learn its random hostname before the server starts.
-const tunnel = spawn(binary, ["tunnel", "--url", `http://localhost:${port}`, "--no-autoupdate"], { windowsHide: true });
+const tunnel = spawn(binary, ["tunnel", "--url", `http://127.0.0.1:${port}`, "--no-autoupdate"], { windowsHide: true });
 let started = false;
 const onOutput = data => {
   const text = data.toString();
@@ -87,9 +87,9 @@ const onOutput = data => {
     recordLinks({ publicUrl, ownerUrl });
     // 2. Start the server, allowing exactly this tunnel hostname and recognizing
     //    the private owner link so the operator keeps owner access through the tunnel.
-    const server = spawn(process.execPath, [fileURLToPath(new URL("../server/index.mjs", import.meta.url)), "--share"], {
+    const server = spawn(process.execPath, [fileURLToPath(new URL("../server/index.mjs", import.meta.url))], {
       stdio: "inherit",
-      env: { ...process.env, QUANTA_ALLOWED_HOSTS: hostname, QUANTA_OWNER_TOKEN: ownerToken, QUANTA_TUNNEL_URL: publicUrl },
+      env: { ...process.env, HOST: "127.0.0.1", QUANTA_ALLOWED_HOSTS: hostname, QUANTA_OWNER_TOKEN: ownerToken, QUANTA_TUNNEL_URL: publicUrl },
     });
     const stop = () => { server.kill(); tunnel.kill(); process.exit(0); };
     server.on("exit", code => { tunnel.kill(); process.exit(code ?? 0); });

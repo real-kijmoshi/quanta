@@ -193,3 +193,9 @@ Session cookies are HttpOnly, SameSite=Lax, and Secure for HTTPS deployments, ex
 after 30 days, and are revoked on logout or password change. Login attempts are
 rate limited per email and socket address; when proxied, the IP limit is shared
 by clients on that proxy. Persistent data files and `.env` are never served.
+
+### WebSocket live sync
+
+Board updates and presence share `/api/events` over WebSockets. HTTPS pages use `wss://`; local HTTP uses `ws://`. The bundled Caddy proxy forwards upgrades automatically. For nginx, forward `Upgrade` and `Connection: upgrade`, use `proxy_http_version 1.1`, and set `proxy_read_timeout 75s` or longer. Keep the public Host and Origin intact; the upgrade uses the same account/invitation cookie and access checks as the HTTP API. Board writes remain HTTP requests with disk-backed acknowledgements.
+
+`quanta --tunnel` keeps the local server on `127.0.0.1` and forwards WebSocket upgrades through the existing Cloudflare Quick Tunnel. The private owner link and folder invitations still apply. Restart Quanta and reload open tabs after this upgrade.

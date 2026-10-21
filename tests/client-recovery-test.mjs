@@ -34,7 +34,8 @@ const context = vm.createContext({
   structuredClone, console, URL,
   window: { addEventListener() {} }, document: { addEventListener() {} },
   setTimeout() { return 1; }, clearTimeout() {}, setInterval() {},
-  EventSource: class { close() {} },
+  location: { href: "http://localhost:4173/", protocol: "http:" },
+  WebSocket: class { static OPEN = 1; close() {} },
   fetch: async (path, options = {}) => {
     if (!options.method) return { ok: true, status: 200, json: async () => board(path.split('/').at(-1)) };
     if (fail) throw new Error('Network unavailable');

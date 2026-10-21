@@ -157,7 +157,7 @@ async function runTool(name, input, boardId) {
 
 /**
  * Streams the assistant's reply as newline-delimited JSON through `write`.
- * Board edits go through the store, so the page sees them over SSE.
+ * Board edits go through the store, so the page sees them over WebSockets.
  */
 export async function chat({ boardId, messages, write, provider, model, local = true, credentials, signal }) {
   const selected = resolveProvider(provider, model, local, credentials);

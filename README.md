@@ -218,10 +218,13 @@ npm test
 | `npm test` | Everything below: syntax, rendering, storage, recovery, collaboration, folders, hosted mode, mocked AI providers, and the CLI |
 | `npm run check` | Syntax-checks every source file |
 | `npm run test:performance` | Retained ink, pan cache invalidation, pointer coalescing, connector updates, low-zoom pen rendering |
-| `npm run test:collaboration` | Distinct tab identities, ordered and bounded presence on slow connections, live ink retry, board-switch isolation, SSE backpressure |
+| `npm run test:collaboration` | Distinct tab identities, ordered and bounded presence on slow connections, live ink retry, board-switch isolation, WebSocket backpressure |
+| `npm run test:websocket` | Real WebSocket upgrades, bidirectional presence/ink, persisted edits, reconnects, reverse proxy, access revocation, malformed/oversized frames, and graceful shutdown |
 | `npm run test:ai` | Mock provider tool loops, CLI subprocesses, cancellation, access controls, model discovery, WebMCP validation, with no paid inference or changes to your boards |
 
-Slow SSE viewers are disconnected once pending output exceeds 1 MiB and recover through the normal snapshot reconnect flow.
+Live board updates, cursors and in-progress ink use one WebSocket connection at `/api/events` (`ws://` locally, `wss://` over HTTPS). Board writes keep the validated HTTP API and are acknowledged after persistence. Clients reconnect with capped backoff, reload a snapshot after every handshake, and retain offline edits in their outbox. Heartbeats detect dead connections; slow viewers disconnect once queued output exceeds 1 MiB.
+
+Reverse proxies must forward WebSocket upgrades to `/api/events`. Caddy and Cloudflare Tunnel handle them automatically. For nginx, use HTTP/1.1 with `Upgrade` and `Connection` forwarding and a `proxy_read_timeout` longer than the 25-second heartbeat (for example, 75 seconds). Restart the server and reload existing browser tabs after upgrading; older SSE clients are not compatible with the new live endpoint.
 
 ### Profiling in the browser
 
@@ -239,7 +242,7 @@ flowchart LR
         WM["WebMCP tools"]
     end
     subgraph Host["One Node process"]
-        API["HTTP + live events (SSE)"]
+        API["HTTP + WebSocket live sync"]
         ST[("Boards as JSON in data/")]
         AI["AI providers"]
         MCP["MCP server /mcp"]

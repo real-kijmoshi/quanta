@@ -4,7 +4,7 @@ import { documentKind } from "../../shared/document-kind.js";
 //
 // Sync model: each object and stroke has an `updatedAt`; the newest write per id
 // wins everywhere. We only ever send the ids we touched ("ops"), and the server
-// relays them to everyone else on the board over SSE.
+// relays them to everyone else on the board over WebSockets.
 import { app, demo, emit, identity, prefs, setPrefs, uid } from "./core.js";
 import { cacheBoard, readCachedBoard } from "./local-cache.js";
 import { queueChanges, acknowledgeChanges, readOutbox } from "./outbox.js";
@@ -731,40 +731,87 @@ export async function uploadAsset(blob) {
 // -------------------------------------------------------------- live sync
 
 let source = null;
-let wasOffline = false;
+let reconnectTimer = null;
+let heartbeatTimer = null;
+let reconnectAttempt = 0;
+
+function retrySync(boardId) {
+  if (state.serverless || state.board?.id !== boardId || reconnectTimer) return;
+  const delay = Math.min(15000, 500 * 2 ** Math.min(reconnectAttempt++, 5));
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (state.board?.id === boardId) connectSync();
+  }, delay);
+}
 
 function connectSync() {
+  clearTimeout(reconnectTimer);
+  clearTimeout(heartbeatTimer);
+  reconnectTimer = heartbeatTimer = null;
+  const previous = source;
+  source = null;
+  previous?.close();
   if (state.serverless || !state.board) return;
-  source?.close();
   const me = identity();
   const boardId = state.board.id;
-  const url = `/api/events?client=${encodeURIComponent(me.id)}&board=${encodeURIComponent(boardId)}`;
-  const connection = new EventSource(url);
+  const url = new URL(`/api/events?client=${encodeURIComponent(me.id)}&board=${encodeURIComponent(boardId)}`, location.href);
+  url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  let connection;
+  try { connection = new WebSocket(url); }
+  catch { app.online = false; setStatus("offline"); retrySync(boardId); return; }
   source = connection;
-  source.onmessage = (event) => {
+  let metadataVersion = 0;
+  const disconnected = () => {
     if (source !== connection) return;
+    source = null;
+    clearTimeout(heartbeatTimer);
+    app.online = false;
+    setStatus("offline");
+    connection.close();
+    retrySync(boardId);
+  };
+  const heartbeat = () => {
+    clearTimeout(heartbeatTimer);
+    heartbeatTimer = setTimeout(disconnected, 60000);
+  };
+  heartbeat(); // Also bound a handshake that never finishes.
+  connection.onclose = disconnected;
+  connection.onerror = disconnected;
+  connection.onmessage = (event) => {
+    if (source !== connection) return;
+    heartbeat();
     let payload;
     try {
       payload = JSON.parse(event.data);
     } catch {
       return;
     }
-    if (payload.type === "access-revoked") { connection.close(); location.reload(); return; }
+    if (payload.type === "access-revoked") {
+      source = null;
+      clearTimeout(heartbeatTimer);
+      connection.close();
+      location.reload();
+      return;
+    }
     if (state.board?.id !== boardId) return;
     if (payload.type === "hello") {
       app.peers.clear();
       for (const peer of payload.peers ?? []) app.peers.set(peer.id, peer);
       emit("peers");
+      recover();
     } else if (payload.type === "ops" && payload.boardId === boardId) {
+      if (payload.ops.settings) metadataVersion += 1;
       mergeRemote(payload.ops);
       emit("remote:ops", payload.ops);
     } else if (payload.type === "board" && payload.board?.id === boardId) {
+      metadataVersion += 1;
       mergeRemote(payload.board);
       if (payload.board.name !== state.board.name) {
         state.board.name = payload.board.name;
         emit("board:renamed", { id: boardId, name: payload.board.name });
       }
     } else if (payload.type === "meta" && payload.boardId === boardId) {
+      metadataVersion += 1;
       if ("folderId" in payload) state.board.folderId = payload.folderId;
       if (payload.name && payload.name !== state.board.name) {
         state.board.name = payload.name;
@@ -787,25 +834,39 @@ function connectSync() {
       emit("peers");
     }
   };
-  source.onerror = () => {
-    if (source !== connection) return;
-    wasOffline = true;
-    app.online = false;
-    setStatus("offline");
-  };
-  source.onopen = async () => {
-    if (source !== connection) return;
-    app.online = true;
-    // Announce ourselves right away, so people already here see us join.
+  async function recover() {
+    // Subscribe before fetching: edits between the initial HTTP load and handshake
+    // (and edits made while offline) are recovered without a live-event gap.
+    inkSent = { id: null, count: 0, version: 0 };
+    lastPresence = 0;
     sendPresence({}, { urgent: true });
-    if (wasOffline) {
-      // Catch up on everything we missed, then push what we did offline.
-      wasOffline = false;
-      const fresh = await api(`/api/boards/${boardId}`).catch(() => null);
-      if (fresh && state.board?.id === boardId) mergeRemote(fresh);
+    try {
+      const version = metadataVersion;
+      const fresh = await api(`/api/boards/${boardId}`);
+      if (source !== connection || state.board?.id !== boardId) return;
+      const settings = dirty.settings || readOutbox(boardId)?.settings ? state.board.settings : null;
+      if (version !== metadataVersion) delete fresh.settings;
+      mergeRemote(fresh);
+      if (version === metadataVersion) {
+        state.board.folderId = fresh.folderId;
+        if (state.board.name !== fresh.name) {
+          state.board.name = fresh.name;
+          emit("board:renamed", { id: boardId, name: fresh.name });
+        }
+      }
+      state.board.rev = Math.max(state.board.rev ?? 0, fresh.rev ?? 0);
+      if (settings) { state.board.settings = settings; emit("settings", settings); }
+      if (await flushSave() === false || source !== connection) return;
+      reconnectAttempt = 0;
+      app.online = true;
+      setStatus("saved");
+    } catch (error) {
+      if (source !== connection) return;
+      if (error.status === 401 || error.status === 403) { source = null; clearTimeout(heartbeatTimer); connection.close(); location.reload(); }
+      else if (error.status === 404) { source = null; clearTimeout(heartbeatTimer); connection.close(); emit("board:gone", boardId); }
+      else disconnected();
     }
-    if (state.board?.id === boardId && await flushSave() !== false && source === connection) setStatus("saved");
-  };
+  }
 }
 
 // A heartbeat keeps us listed for people who join while we sit still.
@@ -817,8 +878,6 @@ let lastPresence = 0;
 let presenceTimer = null;
 let presenceState = {};
 let inkSent = { id: null, count: 0, version: 0 };
-let presenceInFlight = false;
-let presenceQueued = false;
 
 /**
  * Share cursor, viewport, selection, and in-progress ink with collaborators.
@@ -827,10 +886,11 @@ let presenceQueued = false;
 export function sendPresence(patch = {}, { urgent = false } = {}) {
   if (state.serverless || !state.board) return;
   presenceState = { ...presenceState, ...patch };
-  // One ordered request at a time. Slow connections coalesce to the latest
-  // cursor and viewport, while ink keeps all points since the last send.
-  if (presenceInFlight) {
-    presenceQueued = true;
+  // WebSocket frames are ordered. Coalesce under backpressure and retain all
+  // unsent stroke points instead of growing the browser's output queue.
+  if (!source || source.readyState !== WebSocket.OPEN) return;
+  if (source.bufferedAmount > 64 * 1024) {
+    if (!presenceTimer) presenceTimer = setTimeout(() => { presenceTimer = null; sendPresence(); }, 90);
     return;
   }
   const now = Date.now();
@@ -847,7 +907,7 @@ export function sendPresence(patch = {}, { urgent = false } = {}) {
   lastPresence = now;
   const me = identity();
   const { inkStroke, ...rest } = presenceState;
-  const body = { clientId: me.id, boardId: state.board.id, name: me.name, color: me.color, ...rest };
+  const body = { ...rest, type: "presence", name: me.name, color: me.color };
   if (inkStroke) {
     const version = inkStroke.version ?? 0;
     if (inkSent.id !== inkStroke.id || inkSent.version !== version) inkSent = { id: inkStroke.id, count: 0, version };
@@ -861,33 +921,23 @@ export function sendPresence(patch = {}, { urgent = false } = {}) {
       sim: inkStroke.sim,
       shape: inkStroke.shape,
       from: inkSent.count,
-      points: inkStroke.points.slice(inkSent.count),
+      points: inkStroke.points.slice(inkSent.count, inkSent.count + 2048),
     };
-    inkSent.count = inkStroke.points.length;
+    inkSent.count += body.ink.points.length;
   } else if (inkSent.id) {
     body.ink = { id: inkSent.id, done: true };
     inkSent = { id: null, count: 0, version: 0 };
   }
-  presenceInFlight = true;
-  fetch("/api/presence", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    keepalive: true,
-    signal: AbortSignal.timeout(8000),
-  }).then((response) => {
-    if (!response.ok) throw new Error("Presence unavailable");
-  }).catch(() => {
-    if (state.board?.id === body.boardId && body.ink && !body.ink.done && inkSent.id === body.ink.id) {
-      inkSent = { id: null, count: 0, version: 0 };
+  try {
+    source.send(JSON.stringify(body));
+    if (inkStroke && inkSent.count < inkStroke.points.length && !presenceTimer) {
+      presenceTimer = setTimeout(() => { presenceTimer = null; sendPresence(); }, 45);
     }
-  }).finally(() => {
-    presenceInFlight = false;
-    if (presenceQueued) {
-      presenceQueued = false;
-      sendPresence();
-    }
-  });
+  } catch {
+    // Retry previews from a complete stroke when this connection is replaced.
+    inkSent = { id: null, count: 0, version: 0 };
+    source?.close();
+  }
 }
 
 window.addEventListener("pagehide", () => {
@@ -900,4 +950,9 @@ window.addEventListener("pagehide", () => {
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") flushSave();
+});
+
+window.addEventListener("online", () => { if (!state.serverless && source?.readyState !== WebSocket.OPEN) connectSync(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !state.serverless && source?.readyState !== WebSocket.OPEN) connectSync();
 });

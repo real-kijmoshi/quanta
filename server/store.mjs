@@ -290,7 +290,7 @@ async function commit(doc) {
 
 /**
  * Apply a client's delta: { objects: {id: obj}, strokes: {id: stroke}, deleted: {id: at} }.
- * Everyone else on the board receives the resulting values over SSE.
+ * Everyone else on the board receives the resulting values over WebSockets.
  */
 export function applyOps(id, ops = {}, origin = null) {
   validateOps(ops);

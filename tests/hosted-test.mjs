@@ -1,3 +1,4 @@
+import { openLive } from "./live-helper.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -106,14 +107,11 @@ try {
   assert.equal((await post("/api/auth/register", null, { token: expired.token, name: "Expired", email: "expired@example.com", password })).status, 403, "expired invitations cannot create accounts");
   assert.equal((await call("/api/auth/me", { cookie: alice })).data.user.name, "Alice");
   assert.equal((await call("/api/workspace", { cookie: alice })).data.access.folderIds.length, 2);
-  const live = await fetch(`http://127.0.0.1:${port}/api/events?board=${board.id}&client=hosted-test`, { headers: { cookie: alice }, signal: AbortSignal.timeout(5000) });
-  const reader = live.body.getReader();
-  await reader.read();
+  const live = await openLive(`http://127.0.0.1:${port}/api/events?board=${board.id}&client=hosted-test`, { headers: { cookie: alice, host: "quanta.test", origin: "https://quanta.test" } });
   assert.equal((await call(`/api/folders/${a.id}/invitations/${invite.id}`, { cookie: owner, method: "DELETE" })).status, 200);
-  let liveOutput = "";
-  for (;;) { const chunk = await reader.read(); if (chunk.done) break; liveOutput += new TextDecoder().decode(chunk.value); }
-  assert.match(liveOutput, /board-deleted|access-revoked/, "revocation disconnects the active board stream");
-  assert.ok(!liveOutput.includes("Secret"));
+  await live.next((message) => ["board-deleted", "access-revoked"].includes(message.type));
+  await live.pumping;
+  assert.ok(!JSON.stringify(live.messages).includes("Secret"));
   assert.equal((await call(`/api/boards/${board.id}`, { cookie: alice })).status, 403, "revoked membership immediately removes board access");
   assert.deepEqual((await call("/api/workspace", { cookie: alice })).data.access.folderIds, [b.id]);
   assert.equal((await post("/api/auth/accept", alice, { token: invite.token })).status, 403);
