@@ -41,14 +41,15 @@ self.onmessage = async (event) => {
     const ok = run(code);
     run.destroy?.();
     const images = [];
-    let value = null;
+    let value = null, series = null;
     const text = [];
     for (const line of stdout.split("\n")) {
       if (line.startsWith(`${MARK}IMG:`)) images.push(`data:image/png;base64,${line.slice(5)}`);
+      else if (line.startsWith(`${MARK}SERIES:`)) series = JSON.parse(line.slice(8));
       else if (line.startsWith(`${MARK}VAL:`)) value = JSON.parse(line.slice(5));
       else text.push(line);
     }
-    self.postMessage({ id, done: true, ok, stdout: text.join("\n"), stderr, images, value, ms: Math.round(performance.now() - started) });
+    self.postMessage({ id, done: true, ok, stdout: text.join("\n"), stderr, images, value, series, ms: Math.round(performance.now() - started) });
   } catch (error) {
     self.postMessage({ id, done: true, ok: false, stdout, stderr, error: String(error?.message ?? error), ms: Math.round(performance.now() - started) });
   }

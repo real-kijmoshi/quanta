@@ -57,7 +57,10 @@ function pythonWorker() {
     }
   };
   pyWorker.onerror = (event) => {
-    for (const entry of pyPending.values()) entry.resolve({ ok: false, error: event.message ?? "Python worker failed" });
+    for (const entry of pyPending.values()) {
+      clearTimeout(entry.timer);
+      entry.resolve({ ok: false, error: event.message ?? "Python worker failed" });
+    }
     pyPending.clear();
     pyWorker = null;
   };
@@ -144,13 +147,17 @@ export async function runCodeObject(id) {
   if (lang === "javascript") result = await runJavaScript(obj.text);
   else if (lang === "python" && pythonWhere() === "local") {
     result = await runOnServer("python", obj.text);
-    if (result.refused) result = await inBrowser();
+    // An installed Python without the advertised scientific packages should
+    // use the browser runtime, which loads its packages automatically.
+    const missingPackage = /ModuleNotFoundError: No module named ['"](?:numpy|sympy|matplotlib|scipy)(?:\.[^'"]+)?['"]/.test(result.stderr || "");
+    if (result.refused || (!result.ok && missingPackage)) result = await inBrowser();
   } else if (lang === "python") result = await inBrowser();
   else result = await runOnServer(lang, obj.text);
 
   const output = {
     ok: Boolean(result.ok),
     text: formatResult(result),
+    series: result.ok ? result.series ?? null : null,
     images: await storeImages(result.images),
     ms: result.ms ?? null,
     at: Date.now(),

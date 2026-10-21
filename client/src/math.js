@@ -110,7 +110,7 @@ const vec = (v) => (Array.isArray(v) ? v : [v]);
 
 // ---------------------------------------------------------------- tokenizer
 
-const OPERATORS = new Set(["+", "-", "*", "/", "^", "%", "(", ")", ",", "!", "|", "[", "]", "√"]);
+const OPERATORS = new Set(["+", "-", "*", "/", "^", "%", "(", ")", ",", "!", "|", "[", "]", "√", "°"]);
 
 function tokenize(input) {
   const tokens = [];
@@ -220,9 +220,9 @@ export function parse(source) {
 
   function postfix() {
     let node = primary();
-    while (peek()?.type === "!") {
-      at += 1;
-      node = { t: "fact", a: node };
+    while (peek()?.type === "!" || peek()?.type === "°") {
+      const type = tokens[at++].type;
+      node = { t: type === "°" ? "degree" : "fact", a: node };
     }
     return node;
   }
@@ -398,6 +398,8 @@ export function evaluate(node, scope) {
       const v = evaluate(node.a, scope);
       return Array.isArray(v) ? v.map((x) => -x) : -v;
     }
+    case "degree":
+      return arith("*", evaluate(node.a, scope), Math.PI / 180);
     case "fact":
       return gamma(evaluate(node.a, scope) + 1);
     case "vector":
@@ -564,6 +566,8 @@ function toTex(node) {
       const inner = node.a.t === "bin" && PREC[node.a.op] === 1 ? `\\left(${toTex(node.a)}\\right)` : toTex(node.a);
       return `-${inner}`;
     }
+    case "degree":
+      return `${wrap(node.a, 5)}^{\\circ}`;
     case "fact":
       return `${wrap(node.a, 5)}!`;
     case "vector":
@@ -630,4 +634,4 @@ export function lineTex(line) {
 export const expressionTex = (ast) => toTex(ast);
 
 export const mathHelp =
-  "One expression per line · `a = 3` · `f(x) = x^2` · implicit `2pi r` · `[1,2,3]` vectors · integrate(f, a, b) · deriv(f, x) · solve(f, guess) · constants c, G, g, h, k_B, …";
+  "One expression per line · `a = 3` · `f(x) = x^2` · implicit `2pi r` · `30°` degrees · `[1,2,3]` vectors · integrate(f, a, b) · deriv(f, x) · solve(f, guess) · constants c, G, g, h, k_B, …";

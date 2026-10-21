@@ -1572,3 +1572,20 @@ body.presenting .canvas-grid { opacity: .4; }
 @media (prefers-reduced-motion: reduce) {
   .toolbar .tool, .ink-bar .ink-color, .ink-toggle input, .ink-toggle input::before { transition: none; }
 }
+
+/* Numeric code results keep their text and add the trailer's inline preview. */
+.out-chart:empty { display: none; }
+.out-chart { padding: 0 8px 6px; color: var(--brand-olive, #697735); }
+.code-sparkline { display: block; width: 100%; height: auto; max-height: 100px; }
+.code-sparkline .result-axis { fill: none; stroke: var(--line); stroke-width: 1; }
+.code-sparkline .result-line { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+.code-sparkline circle { fill: currentColor; }
+
+/* Keep the latest reply beside its pin, as shown in the collaboration scene. */
+.comment-preview { position: absolute; left: 36px; top: -12px; width: 220px; display: flex; align-items: start; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--white); box-shadow: var(--shadow-sm); color: var(--ink); text-align: left; cursor: pointer; }
+.comment-preview[hidden] { display: none; }
+.comment-preview:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.comment-avatar { flex: 0 0 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--blue); color: var(--paper); font-size: 11px; font-weight: 700; }
+.comment-copy { min-width: 0; display: grid; gap: 4px; }
+.comment-byline { font-size: 9px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comment-message { font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

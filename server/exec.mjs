@@ -53,10 +53,13 @@ export async function detectRuntimes() {
 /** Pull the harness's marker lines (values, figures) out of stdout. */
 export function splitHarnessOutput(stdout) {
   const images = [];
-  let value = null;
+  let value = null, series = null;
   const text = [];
   for (const line of stdout.split(/\r?\n/)) {
     if (line.startsWith(`${MARK}IMG:`)) images.push(`data:image/png;base64,${line.slice(5)}`);
+    else if (line.startsWith(`${MARK}SERIES:`)) {
+      try { series = JSON.parse(line.slice(8)); } catch { /* keep other output */ }
+    }
     else if (line.startsWith(`${MARK}VAL:`)) {
       try {
         value = JSON.parse(line.slice(5));
@@ -65,7 +68,7 @@ export function splitHarnessOutput(stdout) {
       }
     } else text.push(line);
   }
-  return { stdout: text.join("\n"), images, value };
+  return { stdout: text.join("\n"), images, value, series };
 }
 
 export async function runCode(lang, code) {

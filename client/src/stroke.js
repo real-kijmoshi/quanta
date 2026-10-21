@@ -393,12 +393,13 @@ const angleBetween = (a, b, c) => {
  * Turn a roughly drawn stroke into a clean shape: line, arrow, triangle,
  * rectangle, polygon, circle, or ellipse. Returns { shape, points } or null.
  */
-export function recognizeShape(raw) {
+export function recognizeShape(raw, { zoom = 1 } = {}) {
+  zoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   const points = raw.map((p) => [p[0], p[1]]);
   if (points.length < 4) return null;
   let length = 0;
   for (let i = 1; i < points.length; i += 1) length += dist(points[i - 1], points[i]);
-  if (length < 18) return null;
+  if (length * zoom < 18) return null;
   const xs = points.map((p) => p[0]);
   const ys = points.map((p) => p[1]);
   const box = { x: Math.min(...xs), y: Math.min(...ys), r: Math.max(...xs), b: Math.max(...ys) };
@@ -408,10 +409,12 @@ export function recognizeShape(raw) {
   const first = points[0];
   const last = points[points.length - 1];
   const gap = dist(first, last);
-  const spacing = 3;
+  const spacing = Math.max(3 / zoom, diag / 250);
 
-  // Straight line.
-  if (gap / length > 0.93) {
+  // A slow line can contain many tiny tremors without being a curve. Test
+  // deviation as well as path length; keep intentional bends and arrow heads.
+  const deviation = points.reduce((max, p) => Math.max(max, segmentDistance(p, first, last)), 0);
+  if (gap / length > 0.93 || (gap / length > .72 && deviation < Math.max(2 / zoom, gap * .035))) {
     let a = first;
     let b = last;
     // Snap near-horizontal/vertical lines.
@@ -425,7 +428,7 @@ export function recognizeShape(raw) {
     return { shape: "line", points: sample([a, b], spacing) };
   }
 
-  const closed = gap < Math.max(14, 0.22 * Math.max(w, h));
+  const closed = gap < Math.max(14 / zoom, 0.22 * Math.max(w, h));
   if (!closed) {
     // Arrow: a shaft whose end doubles back into a head.
     const simple = simplify(points, diag * 0.06);
@@ -437,7 +440,7 @@ export function recognizeShape(raw) {
       if (shaft > headLength * 1.2 && angleBetween(s0, s1, simple[2]) < 70) {
         const tip = s1;
         const back = Math.atan2(s0[1] - tip[1], s0[0] - tip[0]);
-        const size = Math.min(shaft * 0.3, Math.max(12, headLength / 2));
+        const size = Math.min(shaft * 0.3, Math.max(12 / zoom, headLength / 2));
         const wing = (offset) => [tip[0] + size * Math.cos(back + offset), tip[1] + size * Math.sin(back + offset)];
         return { shape: "arrow", points: sample([s0, tip, wing(0.45), tip, wing(-0.45)], spacing) };
       }
@@ -462,6 +465,13 @@ export function recognizeShape(raw) {
       return sum + Math.abs(Math.hypot(nx, ny) - 1);
     }, 0) / points.length;
 
+  // A smooth loop remains an ellipse even if simplification happens to leave
+  // four vertices; hand-drawn boxes have appreciably more radial error.
+  if (ellipseError < .065 && Math.min(w, h) * zoom > 8) {
+    const round = Math.abs(w - h) / Math.max(w, h) < .18;
+    const r = (rx + ry) / 2;
+    return { shape: round ? "circle" : "ellipse", points: ellipsePoints(cx, cy, round ? r : rx, round ? r : ry, spacing) };
+  }
   if (corners.length === 3) return { shape: "triangle", points: sample([...corners, corners[0]], spacing) };
   if (corners.length === 4 && ellipseError > 0.08) {
     const angles = corners.map((c, i) => angleBetween(corners[(i + 3) % 4], c, corners[(i + 1) % 4]));
@@ -471,8 +481,20 @@ export function recognizeShape(raw) {
       const a = Math.abs((Math.atan2(n[1] - c[1], n[0] - c[0]) * 180) / Math.PI) % 90;
       return a < 14 || a > 76;
     });
-    if (square && axisAligned) {
-      return { shape: "rectangle", points: sample([[box.x, box.y], [box.r, box.y], [box.r, box.b], [box.x, box.b], [box.x, box.y]], spacing) };
+    if (square && (axisAligned || angles.every((a) => Math.abs(a - 90) < 15))) {
+      if (axisAligned) return { shape: "rectangle", points: sample([[box.x, box.y], [box.r, box.y], [box.r, box.b], [box.x, box.b], [box.x, box.y]], spacing) };
+      // Fit one pair of perpendicular axes to all four edges. This keeps the
+      // rotation of a block on a slope while making its corners exactly square.
+      let cos = 0, sin = 0;
+      corners.forEach((p, i) => {
+        const q = corners[(i + 1) % 4], angle = Math.atan2(q[1] - p[1], q[0] - p[0]), weight = dist(p, q);
+        cos += Math.cos(4 * angle) * weight; sin += Math.sin(4 * angle) * weight;
+      });
+      const angle = Math.atan2(sin, cos) / 4, ux = Math.cos(angle), uy = Math.sin(angle);
+      const us = corners.map(([x, y]) => x * ux + y * uy), vs = corners.map(([x, y]) => -x * uy + y * ux);
+      const lo = Math.min(...us), hi = Math.max(...us), bottom = Math.min(...vs), top = Math.max(...vs);
+      const fitted = [[lo, bottom], [hi, bottom], [hi, top], [lo, top]].map(([u, v]) => [u * ux - v * uy, u * uy + v * ux]);
+      return { shape: "rectangle", points: sample([...fitted, fitted[0]], spacing) };
     }
     return { shape: "quad", points: sample([...corners, corners[0]], spacing) };
   }
