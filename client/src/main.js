@@ -1,7 +1,7 @@
 // Boot order: view and layers first, then chrome, then load the board.
-import { demo, on, prefs, toast, setIdentity, el } from "./core.js";
-import { api, importBoard, loadWorkspace, openBoard, state } from "./doc.js";
-import { mountView, restoreView } from "./view.js";
+import { demo, on, prefs, setPrefs, toast, setIdentity, el } from "./core.js";
+import { api, createBoard, importBoard, loadWorkspace, openBoard, state } from "./doc.js";
+import { fitRect, mountView, restoreView, shellRect } from "./view.js";
 import { mountInk } from "./ink.js";
 import { mountObjects } from "./objects.js";
 import { mountCanvas, setMode } from "./canvas.js";
@@ -19,10 +19,28 @@ import { mountToolbar } from "./toolbar.js";
 import { mountMobile } from "./mobile.js";
 import { mountTheme } from "./theme.js";
 
-// The website demo starts from showcase boards shipped next to the app.
+// The website demo starts from showcase boards shipped next to the app. When
+// a newer set ships (DEMO_VERSION in scripts/demo-boards.mjs), returning
+// visitors get the boards they don't have yet; nothing of theirs is touched.
 async function seedDemo() {
-  const boards = await fetch("demo/boards.json").then((r) => (r.ok ? r.json() : [])).catch(() => []);
-  for (const board of [...boards].reverse()) await importBoard(board.name, board);
+  const data = await fetch("demo/boards.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const boards = Array.isArray(data) ? data : data?.boards ?? [];
+  const version = data?.version ?? 1;
+  if (!boards.length || prefs("demo:seeded", 0) >= version) return null;
+  const have = new Set(state.workspace.boards.map((b) => b.id));
+  const now = Date.now();
+  for (const board of [...boards].reverse()) {
+    if (board.id && have.has(board.id)) continue;
+    // Comment times ship as "minutes ago", so the threads read as recent.
+    for (const obj of Object.values(board.objects ?? {})) {
+      for (const message of obj.props?.thread ?? []) if (message.at <= 0) message.at = now + message.at;
+    }
+    // Fixed ids keep the hub's portals pointing at the right boards.
+    if (board.id) await createBoard(board.name, null, { id: board.id, kind: board.kind, objects: board.objects ?? {}, strokes: board.strokes ?? {}, deleted: {}, settings: board.settings ?? { background: "dots" } });
+    else await importBoard(board.name, board);
+  }
+  setPrefs("demo:seeded", version);
+  return boards[0];
 }
 
 async function boot() {
@@ -67,13 +85,16 @@ async function boot() {
     return;
   }
   if (state.workspace.access?.name) setIdentity({ name: state.workspace.access.name });
-  if (demo && !state.workspace.boards.length) await seedDemo();
+  const seeded = demo ? await seedDemo() : null;
   const requested = new URL(location.href).searchParams.get("board");
   const known = state.workspace.boards.some((b) => b.id === requested);
   const last = prefs("lastBoard");
   const target = (known && requested) || (state.workspace.boards.some((b) => b.id === last) && last) || state.workspace.boards[0]?.id;
   await openBoard(target);
   restoreView(state.board.id);
+  // A phone opens the demo on the hub's `focus` area (its welcome column)
+  // rather than a postage stamp of the whole board.
+  if (seeded?.focus && seeded.id === state.board.id && shellRect().width < 700) fitRect(seeded.focus, 12);
   setMode("select");
 
   if (demo) {

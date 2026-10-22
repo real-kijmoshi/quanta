@@ -2,7 +2,7 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ["site/**", "client/**", "shared/**", "scripts/build-site.mjs", "scripts/demo-boards.mjs", "package-lock.json", ".github/workflows/pages.yml"]
+    paths: ["site/**", "client/**", "shared/**", "scripts/build-site.mjs", "scripts/demo-*", "scripts/demo-assets/**", "package-lock.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+      - run: node tests/demo-test.mjs
       - run: node scripts/build-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

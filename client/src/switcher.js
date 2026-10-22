@@ -9,6 +9,7 @@ import { displayInk, drawnTheme } from "./theme.js";
 import { centerOn, fitBoard, shellRect, view } from "./view.js";
 import { switchBoard } from "./ui.js";
 import { updateSelectionUI } from "./objects.js";
+import { readCachedBoard } from "./local-cache.js";
 
 const NOTE_FILL = { yellow: "#ffe79a", blue: "#cfe0ff", green: "#cfeedd", pink: "#ffd7e0", plain: "#ffffff" };
 const STUDIO_NOTE_FILL = { yellow: "#48442a", blue: "#2c3650", green: "#29402f", pink: "#4a2e38", plain: "#2e2f2c" };
@@ -188,7 +189,10 @@ async function loadDoc(row, maxAge = Infinity) {
   if (row.id === state.board?.id) return state.board;
   const cached = docs.get(row.id);
   if (cached && cached.updatedAt === row.updatedAt && Date.now() - cached.at < maxAge) return cached.doc;
-  const doc = await fetch(`/api/boards/${row.id}`, { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // Without a server (the website demo, local-only mode) boards live in this
+  // browser's cache, which is also the fallback when the server can't answer.
+  let doc = state.serverless ? null : await fetch(`/api/boards/${row.id}`, { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  doc ??= await readCachedBoard(row.id).catch(() => null);
   if (doc) docs.set(row.id, { doc, updatedAt: row.updatedAt, at: Date.now() });
   return doc ?? cached?.doc ?? null;
 }

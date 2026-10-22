@@ -1,7 +1,7 @@
 // Assemble the static website with the same pen geometry used by the board,
 // plus the real app at app/ running as an in-browser demo (no server).
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { demoBoards } from './demo-boards.mjs';
+import { DEMO_VERSION, demoBoards } from './demo-boards.mjs';
 
 const root = new URL('../', import.meta.url);
 const output = new URL('dist/site/', root);
@@ -25,5 +25,7 @@ for (const [to, from] of Object.entries(vendor)) {
 const html = await readFile(new URL('index.html', app), 'utf8');
 await writeFile(new URL('index.html', app), html.replace('<head>', '<head>\n  <meta name="quanta-demo" content="1" />\n  <meta name="robots" content="noindex" />'));
 await mkdir(new URL('demo/', app), { recursive: true });
-await writeFile(new URL('demo/boards.json', app), JSON.stringify(demoBoards()));
+await writeFile(new URL('demo/boards.json', app), JSON.stringify({ version: DEMO_VERSION, boards: demoBoards() }));
+// Figures produced by the demo's code cards (npm run demo:bake).
+await cp(new URL('scripts/demo-assets/', root), new URL('demo/', app), { recursive: true });
 console.log('Website built in dist/site (demo app in dist/site/app)');

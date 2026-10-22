@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Website demo rebuilt around nine showcase boards: a **Start here** hub with live portal windows, block on a ramp (the trailer sketch), projectile motion, Taylor series & calculus, waves & signals, vectors & data, a study-plan flowchart, a thermodynamics notebook with flashcards, and revision slides for Present mode. Boards use handwritten ink, highlighter, comment threads, sliders, connectors and task lists.
+- Demo code cards open with their real output and figures already on them (`npm run demo:bake` reruns them with the app's own JavaScript worker and Python harness). Returning visitors get new demo boards when the set changes, without touching their own.
+- Fixed: shape labels were only visible while editing, and shape colours had no effect.
+- Fixed: Present mode left the board squeezed into the sidebar's column.
+- Fixed: portal windows and the board switcher preview stayed blank without a server (website demo, local-only mode).
+
 ## 0.13.1
 
 - Add `quanta uninstall` with interactive confirmation, `--yes` for scripts and `--dry-run` for previews. Remove managed app files and owned launchers, or uninstall the global npm package, while keeping boards, settings, backups and hosted servers. Clean up the Windows user PATH; protect source checkouts and unrelated launchers.

@@ -618,6 +618,16 @@ code { font-family: var(--mono); font-size: .92em; background: #fff; padding: 1p
   flex: 0 0 auto;
   max-height: 100%;
 }
+/* Labels read like arrow labels: visible, read-only until you edit the shape. */
+.obj-shape { justify-content: center; }
+.obj.obj-shape .shape-label { display: block; flex: 0 0 auto; width: 100%; field-sizing: content; resize: none; overflow: hidden; background: transparent; pointer-events: none; }
+.obj-shape.editing .shape-label { pointer-events: auto; }
+/* The colour swatches apply to shapes as well as notes. */
+.obj-shape[data-color="yellow"] { --shape-fill: var(--note-yellow); }
+.obj-shape[data-color="blue"] { --shape-fill: var(--note-blue); }
+.obj-shape[data-color="green"] { --shape-fill: var(--note-green); }
+.obj-shape[data-color="pink"] { --shape-fill: var(--note-pink); }
+.obj-shape[data-color="purple"] { --shape-fill: var(--note-purple, #ece4fb); }
 
 .obj-frame {
   pointer-events: none;
@@ -942,6 +952,8 @@ body.presenting .panel,
 body.presenting .obj-toolbar,
 body.presenting .selection-frame { display: none !important; }
 body.presenting .canvas-grid { opacity: .4; }
+/* With the sidebar gone the board must take the whole width, not its column. */
+body.presenting .app { grid-template-columns: minmax(0, 1fr); }
 
 .palette { position: fixed; inset: 0; z-index: 80; background: rgba(28, 30, 34, .28); display: grid; place-items: start center; padding-top: 14vh; backdrop-filter: blur(2px); }
 .palette-box {

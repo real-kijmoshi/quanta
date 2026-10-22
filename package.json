@@ -24,11 +24,13 @@
   "description": "Collaborative whiteboard and notebook: handwriting, typeset math, plots, runnable code, live sync, MCP",
   "scripts": {
     "build:site": "node scripts/build-site.mjs",
+    "demo:bake": "node scripts/bake-demo.mjs",
     "start": "node server/index.mjs",
     "check": "node scripts/check.mjs",
     "test:performance": "node tests/performance-test.mjs",
     "test:selection": "node tests/selection-test.mjs",
     "test:site": "node tests/site-ink-test.mjs",
+    "test:demo": "node tests/demo-test.mjs",
     "test:notes": "node tests/notes-test.mjs",
     "test:writing": "node tests/writing-test.mjs",
     "test:trailer": "node tests/trailer-test.mjs",
