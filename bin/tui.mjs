@@ -210,10 +210,8 @@ export async function runTui(ctx) {
   }
 
   async function runUpdate() {
-    // The installer prints its own progress and may ask for permissions, so
-    // it gets the real terminal; the dashboard closes for it.
+    // Give the maintenance progress display the real terminal.
     restore();
-    out.write(`\nUpdating Quanta ${pkg.version} → ${state.update}\n\n`);
     const child = spawn(process.execPath, [ctx.cli, "update"], { env: { ...ctx.env, QUANTA_NO_UI: "1" }, stdio: "inherit", windowsHide: true });
     child.on("exit", code => {
       if (code === 0) out.write("\nRun quanta to open the dashboard again.\n");

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1
+
+- Add `quanta uninstall` with interactive confirmation, `--yes` for scripts and `--dry-run` for previews. Remove managed app files and owned launchers, or uninstall the global npm package, while keeping boards, settings, backups and hosted servers. Clean up the Windows user PATH; protect source checkouts and unrelated launchers.
+- Redesign `quanta update` with clear stages, animated terminal progress, elapsed times, a version summary and a board-preservation message. Piped output stays readable; installer diagnostics appear on failure. Verify the installed version before reporting success.
+- Add bounded release-check and installer-download timeouts, download the installer before stopping a workspace, and retain the workspace data directory when restarting after an update.
+- Add isolated maintenance regression checks for uninstall previews, confirmation, preserved data, launcher ownership and successful/failed updates.
+
 ## 0.13.0
 
 - Replace SSE collaboration with one WebSocket for live board updates, cursors, viewport/selection presence and in-progress ink. HTTP writes still acknowledge persisted edits, with the existing offline outbox.

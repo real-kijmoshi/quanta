@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Quanta command line: `quanta --help`.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, statSync, writeFileSync, watchFile } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, watchFile } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createInterface } from "node:readline/promises";
+import { maintenanceUi, runMaintenance, ownsLauncher, removeLauncher } from "./maintenance.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -34,6 +36,7 @@ Defaults:
 
 More:
   update [--check]        Install the latest release (keeps your boards; restarts a running workspace)
+  uninstall [--yes]       Remove Quanta; keep boards and settings (--dry-run previews)
   setup                 Interactive server setup on Linux, with accounts and HTTPS
   backup [dir]            Save a verified copy of your boards
   backup --verify <dir>   Check a backup directory
@@ -97,6 +100,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--foreground" || a === "--fg") opts.foreground = true;
   else if (a === "--no-ui") opts.ui = false;
   else if (a === "--check") opts.check = true;
+  else if (a === "--yes" || a === "-y") opts.yes = true;
+  else if (a === "--dry-run") opts.dryRun = true;
   else if (a === "--force") opts.force = true;
   else if (a === "-f") opts.follow = opts.foreground = true; // `logs -f` follows; otherwise foreground
   else if (a === "-p" || a === "--port") opts.port = args[++i];
@@ -178,7 +183,7 @@ function printLinks(info) {
 function startForeground() {
   const other = running();
   if (other && other.pid !== process.pid) fail(`Quanta is already running in the background (pid ${other.pid}). Run "quanta stop" first.`);
-  writeFileSync(runFile, JSON.stringify({ pid: process.pid, port: +port, mode, startedAt: Date.now() }, null, 2));
+  writeFileSync(runFile, JSON.stringify({ pid: process.pid, port: +port, mode, startedAt: Date.now(), data: env.QUANTA_DATA ?? join(root, "data") }, null, 2));
   const cleanup = () => { if (readJson(runFile)?.pid === process.pid) rmSync(runFile, { force: true }); };
   process.on("exit", cleanup);
   if (mode === "tunnel") run("scripts/tunnel.mjs", [], { QUANTA_RUN_FILE: runFile });
@@ -222,12 +227,12 @@ async function startBackground() {
   if (open) openBrowser(`http://localhost:${port}`);
 }
 
-function stop() {
+function stop(quiet = false) {
   const info = running();
   if (!info) { console.log("Quanta is not running."); return false; }
   killTree(info.pid);
   rmSync(runFile, { force: true });
-  console.log(`Stopped Quanta (pid ${info.pid}).`);
+  if (!quiet) console.log(`Stopped Quanta (pid ${info.pid}).`);
   return info;
 }
 
@@ -242,10 +247,10 @@ const newer = (a, b) => {
 
 async function latestVersion() {
   if (process.env.QUANTA_UPDATE_LATEST) return process.env.QUANTA_UPDATE_LATEST; // tests
-  const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: "application/vnd.github+json", "user-agent": "quanta-cli" } });
+  const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: "application/vnd.github+json", "user-agent": "quanta-cli" }, signal: AbortSignal.timeout(10000) });
   if (response.ok) return (await response.json()).tag_name.replace(/^v/, "");
   // The API is rate limited; the release page redirect carries the tag too.
-  const page = await fetch(`https://github.com/${REPO}/releases/latest`, { redirect: "manual" });
+  const page = await fetch(`https://github.com/${REPO}/releases/latest`, { redirect: "manual", signal: AbortSignal.timeout(10000) });
   const tag = page.headers.get("location")?.match(/\/tag\/v?([^/]+)$/)?.[1];
   if (!tag) throw new Error(`could not find the latest release (HTTP ${response.status})`);
   return tag;
@@ -260,50 +265,120 @@ function runChild(cmd, cmdArgs, options = {}) {
 }
 
 async function update() {
+  const ui = maintenanceUi("Update");
   let latest;
-  try { latest = await latestVersion(); } catch (error) { fail(`update check failed: ${error.message}`); }
+  try { latest = await ui.step("Check latest release", latestVersion); }
+  catch (error) { fail(`update check failed: ${error.message}`); }
   const available = newer(latest, pkg.version);
-  if (!available && !opts.force) { console.log(`Quanta ${pkg.version} is up to date.`); return; }
-  console.log(available ? `Quanta ${latest} is available (you have ${pkg.version}).` : `Reinstalling Quanta ${latest}.`);
-  if (opts.check) { console.log("Install it with: quanta update"); return; }
+  if (!available && !opts.force) { ui.note(`Quanta ${pkg.version} is up to date.\n`); return; }
+  ui.note(available ? `Quanta ${latest} is available (you have ${pkg.version}).` : `Reinstalling Quanta ${latest}.`);
+  ui.note(`Version   ${pkg.version} → ${latest}`);
+  ui.note(`Boards    ${env.QUANTA_DATA ?? join(home, "data")} (kept)`);
+  if (opts.check) { ui.note("Install it with: quanta update\n"); return; }
   if (inCheckout) {
-    console.log("This is a source checkout. Update it with:  git pull && npm ci");
+    ui.note("This is a source checkout. Update it with:  git pull && npm ci\n");
     return;
   }
 
-  // The installers put the app in <QUANTA_HOME>/app; anything else came from npm.
-  const installer = basename(root) === "app";
+  const installer = resolve(root) === resolve(home, "app");
   const was = running();
-  if (was) stop();
   const work = mkdtempSync(join(tmpdir(), "quanta-update-"));
-  let code;
   try {
+    let file;
     if (installer) {
-      const script = process.platform === "win32" ? "install.ps1" : "install.sh";
-      const response = await fetch(`https://github.com/${REPO}/releases/download/v${latest}/${script}`);
-      if (!response.ok) fail(`could not download the ${latest} installer (HTTP ${response.status})`);
-      const file = join(work, script);
-      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
-      // Run from the temp folder: Windows cannot replace a directory that is a process's cwd.
-      const installEnv = { ...process.env, QUANTA_VERSION: latest, QUANTA_HOME: dirname(root) };
-      code = process.platform === "win32"
-        ? await runChild("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { cwd: work, env: installEnv })
-        : await runChild("sh", [file], { cwd: work, env: installEnv });
-    } else {
-      code = await runChild("npm", ["install", "-g", `https://github.com/${REPO}/releases/download/v${latest}/quanta.tgz`], { cwd: work, shell: process.platform === "win32" });
+      file = await ui.step("Download installer", async () => {
+        const script = process.platform === "win32" ? "install.ps1" : "install.sh";
+        const response = await fetch(`https://github.com/${REPO}/releases/download/v${latest}/${script}`, { signal: AbortSignal.timeout(30000) });
+        if (!response.ok) throw new Error(`could not download the ${latest} installer (HTTP ${response.status})`);
+        const path = join(work, script);
+        writeFileSync(path, Buffer.from(await response.arrayBuffer()));
+        return path;
+      });
     }
-  } finally {
-    rmSync(work, { recursive: true, force: true });
+    // Keep the workspace available while checking and downloading the installer.
+    if (was) await ui.step("Stop running workspace", async () => { stop(true); await waitForStop(was); });
+    await ui.step("Install release and dependencies (this may take a minute)", async () => {
+      if (installer) {
+        const installEnv = { ...process.env, QUANTA_VERSION: latest, QUANTA_HOME: home };
+        if (process.platform === "win32") {
+          await runMaintenance("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", file], { cwd: work, env: installEnv });
+        } else await runMaintenance("sh", [file], { cwd: work, env: installEnv });
+      } else {
+        await runMaintenance("npm", ["install", "-g", `https://github.com/${REPO}/releases/download/v${latest}/quanta.tgz`], { cwd: work, shell: process.platform === "win32" });
+      }
+    });
+    await ui.step("Verify installed version", async () => {
+      const actual = await runMaintenance(process.execPath, [join(root, "bin", "quanta.mjs"), "--version"], { cwd: work });
+      if (actual !== latest) throw new Error(`expected ${latest}, found ${actual}`);
+    });
+    if (was) {
+      await ui.step(`Restart workspace (${was.mode})`, async () => {
+        const restartArgs = [join(root, "bin", "quanta.mjs"), `--${was.mode}`, "--no-open", "--no-ui", "--port", String(was.port)];
+        if (was.data) restartArgs.push("--data", was.data);
+        await runMaintenance(process.execPath, restartArgs, { cwd: tmpdir(), env: { ...env, QUANTA_SKIP_UPDATE: "1" } });
+      });
+    }
+    ui.note(`Updated to Quanta ${latest}. Your boards were not touched.`);
+    ui.note(was ? `Workspace ready at http://localhost:${was.port}\n` : "Start your workspace: quanta\n");
+  } catch (error) {
+    if (was) ui.note(`Start the installed version again with: quanta --${was.mode}`);
+    console.error(`quanta: update failed: ${error.message}`);
+    process.exitCode = 1;
+  } finally { rmSync(work, { recursive: true, force: true }); }
+}
+
+async function waitForStop(info) {
+  for (let i = 0; i < 100 && alive(info.pid); i++) await sleep(100);
+  if (alive(info.pid)) throw new Error(`workspace ${info.pid} is still stopping; try again shortly`);
+}
+
+async function uninstall() {
+  const ui = maintenanceUi("Uninstall");
+  if (extra.length) fail(`unknown uninstall argument: ${extra[0]}`);
+  if (inCheckout) fail("This is a source checkout. Remove its directory yourself; no files were changed.");
+  const installer = resolve(root) === resolve(home, "app");
+  let npmRoot;
+  if (!installer) {
+    npmRoot = await runMaintenance("npm", ["root", "-g"], { shell: process.platform === "win32" });
+    if (resolve(root) !== resolve(npmRoot, pkg.name)) fail("This is not a managed or global npm installation. Remove it with the tool that installed it.");
   }
-  if (code !== 0) {
-    if (was) console.error(`The update failed, so the old version is still installed. Start it again with: quanta --${was.mode}`);
-    fail("update failed (see the output above).");
+  const cli = join(root, "bin", "quanta.mjs");
+  const binDirs = new Set([process.env.QUANTA_BIN, join(homedir(), ".local", "bin"), join(home, "bin"), ...(process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":")].filter(Boolean));
+  const launchers = installer ? [...binDirs].map(dir => join(dir, process.platform === "win32" ? "quanta.cmd" : "quanta")).filter(file => ownsLauncher(file, cli)) : [];
+  ui.note(`Remove    ${root}`);
+  for (const file of launchers) ui.note(`Launcher  ${file}`);
+  ui.note(`Keep      ${home} (boards, settings and backups)`);
+  ui.note("Custom data folders and hosted Docker servers are kept.");
+  if (opts.dryRun) { ui.note("Preview only. Nothing was removed.\n"); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) fail("Run quanta uninstall --yes to confirm, or --dry-run to preview.");
+    const prompt = createInterface({ input: process.stdin, output: process.stdout });
+    let answer;
+    try { answer = await prompt.question("\n  Uninstall Quanta? [y/N] "); } finally { prompt.close(); }
+    if (!/^y(es)?$/i.test(answer.trim())) { ui.note("Cancelled. Nothing was removed.\n"); return; }
   }
-  console.log(`Updated to Quanta ${latest}. Your boards were not touched.`);
-  if (was) {
-    console.log(`Restarting the workspace (${was.mode})…`);
-    await runChild(process.execPath, [join(root, "bin", "quanta.mjs"), `--${was.mode}`, "--no-open", "--port", String(was.port)], { cwd: tmpdir() });
+  const was = running();
+  if (was) await ui.step("Stop running workspace", async () => { stop(true); await waitForStop(was); });
+  // Do not hold the installation directory open on Windows.
+  process.chdir(tmpdir());
+  if (installer) {
+    if (process.platform === "win32" && launchers.includes(join(home, "bin", "quanta.cmd")) && readdirSync(join(home, "bin")).every(name => name === "quanta.cmd")) {
+      await ui.step("Remove launcher from user PATH", async () => {
+        const bin = join(home, "bin").replace(/'/g, "''");
+        const script = `$bin = '${bin}'; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); $parts = @($p -split ';' | Where-Object { $_.TrimEnd('\\') -ine $bin.TrimEnd('\\') }); [Environment]::SetEnvironmentVariable('Path', ($parts -join ';'), 'User')`;
+        await runMaintenance("powershell", ["-NoProfile", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")]);
+      });
+    }
+    await ui.step("Remove app and launchers", async () => {
+      for (const file of launchers) removeLauncher(file, cli);
+      rmSync(root, { recursive: true, force: true });
+    });
+  } else {
+    await ui.step("Remove global npm package", () => runMaintenance("npm", ["uninstall", "-g", pkg.name], { shell: process.platform === "win32" }));
   }
+  ui.note("Quanta uninstalled. Your boards and settings were kept.");
+  if (process.platform === "win32") ui.note("Open a new terminal to refresh PATH.");
+  ui.note("Reinstall Quanta anytime to use your boards again.\n");
 }
 
 // Before starting, install a newer release if there is one. Skipped while a
@@ -411,6 +486,9 @@ switch (command) {
     console.log(`Saved: ${key} = ${key === "autoupdate" ? (next.autoUpdate ? "on" : "off") : next[key]}`);
     break;
   }
+  case "uninstall":
+    try { await uninstall(); } catch (error) { fail(`uninstall failed: ${error.message}`); }
+    break;
   case "update":
     await update();
     break;

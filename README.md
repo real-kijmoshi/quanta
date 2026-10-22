@@ -46,7 +46,9 @@ quanta                  # starts in the background, opens http://localhost:4173
 quanta --tunnel         # same, plus a public link (cloudflared is fetched if missing)
 ```
 
-Update with `quanta update`; your boards are not touched.
+Update with `quanta update`; your boards are not touched. The terminal shows each stage and elapsed time, with detailed diagnostics if installation fails.
+
+Remove the installed app with `quanta uninstall` (asks for confirmation). Boards, settings, backups and hosted Docker servers are kept. Use `quanta uninstall --dry-run` to preview, or `quanta uninstall --yes` in scripts. Reinstalling reconnects to your saved boards. Global npm installs are removed through npm; source checkouts are never deleted.
 
 <details>
 <summary>Other ways to install</summary>
@@ -71,6 +73,7 @@ Update with `quanta update`; your boards are not touched.
 | `quanta [--tunnel|--share] [--port N] [--data DIR]` | Start in the background and open the terminal dashboard: live status and links, switch local/share/tunnel with ←→, copy the link, logs, settings and updates. Quitting leaves Quanta running |
 | `quanta ui` | Open the dashboard without starting anything (`--no-ui` prints the links and exits instead) |
 | `quanta stop` / `restart` / `status` / `logs [-f]` / `open` | Manage the background workspace from scripts |
+| `quanta uninstall [--yes] [--dry-run]` | Remove the installed app and its launcher, preserving boards and settings |
 | `quanta update [--check]` | Install the latest release; boards are kept and a running workspace restarts. Plain `quanta` also updates itself on start (`quanta config autoupdate off` to stop that) |
 | `quanta config mode tunnel` | Make the tunnel (or `share`, `local`) the default for plain `quanta` |
 | `quanta --foreground` | Run attached to the terminal; Ctrl+C stops it |
